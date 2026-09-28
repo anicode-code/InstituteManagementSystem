@@ -1,7 +1,7 @@
 package com.institute.ims.security;
 
-import com.institute.ims.user.User;
-import com.institute.ims.user.UserRepository;
+import com.institute.ims.model.User;
+import com.institute.ims.repository.UserRepository;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.*;
 import org.springframework.stereotype.Service;

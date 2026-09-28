@@ -1,10 +1,10 @@
 package com.institute.ims.config;
 
-import com.institute.ims.department.Department;
-import com.institute.ims.department.DepartmentRepository;
-import com.institute.ims.user.Role;
-import com.institute.ims.user.User;
-import com.institute.ims.user.UserRepository;
+import com.institute.ims.model.Department;
+import com.institute.ims.repository.DepartmentRepository;
+import com.institute.ims.model.Role;
+import com.institute.ims.model.User;
+import com.institute.ims.repository.UserRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
