@@ -6,6 +6,7 @@ import com.institute.ims.dto.RegisterRequest;
 import com.institute.ims.dto.RegisterResponse;
 import com.institute.ims.model.Department;
 import com.institute.ims.model.User;
+import com.institute.ims.model.VerificationStatus;
 import com.institute.ims.repository.DepartmentRepository;
 import com.institute.ims.repository.UserRepository;
 import com.institute.ims.security.JwtService;
@@ -45,15 +46,16 @@ public class AuthService {
     public RegisterResponse register(
             RegisterRequest request) {
 
-        if (userRepository.existsByUsername(
-                request.getUsername())) {
+        if (userRepository.existsByRollNumber(
+                request.getRollNumber())) {
 
             throw new RuntimeException(
-                    "Username already exists");
+                    "A user with this roll number already exists.");
         }
 
-        if (userRepository.existsByEmail(
-                request.getEmail())) {
+        if (request.getEmail() != null && !request.getEmail().isBlank() &&
+                userRepository.existsByEmail(
+                        request.getEmail())) {
 
             throw new RuntimeException(
                     "Email already exists");
@@ -74,7 +76,7 @@ public class AuthService {
         User user = new User();
 
         user.setName(request.getName());
-        user.setUsername(request.getUsername());
+        user.setRollNumber(request.getRollNumber());
 
         user.setPassword(
                 passwordEncoder.encode(
@@ -85,6 +87,8 @@ public class AuthService {
         user.setEmail(request.getEmail());
         user.setRole(request.getRole());
         user.setDepartment(department);
+        // New self-registered users start as PENDING
+        user.setStatus(VerificationStatus.PENDING);
 
         User savedUser =
                 userRepository.save(user);
@@ -97,9 +101,10 @@ public class AuthService {
         return new RegisterResponse(
                 savedUser.getId(),
                 savedUser.getName(),
-                savedUser.getUsername(),
+                savedUser.getRollNumber(),
                 savedUser.getEmail(),
                 savedUser.getRole().name(),
+                savedUser.getStatus().name(),
                 departmentId
         );
     }
@@ -107,23 +112,28 @@ public class AuthService {
     public LoginResponse login(
             LoginRequest request) {
 
+        User user =
+                userRepository.findByRollNumber(
+                        request.getRollNumber()
+                ).orElseThrow(() ->
+                        new RuntimeException(
+                                "Invalid roll number or password"));
+
+        if (user.getStatus() != VerificationStatus.VERIFIED) {
+            throw new RuntimeException(
+                    "Your account has not been verified by an admin yet. Please wait for verification before logging in.");
+        }
+
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
-                        request.getUsername(),
+                        request.getRollNumber(),
                         request.getPassword()
                 )
         );
 
-        User user =
-                userRepository.findByUsername(
-                        request.getUsername()
-                ).orElseThrow(() ->
-                        new RuntimeException(
-                                "User not found"));
-
         UserDetails userDetails =
                 userDetailsService.loadUserByUsername(
-                        request.getUsername()
+                        request.getRollNumber()
                 );
 
         String token =
@@ -133,8 +143,9 @@ public class AuthService {
                 token,
                 user.getId(),
                 user.getName(),
-                user.getUsername(),
-                user.getRole().name()
+                user.getRollNumber(),
+                user.getRole().name(),
+                user.getStatus().name()
         );
     }
 }

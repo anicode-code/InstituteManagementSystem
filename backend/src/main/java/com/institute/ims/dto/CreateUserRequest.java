@@ -11,7 +11,7 @@ public class CreateUserRequest {
     private String name;
 
     @NotBlank
-    private String username;
+    private String rollNumber;
 
     @NotBlank
     private String password;
@@ -28,8 +28,8 @@ public class CreateUserRequest {
         return name;
     }
 
-    public String getUsername() {
-        return username;
+    public String getRollNumber() {
+        return rollNumber != null ? rollNumber.trim() : null;
     }
 
     public String getPassword() {
@@ -52,8 +52,8 @@ public class CreateUserRequest {
         this.name = name;
     }
 
-    public void setUsername(String username) {
-        this.username = username;
+    public void setRollNumber(String rollNumber) {
+        this.rollNumber = rollNumber;
     }
 
     public void setPassword(String password) {

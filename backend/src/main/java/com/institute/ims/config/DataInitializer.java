@@ -4,6 +4,7 @@ import com.institute.ims.model.Department;
 import com.institute.ims.repository.DepartmentRepository;
 import com.institute.ims.model.Role;
 import com.institute.ims.model.User;
+import com.institute.ims.model.VerificationStatus;
 import com.institute.ims.repository.UserRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
@@ -21,90 +22,100 @@ public class DataInitializer {
 
         return args -> {
 
-            Department cse =
-                    departmentRepository
-                            .findAll()
-                            .stream()
-                            .findFirst()
-                            .orElseGet(() ->
-                                    departmentRepository.save(
-                                            new Department(
-                                                    "Computer Science",
-                                                    "CSE"
-                                            )
-                                    )
-                            );
+            Department cse = createDepartmentIfNotExists(departmentRepository, "Computer Science", "CSE");
+            createDepartmentIfNotExists(departmentRepository, "Information Technology", "IT");
+            createDepartmentIfNotExists(departmentRepository, "Electronics & Communication", "ECE");
+            createDepartmentIfNotExists(departmentRepository, "Mechanical Engineering", "ME");
+            createDepartmentIfNotExists(departmentRepository, "Civil Engineering", "CIVIL");
 
+            // Seed admin/staff users as VERIFIED (they are system-created)
             createUserIfNotExists(
                     userRepository,
                     passwordEncoder,
                     "System Admin",
-                    "admin",
+                    "ADMIN001",
                     "admin123",
                     "admin@ims.com",
                     Role.ADMIN,
-                    cse
+                    cse,
+                    VerificationStatus.VERIFIED
             );
 
             createUserIfNotExists(
                     userRepository,
                     passwordEncoder,
                     "CSE HOD",
-                    "cse_hod",
+                    "HOD001",
                     "cse_hod123",
                     "cse_hod@ims.com",
                     Role.HOD,
-                    cse
+                    cse,
+                    VerificationStatus.VERIFIED
             );
 
             createUserIfNotExists(
                     userRepository,
                     passwordEncoder,
                     "Faculty 1",
-                    "faculty1",
+                    "FAC001",
                     "faculty123",
                     "faculty@ims.com",
                     Role.FACULTY,
-                    cse
+                    cse,
+                    VerificationStatus.VERIFIED
             );
 
             createUserIfNotExists(
                     userRepository,
                     passwordEncoder,
-                    "Demo student",
-                    "demo_student",
+                    "Demo Student",
+                    "2026CS001",
                     "demo_student123",
                     "demo_student@ims.com",
                     Role.STUDENT,
-                    cse
+                    cse,
+                    VerificationStatus.VERIFIED
             );
         };
+    }
+
+    private Department createDepartmentIfNotExists(
+            DepartmentRepository repository,
+            String name,
+            String code) {
+
+        return repository.findAll().stream()
+                .filter(d -> code.equalsIgnoreCase(d.getCode()))
+                .findFirst()
+                .orElseGet(() -> repository.save(new Department(name, code)));
     }
 
     private void createUserIfNotExists(
             UserRepository repository,
             PasswordEncoder encoder,
             String name,
-            String username,
+            String rollNumber,
             String password,
             String email,
             Role role,
-            Department department) {
+            Department department,
+            VerificationStatus status) {
 
-        if (repository.existsByUsername(username)) {
+        if (repository.existsByRollNumber(rollNumber)) {
             return;
         }
 
         User user = new User();
 
         user.setName(name);
-        user.setUsername(username);
+        user.setRollNumber(rollNumber);
         user.setPassword(
                 encoder.encode(password)
         );
         user.setEmail(email);
         user.setRole(role);
         user.setDepartment(department);
+        user.setStatus(status);
 
         repository.save(user);
     }

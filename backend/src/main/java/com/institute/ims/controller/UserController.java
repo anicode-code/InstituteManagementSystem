@@ -1,12 +1,14 @@
 package com.institute.ims.controller;
 
-import com.institute.ims.dto.CreateUserRequest;
 import com.institute.ims.dto.UpdateUserRequest;
+import com.institute.ims.dto.VerifyBulkRequest;
+import com.institute.ims.dto.VerifyBulkResponse;
 import com.institute.ims.model.Role;
 import com.institute.ims.model.User;
 import com.institute.ims.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -46,15 +48,6 @@ public class UserController {
         );
     }
 
-    @PostMapping
-    public ResponseEntity<User> createUser(
-            @Valid @RequestBody CreateUserRequest request) {
-
-        return ResponseEntity.ok(
-                userService.createUser(request)
-        );
-    }
-
     @PutMapping("/{id}")
     public ResponseEntity<User> updateUser(
             @PathVariable Long id,
@@ -79,9 +72,39 @@ public class UserController {
             Authentication authentication) {
 
         return ResponseEntity.ok(
-                userService.getUserByUsername(
+                userService.getUserByRollNumber(
                         authentication.getName()
                 )
+        );
+    }
+
+    // ───────── Admin verification endpoints ─────────
+
+    @GetMapping("/pending")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HOD')")
+    public ResponseEntity<List<User>> getPendingUsers() {
+        return ResponseEntity.ok(userService.getPendingUsers());
+    }
+
+    @PutMapping("/{id}/verify")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HOD')")
+    public ResponseEntity<User> verifyUser(
+            @PathVariable Long id,
+            Authentication authentication) {
+
+        return ResponseEntity.ok(
+                userService.verifyUser(id, authentication.getName())
+        );
+    }
+
+    @PostMapping("/verify-bulk")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HOD')")
+    public ResponseEntity<VerifyBulkResponse> verifyBulk(
+            @Valid @RequestBody VerifyBulkRequest request,
+            Authentication authentication) {
+
+        return ResponseEntity.ok(
+                userService.verifyUsers(request, authentication.getName())
         );
     }
 }

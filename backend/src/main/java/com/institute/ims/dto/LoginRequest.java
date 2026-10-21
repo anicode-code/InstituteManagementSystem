@@ -4,22 +4,22 @@ import jakarta.validation.constraints.NotBlank;
 
 public class LoginRequest {
 
-    @NotBlank(message = "Username is required")
-    private String username;
+    @NotBlank(message = "Roll number is required")
+    private String rollNumber;
 
     @NotBlank(message = "Password is required")
     private String password;
 
-    public String getUsername() {
-        return username;
+    public String getRollNumber() {
+        return rollNumber != null ? rollNumber.trim() : null;
+    }
+
+    public void setRollNumber(String rollNumber) {
+        this.rollNumber = rollNumber;
     }
 
     public String getPassword() {
         return password;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
     }
 
     public void setPassword(String password) {

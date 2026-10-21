@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Navigate } from 'react-router-dom';
+import { useNavigate, Navigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { GraduationCap, Eye, EyeOff, LogIn } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -8,7 +8,7 @@ export default function LoginPage() {
   const { user, login } = useAuth();
   const navigate = useNavigate();
 
-  const [form, setForm] = useState({ username: '', password: '' });
+  const [form, setForm] = useState({ rollNumber: '', password: '' });
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -22,13 +22,13 @@ export default function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.username || !form.password) {
-      setError('Username and password are required.');
+    if (!form.rollNumber || !form.password) {
+      setError('Roll number and password are required.');
       return;
     }
     setLoading(true);
     try {
-      await login(form.username, form.password);
+      await login(form.rollNumber, form.password);
       toast.success('Welcome back!');
       navigate('/dashboard');
     } catch (err) {
@@ -42,8 +42,8 @@ export default function LoginPage() {
     }
   };
 
-  const fillDemo = (username, password) => {
-    setForm({ username, password });
+  const fillDemo = (rollNumber, password) => {
+    setForm({ rollNumber, password });
     setError('');
   };
 
@@ -71,15 +71,15 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label className="form-label" htmlFor="username">Username</label>
+            <label className="form-label" htmlFor="rollNumber">Roll Number</label>
             <input
-              id="username"
+              id="rollNumber"
               className="form-input"
               type="text"
-              name="username"
+              name="rollNumber"
               autoComplete="username"
-              placeholder="Enter your username"
-              value={form.username}
+              placeholder="Enter your roll number (e.g. 2026CS001)"
+              value={form.rollNumber}
               onChange={handleChange}
               disabled={loading}
             />
@@ -128,9 +128,17 @@ export default function LoginPage() {
           </button>
         </form>
 
+        {/* Register link */}
+        <div style={{ marginTop: 16, textAlign: 'center', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+          New here?{' '}
+          <Link to="/register" style={{ color: 'var(--accent)', fontWeight: 600, textDecoration: 'none' }}>
+            Register your account
+          </Link>
+        </div>
+
         {/* Demo credentials */}
         <div style={{
-          marginTop: 28,
+          marginTop: 20,
           padding: '16px',
           background: 'var(--bg-secondary)',
           borderRadius: 'var(--radius-sm)',
@@ -141,10 +149,10 @@ export default function LoginPage() {
           </p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
             {[
-              { label: 'Admin',   u: 'admin',   p: 'admin123',   cls: 'badge-admin' },
-              { label: 'HOD',     u: 'cse_hod',     p: 'cse_hod123',     cls: 'badge-hod' },
-              { label: 'Faculty', u: 'faculty1', p: 'faculty123', cls: 'badge-faculty' },
-              { label: 'Student', u: 'demo_student', p: 'demo_student123', cls: 'badge-student' },
+              { label: 'Admin',   u: 'ADMIN001',   p: 'admin123',        cls: 'badge-admin' },
+              { label: 'HOD',     u: 'HOD001',     p: 'cse_hod123',      cls: 'badge-hod' },
+              { label: 'Faculty', u: 'FAC001',     p: 'faculty123',      cls: 'badge-faculty' },
+              { label: 'Student', u: '2026CS001',  p: 'demo_student123', cls: 'badge-student' },
             ].map(({ label, u, p, cls }) => (
               <button
                 key={u}

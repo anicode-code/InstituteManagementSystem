@@ -10,8 +10,8 @@ public class RegisterRequest {
     @NotBlank(message = "Name is required")
     private String name;
 
-    @NotBlank(message = "Username is required")
-    private String username;
+    @NotBlank(message = "Roll number is required")
+    private String rollNumber;
 
     @NotBlank(message = "Password is required")
     private String password;
@@ -29,8 +29,8 @@ public class RegisterRequest {
         return name;
     }
 
-    public String getUsername() {
-        return username;
+    public String getRollNumber() {
+        return rollNumber != null ? rollNumber.trim() : null;
     }
 
     public String getPassword() {
@@ -53,8 +53,8 @@ public class RegisterRequest {
         this.name = name;
     }
 
-    public void setUsername(String username) {
-        this.username = username;
+    public void setRollNumber(String rollNumber) {
+        this.rollNumber = rollNumber;
     }
 
     public void setPassword(String password) {

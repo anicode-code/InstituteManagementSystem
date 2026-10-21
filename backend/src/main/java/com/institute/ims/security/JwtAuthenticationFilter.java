@@ -50,21 +50,21 @@ public class JwtAuthenticationFilter
 
         try {
 
-            String username =
-                    jwtService.extractUsername(token);
+            String rollNumber =
+                    jwtService.extractRollNumber(token);
 
-            if (username != null &&
+            if (rollNumber != null &&
                     SecurityContextHolder
                             .getContext()
                             .getAuthentication() == null) {
 
                 UserDetails userDetails =
                         userDetailsService
-                                .loadUserByUsername(username);
+                                .loadUserByUsername(rollNumber);
 
                 if (jwtService.isTokenValid(
                         token,
-                        userDetails)) {
+                        userDetails) && userDetails.isEnabled()) {
 
                     UsernamePasswordAuthenticationToken
                             authentication =

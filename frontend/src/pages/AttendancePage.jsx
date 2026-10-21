@@ -58,7 +58,7 @@ function MarkAttendanceModal({ open, onClose, onSaved, subjects, students }) {
               <label className="form-label">Student *</label>
               <select className="form-select" value={form.studentId} onChange={(e) => set('studentId', e.target.value)}>
                 <option value="">Select Student</option>
-                {students.map((s) => <option key={s.id} value={s.id}>{s.name} ({s.username})</option>)}
+                {students.map((s) => <option key={s.id} value={s.id}>{s.name} ({s.rollNumber})</option>)}
               </select>
             </div>
             <div className="form-group">

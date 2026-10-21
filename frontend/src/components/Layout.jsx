@@ -34,14 +34,15 @@ export default function Layout({ children, pageTitle }) {
     {
       label: 'Management',
       items: [
-        { to: '/users',       icon: <Users />,        text: 'Users',       show: isAdminOrHod },
-        { to: '/departments', icon: <Building2 />,    text: 'Departments', show: isAdminOrHod },
-        { to: '/subjects',    icon: <BookOpen />,     text: 'Subjects',    show: true },
-        { to: '/assignments', icon: <ClipboardList />,text: 'Assignments', show: true },
-        { to: '/attendance',  icon: <CalendarCheck />,text: 'Attendance',  show: true },
+        { to: '/users',       icon: <Users />,        text: 'User Verification', show: isAdminOrHod },
+        { to: '/departments', icon: <Building2 />,    text: 'Departments',       show: isAdminOrHod },
+        { to: '/subjects',    icon: <BookOpen />,     text: 'Subjects',          show: true },
+        { to: '/assignments', icon: <ClipboardList />,text: 'Assignments',       show: true },
+        { to: '/attendance',  icon: <CalendarCheck />,text: 'Attendance',        show: true },
       ],
     },
   ];
+
 
   const initials = user?.name
     ? user.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)

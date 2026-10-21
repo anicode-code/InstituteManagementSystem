@@ -97,7 +97,7 @@ export default function ProfilePage() {
                   {p?.role}
                 </span>
                 <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-                  @{p?.username}
+                  Roll No: {p?.rollNumber}
                 </span>
               </div>
             </div>
@@ -146,7 +146,7 @@ export default function ProfilePage() {
           <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: 8 }}>Your profile details</p>
 
           <InfoRow icon={<User size={18} />}     label="Full Name"   value={p?.name} />
-          <InfoRow icon={<Hash size={18} />}      label="Username"    value={p?.username} />
+          <InfoRow icon={<Hash size={18} />}      label="Roll Number" value={p?.rollNumber} />
           <InfoRow icon={<Mail size={18} />}      label="Email"       value={p?.email} />
           <InfoRow icon={<Shield size={18} />}    label="Role"        value={p?.role} />
           <InfoRow icon={<Building2 size={18} />} label="Department"  value={p?.department?.name} />

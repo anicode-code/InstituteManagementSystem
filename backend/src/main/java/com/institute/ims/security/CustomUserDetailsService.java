@@ -22,18 +22,26 @@ public class CustomUserDetailsService
 
     @Override
     public UserDetails loadUserByUsername(
-            String username)
+            String rollNumber)
             throws UsernameNotFoundException {
 
+        if (rollNumber == null) {
+            throw new UsernameNotFoundException("Roll number cannot be null");
+        }
+
         User user =
-                userRepository.findByUsername(username)
+                userRepository.findByRollNumber(rollNumber.trim())
                         .orElseThrow(() ->
                                 new UsernameNotFoundException(
-                                        "User not found"));
+                                        "User not found with roll number: " + rollNumber));
 
         return new org.springframework.security.core.userdetails.User(
-                user.getUsername(),
+                user.getRollNumber(),
                 user.getPassword(),
+                user.getStatus() == com.institute.ims.model.VerificationStatus.VERIFIED,
+                true,
+                true,
+                true,
                 List.of(
                         new SimpleGrantedAuthority(
                                 "ROLE_" + user.getRole().name()

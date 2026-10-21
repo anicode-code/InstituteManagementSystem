@@ -93,10 +93,32 @@ public class SecurityConfig {
                                 "/error"
                         ).permitAll()
 
+                        // Allow unauthenticated GET requests to departments so registration can load them
                         .requestMatchers(
                                 HttpMethod.GET,
+                                "/api/departments",
                                 "/api/departments/**"
-                        ).authenticated()
+                        ).permitAll()
+
+                        .requestMatchers(
+                                "/api/departments",
+                                "/api/departments/**"
+                        ).hasAnyRole("ADMIN", "HOD")
+
+                        // Verification endpoints — ADMIN/HOD only
+                        .requestMatchers(
+                                "/api/users/pending"
+                        ).hasAnyRole("ADMIN", "HOD")
+
+                        .requestMatchers(
+                                HttpMethod.PUT,
+                                "/api/users/*/verify"
+                        ).hasAnyRole("ADMIN", "HOD")
+
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/users/verify-bulk"
+                        ).hasAnyRole("ADMIN", "HOD")
 
                         .requestMatchers(
                                 "/api/users/**"
@@ -117,6 +139,7 @@ public class SecurityConfig {
                         .anyRequest()
                         .authenticated()
                 )
+
 
                 .authenticationProvider(
                         authenticationProvider()

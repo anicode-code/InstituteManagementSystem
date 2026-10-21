@@ -2,14 +2,18 @@ package com.institute.ims.service;
 
 import com.institute.ims.dto.CreateUserRequest;
 import com.institute.ims.dto.UpdateUserRequest;
+import com.institute.ims.dto.VerifyBulkRequest;
+import com.institute.ims.dto.VerifyBulkResponse;
 import com.institute.ims.model.Department;
 import com.institute.ims.model.Role;
 import com.institute.ims.model.User;
+import com.institute.ims.model.VerificationStatus;
 import com.institute.ims.repository.DepartmentRepository;
 import com.institute.ims.repository.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -33,13 +37,17 @@ public class UserService {
         return userRepository.findAll();
     }
 
-    public User getUserByUsername(String username) {
-        return userRepository.findByUsername(username)
+    public User getUserByRollNumber(String rollNumber) {
+        return userRepository.findByRollNumber(rollNumber)
                 .orElseThrow(() -> new RuntimeException("User not found"));
     }
 
     public List<User> getUsersByRole(Role role) {
         return userRepository.findByRole(role);
+    }
+
+    public List<User> getPendingUsers() {
+        return userRepository.findByStatus(VerificationStatus.PENDING);
     }
 
     public User getUserById(Long id) {
@@ -49,8 +57,8 @@ public class UserService {
 
     public User createUser(CreateUserRequest request) {
 
-        if (userRepository.existsByUsername(request.getUsername())) {
-            throw new RuntimeException("Username already exists");
+        if (userRepository.existsByRollNumber(request.getRollNumber())) {
+            throw new RuntimeException("A user with this roll number already exists.");
         }
 
         Department department = null;
@@ -63,12 +71,13 @@ public class UserService {
         User user = new User();
 
         user.setName(request.getName());
-        user.setUsername(request.getUsername());
+        user.setRollNumber(request.getRollNumber());
         user.setPassword(
                 passwordEncoder.encode(request.getPassword()));
         user.setEmail(request.getEmail());
         user.setRole(request.getRole());
         user.setDepartment(department);
+        user.setStatus(VerificationStatus.VERIFIED);
 
         return userRepository.save(user);
     }
@@ -102,6 +111,63 @@ public class UserService {
         }
 
         return userRepository.save(user);
+    }
+
+    /**
+     * Verify a single user. Only PENDING users can be verified.
+     */
+    public User verifyUser(Long id, String requestingUserRollNumber) {
+        User user = getUserById(id);
+
+        if (user.getRollNumber().equals(requestingUserRollNumber)) {
+            throw new RuntimeException("Users cannot verify themselves.");
+        }
+
+        if (user.getStatus() == VerificationStatus.VERIFIED) {
+            throw new RuntimeException("User is already verified.");
+        }
+
+        user.setStatus(VerificationStatus.VERIFIED);
+        return userRepository.save(user);
+    }
+
+    /**
+     * Bulk verify users by IDs. Skips already verified and self-verification.
+     */
+    public VerifyBulkResponse verifyUsers(VerifyBulkRequest request, String requestingUserRollNumber) {
+        if (request.getUserIds() == null || request.getUserIds().isEmpty()) {
+            throw new RuntimeException("No user IDs provided for verification.");
+        }
+
+        List<User> users = userRepository.findByIdIn(request.getUserIds());
+        List<Long> verifiedIds = new ArrayList<>();
+
+        for (User user : users) {
+            // Skip self-verification
+            if (user.getRollNumber().equals(requestingUserRollNumber)) {
+                continue;
+            }
+            // Skip already verified
+            if (user.getStatus() == VerificationStatus.VERIFIED) {
+                continue;
+            }
+            user.setStatus(VerificationStatus.VERIFIED);
+            verifiedIds.add(user.getId());
+        }
+
+        if (!verifiedIds.isEmpty()) {
+            userRepository.saveAll(users.stream()
+                    .filter(u -> verifiedIds.contains(u.getId()))
+                    .toList());
+        }
+
+        return new VerifyBulkResponse(
+                verifiedIds.size(),
+                verifiedIds,
+                verifiedIds.isEmpty()
+                        ? "No users were verified (all already verified or invalid)."
+                        : verifiedIds.size() + " user(s) verified successfully."
+        );
     }
 
     public void deleteUser(Long id) {

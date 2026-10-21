@@ -4,24 +4,27 @@ public class RegisterResponse {
 
     private Long id;
     private String name;
-    private String username;
+    private String rollNumber;
     private String email;
     private String role;
+    private String status;
     private Long departmentId;
 
     public RegisterResponse(
             Long id,
             String name,
-            String username,
+            String rollNumber,
             String email,
             String role,
+            String status,
             Long departmentId) {
 
         this.id = id;
         this.name = name;
-        this.username = username;
+        this.rollNumber = rollNumber;
         this.email = email;
         this.role = role;
+        this.status = status;
         this.departmentId = departmentId;
     }
 
@@ -33,8 +36,8 @@ public class RegisterResponse {
         return name;
     }
 
-    public String getUsername() {
-        return username;
+    public String getRollNumber() {
+        return rollNumber;
     }
 
     public String getEmail() {
@@ -43,6 +46,10 @@ public class RegisterResponse {
 
     public String getRole() {
         return role;
+    }
+
+    public String getStatus() {
+        return status;
     }
 
     public Long getDepartmentId() {

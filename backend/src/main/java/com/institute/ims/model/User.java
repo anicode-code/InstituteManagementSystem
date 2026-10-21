@@ -1,6 +1,9 @@
 package com.institute.ims.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
+
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "users")
@@ -13,9 +16,10 @@ public class User {
     @Column(nullable = false)
     private String name;
 
-    @Column(nullable = false, unique = true)
-    private String username;
+    @Column(name = "roll_number", nullable = false, unique = true)
+    private String rollNumber;
 
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     @Column(nullable = false)
     private String password;
 
@@ -26,6 +30,13 @@ public class User {
     @Column(nullable = false)
     private Role role;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private VerificationStatus status = VerificationStatus.PENDING;
+
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt = LocalDateTime.now();
+
     @ManyToOne
     @JoinColumn(name = "department_id")
     private Department department;
@@ -33,14 +44,28 @@ public class User {
     public User() {
     }
 
-    public User(String name, String username, String password,
+    public User(String name, String rollNumber, String password,
                 String email, Role role, Department department) {
         this.name = name;
-        this.username = username;
+        this.rollNumber = rollNumber;
         this.password = password;
         this.email = email;
         this.role = role;
         this.department = department;
+        this.status = VerificationStatus.PENDING;
+        this.createdAt = LocalDateTime.now();
+    }
+
+    public User(String name, String rollNumber, String password,
+                String email, Role role, Department department, VerificationStatus status) {
+        this.name = name;
+        this.rollNumber = rollNumber;
+        this.password = password;
+        this.email = email;
+        this.role = role;
+        this.department = department;
+        this.status = status;
+        this.createdAt = LocalDateTime.now();
     }
 
     public Long getId() {
@@ -51,8 +76,8 @@ public class User {
         return name;
     }
 
-    public String getUsername() {
-        return username;
+    public String getRollNumber() {
+        return rollNumber;
     }
 
     public String getPassword() {
@@ -67,6 +92,14 @@ public class User {
         return role;
     }
 
+    public VerificationStatus getStatus() {
+        return status;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
     public Department getDepartment() {
         return department;
     }
@@ -79,8 +112,8 @@ public class User {
         this.name = name;
     }
 
-    public void setUsername(String username) {
-        this.username = username;
+    public void setRollNumber(String rollNumber) {
+        this.rollNumber = rollNumber;
     }
 
     public void setPassword(String password) {
@@ -93,6 +126,14 @@ public class User {
 
     public void setRole(Role role) {
         this.role = role;
+    }
+
+    public void setStatus(VerificationStatus status) {
+        this.status = status;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
     }
 
     public void setDepartment(Department department) {

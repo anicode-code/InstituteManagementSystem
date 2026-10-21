@@ -44,11 +44,14 @@ public class JwtService {
                 .compact();
     }
 
-    public String extractUsername(String token) {
-
+    public String extractRollNumber(String token) {
         return extractClaim(
                 token,
                 Claims::getSubject);
+    }
+
+    public String extractUsername(String token) {
+        return extractRollNumber(token);
     }
 
     public <T> T extractClaim(
@@ -68,9 +71,9 @@ public class JwtService {
             String token,
             UserDetails userDetails) {
 
-        String username = extractUsername(token);
+        String rollNumber = extractRollNumber(token);
 
-        return username.equals(
+        return rollNumber.equals(
                 userDetails.getUsername()) && !isTokenExpired(token);
     }
 

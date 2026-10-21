@@ -13,10 +13,10 @@ export function AuthProvider({ children }) {
     }
   });
 
-  const login = useCallback(async (username, password) => {
-    const res = await apiLogin({ username, password });
-    const { token, id, name, role } = res.data;
-    const userData = { id, name, username: res.data.username, role };
+  const login = useCallback(async (rollNumber, password) => {
+    const res = await apiLogin({ rollNumber, password });
+    const { token, id, name, role, status } = res.data;
+    const userData = { id, name, rollNumber: res.data.rollNumber, role, status };
     localStorage.setItem('ims_token', token);
     localStorage.setItem('ims_user', JSON.stringify(userData));
     setUser(userData);
