@@ -34,6 +34,7 @@ public class DepartmentController {
     }
 
     @PostMapping
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Department> create(
             @RequestBody Department department) {
 
@@ -43,6 +44,7 @@ public class DepartmentController {
     }
 
     @PutMapping("/{id}")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Department> update(
             @PathVariable Long id,
             @RequestBody Department department) {
@@ -53,6 +55,7 @@ public class DepartmentController {
     }
 
     @DeleteMapping("/{id}")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<String> delete(
             @PathVariable Long id) {
 

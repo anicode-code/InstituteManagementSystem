@@ -5,7 +5,12 @@ import jakarta.persistence.*;
 import java.time.LocalDate;
 
 @Entity
-@Table(name = "attendance")
+@Table(
+        name = "attendance",
+        uniqueConstraints = {
+                @UniqueConstraint(columnNames = {"student_id", "subject_id", "date"})
+        }
+)
 public class Attendance {
 
     @Id
@@ -26,6 +31,9 @@ public class Attendance {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private AttendanceStatus status;
+
+    @Column(name = "performance_marks")
+    private Integer performanceMarks;
 
     public Attendance() {
     }
@@ -50,6 +58,10 @@ public class Attendance {
         return status;
     }
 
+    public Integer getPerformanceMarks() {
+        return performanceMarks;
+    }
+
     public void setId(Long id) {
         this.id = id;
     }
@@ -68,5 +80,9 @@ public class Attendance {
 
     public void setStatus(AttendanceStatus status) {
         this.status = status;
+    }
+
+    public void setPerformanceMarks(Integer performanceMarks) {
+        this.performanceMarks = performanceMarks;
     }
 }

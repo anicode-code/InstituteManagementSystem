@@ -4,12 +4,13 @@ import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import { getAllUsers } from '../api/users';
 import { getAllDepartments } from '../api/departments';
-import { getAllSubjects } from '../api/subjects';
-import { getAllAssignments } from '../api/assignments';
-import { getAllAttendance } from '../api/attendance';
+import { getAllSubjects, getSubjectsByFaculty } from '../api/subjects';
+import { getAllAssignments, getAssignmentsByFaculty } from '../api/assignments';
+import { getAllAttendance, getAttendanceByStudent } from '../api/attendance';
 import {
   Users, Building2, BookOpen, ClipboardList,
   CalendarCheck, TrendingUp, Award, Clock,
+  AlertTriangle, CheckCircle, PlusCircle, ArrowRight, XCircle,
 } from 'lucide-react';
 
 function StatCard({ icon, value, label, color, bg }) {
@@ -27,47 +28,66 @@ function StatCard({ icon, value, label, color, bg }) {
 }
 
 export default function DashboardPage() {
-  const { user, isAdminOrHod, isFaculty, isStudent } = useAuth();
+  const { user, isAdmin, isHod, isFaculty, isStudent, isAdminOrHod } = useAuth();
   const navigate = useNavigate();
   const [stats, setStats] = useState({});
   const [loading, setLoading] = useState(true);
   const [recentAssignments, setRecentAssignments] = useState([]);
+  const [myAttendanceRecords, setMyAttendanceRecords] = useState([]);
 
   useEffect(() => {
     const load = async () => {
       try {
-        const results = await Promise.allSettled([
-          getAllUsers(),
-          getAllDepartments(),
-          getAllSubjects(),
-          getAllAssignments(),
-          getAllAttendance(),
-        ]);
-        const users       = results[0].status === 'fulfilled' ? results[0].value.data : [];
-        const departments = results[1].status === 'fulfilled' ? results[1].value.data : [];
-        const subjects    = results[2].status === 'fulfilled' ? results[2].value.data : [];
-        const assignments = results[3].status === 'fulfilled' ? results[3].value.data : [];
-        const attendance  = results[4].status === 'fulfilled' ? results[4].value.data : [];
+        const promises = [
+          isAdminOrHod ? getAllUsers().catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
+          getAllDepartments().catch(() => ({ data: [] })),
+          isFaculty ? getSubjectsByFaculty(user.id).catch(() => ({ data: [] })) : getAllSubjects().catch(() => ({ data: [] })),
+          isFaculty ? getAssignmentsByFaculty(user.id).catch(() => ({ data: [] })) : getAllAssignments().catch(() => ({ data: [] })),
+          isStudent ? getAttendanceByStudent(user.id).catch(() => ({ data: [] })) : getAllAttendance().catch(() => ({ data: [] })),
+        ];
+
+        const [uRes, dRes, sRes, aRes, attRes] = await Promise.all(promises);
+        const users = uRes.data || [];
+        const departments = dRes.data || [];
+        const subjects = sRes.data || [];
+        const assignments = aRes.data || [];
+        const attendance = attRes.data || [];
+
+        setMyAttendanceRecords(attendance);
+
+        // HOD specific scoping
+        const deptId = user.department?.id;
+        const deptStudents = users.filter((u) => u.role === 'STUDENT' && (!deptId || u.department?.id === deptId));
+        const deptFaculty = users.filter((u) => u.role === 'FACULTY' && (!deptId || u.department?.id === deptId));
+        const deptSubjects = subjects.filter((s) => !deptId || s.department?.id === deptId);
+
+        const presentAtt = attendance.filter((a) => a.status === 'PRESENT').length;
+        const totalAtt = attendance.length;
+        const attPct = totalAtt ? Math.round((presentAtt / totalAtt) * 100) : 0;
 
         setStats({
-          users:       users.length,
+          users: users.length,
           departments: departments.length,
-          subjects:    subjects.length,
+          subjects: subjects.length,
           assignments: assignments.length,
-          attendance:  attendance.length,
-          students:    users.filter((u) => u.role === 'STUDENT').length,
-          faculty:     users.filter((u) => u.role === 'FACULTY').length,
-          present:     attendance.filter((a) => a.status === 'PRESENT').length,
+          attendance: totalAtt,
+          present: presentAtt,
+          absent: attendance.filter((a) => a.status === 'ABSENT').length,
+          students: users.filter((u) => u.role === 'STUDENT').length,
+          faculty: users.filter((u) => u.role === 'FACULTY').length,
+          deptStudents: deptStudents.length,
+          deptFaculty: deptFaculty.length,
+          deptSubjects: deptSubjects.length,
+          overallPct: attPct,
         });
 
-        // Show 5 most recent assignments (sorted by id desc as proxy)
         setRecentAssignments([...assignments].sort((a, b) => b.id - a.id).slice(0, 5));
       } finally {
         setLoading(false);
       }
     };
     load();
-  }, []);
+  }, [user, isAdminOrHod, isFaculty, isStudent]);
 
   const greet = () => {
     const h = new Date().getHours();
@@ -84,50 +104,122 @@ export default function DashboardPage() {
     );
   }
 
-  const attendancePct = stats.attendance
-    ? Math.round((stats.present / stats.attendance) * 100)
-    : 0;
+  const isLowAttendance = isStudent && stats.attendance > 0 && stats.overallPct < 75;
 
   return (
     <Layout pageTitle="Dashboard">
-      {/* Greeting */}
-      <div style={{ marginBottom: 28 }}>
-        <h2 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: 4 }}>
-          {greet()}, {user.name.split(' ')[0]} 👋
-        </h2>
-        <p style={{ color: 'var(--text-secondary)' }}>
-          Here's what's happening in your institute today.
-        </p>
+      {/* Greeting Banner */}
+      <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+        <div>
+          <h2 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: 4 }}>
+            {greet()}, {user.name.split(' ')[0]} 👋
+          </h2>
+          <p style={{ color: 'var(--text-secondary)' }}>
+            {isAdmin && 'Institute Overview & Management Control'}
+            {isHod && `${user.department?.name || 'Department'} Head Dashboard`}
+            {isFaculty && 'Faculty Academic & Evaluation Dashboard'}
+            {isStudent && 'Student Academic Progress & Assignments'}
+          </p>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {isFaculty && (
+            <button className="btn btn-primary btn-sm" onClick={() => navigate('/attendance')}>
+              <PlusCircle size={16} /> Mark Attendance
+            </button>
+          )}
+          {isStudent && (
+            <button className="btn btn-primary btn-sm" onClick={() => navigate('/assignments')}>
+              <ClipboardList size={16} /> View Assignments
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Stats */}
+      {/* Student Low Attendance Warning */}
+      {isLowAttendance && (
+        <div className="alert" style={{
+          background: 'rgba(239, 68, 68, 0.1)',
+          color: 'var(--danger)',
+          border: '1px solid var(--danger)',
+          marginBottom: 20,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+        }}>
+          <AlertTriangle size={22} />
+          <div>
+            <strong>Attendance Warning ({stats.overallPct}%)!</strong> Your attendance is below the minimum required 75% threshold. Please attend regular classes to avoid exam debarment.
+          </div>
+        </div>
+      )}
+
+      {/* ──────── Role Specific Stats ──────── */}
       <div className="stats-grid">
-        {isAdminOrHod && (
+        {/* ADMIN DASHBOARD */}
+        {isAdmin && (
           <>
-            <StatCard icon={<Users size={22} />}    value={stats.users}       label="Total Users"      color="var(--accent)"  bg="var(--accent-light)" />
-            <StatCard icon={<Building2 size={22} />} value={stats.departments} label="Departments"      color="var(--info)"    bg="var(--info-light)" />
-            <StatCard icon={<Users size={22} />}    value={stats.students}    label="Students"         color="var(--success)" bg="var(--success-light)" />
-            <StatCard icon={<Award size={22} />}    value={stats.faculty}     label="Faculty Members"  color="var(--warning)" bg="var(--warning-light)" />
+            <StatCard icon={<Users size={22} />} value={stats.users} label="Total Users" color="var(--accent)" bg="var(--accent-light)" />
+            <StatCard icon={<Building2 size={22} />} value={stats.departments} label="Departments" color="var(--info)" bg="var(--info-light)" />
+            <StatCard icon={<Users size={22} />} value={stats.students} label="Total Students" color="var(--success)" bg="var(--success-light)" />
+            <StatCard icon={<Award size={22} />} value={stats.faculty} label="Faculty Members" color="var(--warning)" bg="var(--warning-light)" />
+            <StatCard icon={<BookOpen size={22} />} value={stats.subjects} label="Subjects" color="var(--accent)" bg="var(--accent-light)" />
+            <StatCard icon={<ClipboardList size={22} />} value={stats.assignments} label="Assignments" color="var(--warning)" bg="var(--warning-light)" />
+            <StatCard icon={<CalendarCheck size={22} />} value={stats.attendance} label="Attendance Sessions" color="var(--info)" bg="var(--info-light)" />
+            <StatCard icon={<TrendingUp size={22} />} value={`${stats.overallPct}%`} label="Overall Attendance" color="var(--success)" bg="var(--success-light)" />
           </>
         )}
-        <StatCard icon={<BookOpen size={22} />}    value={stats.subjects}    label="Subjects"         color="var(--accent)"  bg="var(--accent-light)" />
-        <StatCard icon={<ClipboardList size={22} />} value={stats.assignments} label="Assignments"    color="var(--warning)" bg="var(--warning-light)" />
-        <StatCard icon={<CalendarCheck size={22} />} value={stats.attendance}  label="Attendance Records" color="var(--info)" bg="var(--info-light)" />
-        {isAdminOrHod && (
-          <StatCard icon={<TrendingUp size={22} />} value={`${attendancePct}%`} label="Overall Attendance" color="var(--success)" bg="var(--success-light)" />
+
+        {/* HOD DASHBOARD */}
+        {isHod && (
+          <>
+            <StatCard icon={<Users size={22} />} value={stats.deptStudents} label="Dept Students" color="var(--success)" bg="var(--success-light)" />
+            <StatCard icon={<Award size={22} />} value={stats.deptFaculty} label="Dept Faculty" color="var(--warning)" bg="var(--warning-light)" />
+            <StatCard icon={<BookOpen size={22} />} value={stats.deptSubjects} label="Dept Subjects" color="var(--accent)" bg="var(--accent-light)" />
+            <StatCard icon={<ClipboardList size={22} />} value={stats.assignments} label="Assignments" color="var(--warning)" bg="var(--warning-light)" />
+            <StatCard icon={<CalendarCheck size={22} />} value={stats.attendance} label="Classes Recorded" color="var(--info)" bg="var(--info-light)" />
+            <StatCard icon={<TrendingUp size={22} />} value={`${stats.overallPct}%`} label="Dept Attendance" color="var(--success)" bg="var(--success-light)" />
+          </>
+        )}
+
+        {/* FACULTY DASHBOARD */}
+        {isFaculty && (
+          <>
+            <StatCard icon={<BookOpen size={22} />} value={stats.subjects} label="My Assigned Subjects" color="var(--accent)" bg="var(--accent-light)" />
+            <StatCard icon={<CalendarCheck size={22} />} value={stats.attendance} label="Sessions Conducted" color="var(--info)" bg="var(--info-light)" />
+            <StatCard icon={<ClipboardList size={22} />} value={stats.assignments} label="Assignments Created" color="var(--warning)" bg="var(--warning-light)" />
+            <StatCard icon={<TrendingUp size={22} />} value={`${stats.overallPct}%`} label="Class Attendance Rate" color="var(--success)" bg="var(--success-light)" />
+          </>
+        )}
+
+        {/* STUDENT DASHBOARD */}
+        {isStudent && (
+          <>
+            <StatCard
+              icon={<TrendingUp size={22} />}
+              value={`${stats.overallPct}%`}
+              label="Overall Attendance"
+              color={stats.overallPct < 75 ? 'var(--danger)' : 'var(--success)'}
+              bg={stats.overallPct < 75 ? 'var(--danger-light)' : 'var(--success-light)'}
+            />
+            <StatCard icon={<CheckCircle size={22} />} value={stats.present} label="Attended Classes" color="var(--success)" bg="var(--success-light)" />
+            <StatCard icon={<XCircle size={22} />} value={stats.absent} label="Missed Classes" color="var(--danger)" bg="var(--danger-light)" />
+            <StatCard icon={<ClipboardList size={22} />} value={stats.assignments} label="Available Assignments" color="var(--accent)" bg="var(--accent-light)" />
+          </>
         )}
       </div>
 
-      {/* Recent Assignments */}
+      {/* Recent Assignments / Submissions */}
       {recentAssignments.length > 0 && (
-        <div className="card">
+        <div className="card" style={{ marginTop: 20 }}>
           <div className="card-header">
             <div>
               <div className="card-title">Recent Assignments</div>
-              <div className="card-subtitle">Latest 5 assignments across all subjects</div>
+              <div className="card-subtitle">
+                {isFaculty ? 'Recent assignments you have created' : 'Latest assignments posted by faculty'}
+              </div>
             </div>
             <button className="btn btn-secondary btn-sm" onClick={() => navigate('/assignments')}>
-              View All
+              View All <ArrowRight size={14} />
             </button>
           </div>
           <div className="table-container">
@@ -137,6 +229,7 @@ export default function DashboardPage() {
                   <th>Title</th>
                   <th>Subject</th>
                   <th>Faculty</th>
+                  <th>Max Marks</th>
                   <th>Due Date</th>
                 </tr>
               </thead>
@@ -144,8 +237,9 @@ export default function DashboardPage() {
                 {recentAssignments.map((a) => (
                   <tr key={a.id}>
                     <td style={{ fontWeight: 600 }}>{a.title}</td>
-                    <td style={{ color: 'var(--text-secondary)' }}>{a.subject?.name}</td>
+                    <td style={{ color: 'var(--text-secondary)' }}>{a.subject?.name} ({a.subject?.code})</td>
                     <td style={{ color: 'var(--text-secondary)' }}>{a.faculty?.name}</td>
+                    <td style={{ fontWeight: 600 }}>{a.maxMarks || 100}</td>
                     <td>
                       {a.dueDate ? (
                         <span style={{
@@ -164,7 +258,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Quick Links */}
+      {/* Quick Navigation Cards */}
       <div className="grid-2" style={{ marginTop: 20 }}>
         <div className="card" style={{ cursor: 'pointer' }} onClick={() => navigate('/subjects')}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -173,7 +267,9 @@ export default function DashboardPage() {
             </div>
             <div>
               <div className="card-title">Subjects</div>
-              <div className="card-subtitle">Browse all subjects</div>
+              <div className="card-subtitle">
+                {isFaculty ? 'View your course allocations' : 'Browse subjects and curriculum'}
+              </div>
             </div>
           </div>
         </div>
@@ -184,7 +280,9 @@ export default function DashboardPage() {
             </div>
             <div>
               <div className="card-title">Attendance</div>
-              <div className="card-subtitle">View & manage attendance</div>
+              <div className="card-subtitle">
+                {isFaculty ? 'Record student attendance' : (isStudent ? 'Track personal attendance history' : 'Monitor institute attendance')}
+              </div>
             </div>
           </div>
         </div>

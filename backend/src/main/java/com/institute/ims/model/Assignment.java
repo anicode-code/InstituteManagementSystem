@@ -20,6 +20,9 @@ public class Assignment {
 
     private LocalDate dueDate;
 
+    @Column(name = "max_marks")
+    private Integer maxMarks = 100;
+
     @ManyToOne(optional = false)
     @JoinColumn(name = "subject_id")
     private Subject subject;
@@ -47,6 +50,10 @@ public class Assignment {
         return dueDate;
     }
 
+    public Integer getMaxMarks() {
+        return maxMarks != null ? maxMarks : 100;
+    }
+
     public Subject getSubject() {
         return subject;
     }
@@ -69,6 +76,10 @@ public class Assignment {
 
     public void setDueDate(LocalDate dueDate) {
         this.dueDate = dueDate;
+    }
+
+    public void setMaxMarks(Integer maxMarks) {
+        this.maxMarks = maxMarks;
     }
 
     public void setSubject(Subject subject) {

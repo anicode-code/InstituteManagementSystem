@@ -8,15 +8,31 @@ export const getAttendanceBySubject = (subjectId) =>
 export const getAttendancePercentage = (studentId, subjectId) =>
   api.get('/api/attendance/percentage', { params: { studentId, subjectId } });
 
-// Backend parses all as strings via Map<String, String>
 export const createAttendance = (data) =>
   api.post('/api/attendance', {
     studentId: String(data.studentId),
     subjectId: String(data.subjectId),
-    date: String(data.date),         // "YYYY-MM-DD"
-    status: String(data.status),     // "PRESENT" | "ABSENT"
+    date: String(data.date), // "YYYY-MM-DD"
+    status: String(data.status), // "PRESENT" | "ABSENT"
+    performanceMarks: data.performanceMarks !== undefined && data.performanceMarks !== null && data.performanceMarks !== ''
+      ? Number(data.performanceMarks)
+      : null,
   });
 
-// Status is a query param
-export const updateAttendance = (id, status) =>
-  api.put(`/api/attendance/${id}`, null, { params: { status } });
+export const updateAttendance = (id, status, performanceMarks) =>
+  api.put(`/api/attendance/${id}`, {
+    status,
+    performanceMarks: performanceMarks !== undefined && performanceMarks !== null && performanceMarks !== ''
+      ? Number(performanceMarks)
+      : null,
+  });
+
+export const recordDayBatch = (subjectId, date, entries) =>
+  api.post('/api/attendance/batch-day', {
+    subjectId,
+    date,
+    entries,
+  });
+
+export const deleteDayAttendance = (subjectId, date) =>
+  api.delete('/api/attendance/day', { params: { subjectId, date } });

@@ -40,6 +40,7 @@ public class SubjectController {
     }
 
     @PostMapping
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN', 'HOD')")
     public ResponseEntity<Subject> create(
             @RequestBody Map<String, Object> body) {
 
@@ -68,6 +69,7 @@ public class SubjectController {
     }
 
     @PutMapping("/{id}")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN', 'HOD')")
     public ResponseEntity<Subject> update(
             @PathVariable Long id,
             @RequestBody Map<String, Object> body) {
@@ -90,6 +92,7 @@ public class SubjectController {
     }
 
     @DeleteMapping("/{id}")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN', 'HOD')")
     public ResponseEntity<String> delete(
             @PathVariable Long id) {
 
