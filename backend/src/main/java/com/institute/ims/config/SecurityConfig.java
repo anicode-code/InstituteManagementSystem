@@ -100,10 +100,11 @@ public class SecurityConfig {
                                 "/api/departments/**"
                         ).permitAll()
 
+                        // Allow unauthenticated GET to curriculum endpoint for registration page
                         .requestMatchers(
-                                "/api/departments",
-                                "/api/departments/**"
-                        ).hasAnyRole("ADMIN", "HOD")
+                                HttpMethod.GET,
+                                "/api/subjects/curriculum"
+                        ).permitAll()
 
                         // Verification endpoints — ADMIN/HOD only
                         .requestMatchers(
@@ -126,6 +127,10 @@ public class SecurityConfig {
 
                         .requestMatchers(
                                 "/api/subjects/**"
+                        ).authenticated()
+
+                        .requestMatchers(
+                                "/api/departments/**"
                         ).authenticated()
 
                         .requestMatchers(

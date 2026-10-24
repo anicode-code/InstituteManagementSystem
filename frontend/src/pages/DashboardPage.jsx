@@ -4,7 +4,7 @@ import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import { getAllUsers } from '../api/users';
 import { getAllDepartments } from '../api/departments';
-import { getAllSubjects, getSubjectsByFaculty } from '../api/subjects';
+import { getAllSubjects, getSubjectsByFaculty, getSubjectsByStudent } from '../api/subjects';
 import { getAllAssignments, getAssignmentsByFaculty } from '../api/assignments';
 import { getAllAttendance, getAttendanceByStudent } from '../api/attendance';
 import {
@@ -41,7 +41,9 @@ export default function DashboardPage() {
         const promises = [
           isAdminOrHod ? getAllUsers().catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
           getAllDepartments().catch(() => ({ data: [] })),
-          isFaculty ? getSubjectsByFaculty(user.id).catch(() => ({ data: [] })) : getAllSubjects().catch(() => ({ data: [] })),
+          isFaculty
+            ? getSubjectsByFaculty(user.id).catch(() => ({ data: [] }))
+            : (isStudent ? getSubjectsByStudent(user.id).catch(() => ({ data: [] })) : getAllSubjects().catch(() => ({ data: [] }))),
           isFaculty ? getAssignmentsByFaculty(user.id).catch(() => ({ data: [] })) : getAllAssignments().catch(() => ({ data: [] })),
           isStudent ? getAttendanceByStudent(user.id).catch(() => ({ data: [] })) : getAllAttendance().catch(() => ({ data: [] })),
         ];
@@ -61,6 +63,11 @@ export default function DashboardPage() {
         const deptFaculty = users.filter((u) => u.role === 'FACULTY' && (!deptId || u.department?.id === deptId));
         const deptSubjects = subjects.filter((s) => !deptId || s.department?.id === deptId);
 
+        const studentSubjectIds = new Set(subjects.map((s) => s.id));
+        const relevantAssignments = isStudent
+          ? assignments.filter((a) => a.subject?.id && studentSubjectIds.has(a.subject.id))
+          : assignments;
+
         const presentAtt = attendance.filter((a) => a.status === 'PRESENT').length;
         const totalAtt = attendance.length;
         const attPct = totalAtt ? Math.round((presentAtt / totalAtt) * 100) : 0;
@@ -69,7 +76,7 @@ export default function DashboardPage() {
           users: users.length,
           departments: departments.length,
           subjects: subjects.length,
-          assignments: assignments.length,
+          assignments: isStudent ? relevantAssignments.length : assignments.length,
           attendance: totalAtt,
           present: presentAtt,
           absent: attendance.filter((a) => a.status === 'ABSENT').length,
@@ -81,7 +88,7 @@ export default function DashboardPage() {
           overallPct: attPct,
         });
 
-        setRecentAssignments([...assignments].sort((a, b) => b.id - a.id).slice(0, 5));
+        setRecentAssignments([...relevantAssignments].sort((a, b) => b.id - a.id).slice(0, 5));
       } finally {
         setLoading(false);
       }

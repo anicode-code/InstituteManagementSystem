@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -7,7 +7,7 @@ import {
   submitAssignment, getMySubmission,
   getSubmissionsForAssignment, evaluateSubmission,
 } from '../api/assignments';
-import { getAllSubjects, getSubjectsByFaculty } from '../api/subjects';
+import { getAllSubjects, getSubjectsByFaculty, getSubjectsByStudent } from '../api/subjects';
 import {
   ClipboardList, Plus, Trash2, X, Search, Calendar,
   BookOpen, Send, Award, CheckCircle, Clock,
@@ -438,19 +438,29 @@ export default function AssignmentsPage() {
     setLoading(true);
     try {
       const [aRes, sRes] = await Promise.all([
-        isFaculty ? getAssignmentsByFaculty(user.id) : getAllAssignments(),
-        isFaculty ? getSubjectsByFaculty(user.id) : getAllSubjects(),
+        isFaculty && user?.id ? getAssignmentsByFaculty(user.id) : getAllAssignments(),
+        isFaculty && user?.id
+          ? getSubjectsByFaculty(user.id)
+          : (isStudent && user?.id ? getSubjectsByStudent(user.id) : getAllSubjects()),
       ]);
       setAssignments(aRes.data || []);
       setSubjects(sRes.data || []);
     } finally {
       setLoading(false);
     }
-  }, [user, isFaculty]);
+  }, [user, isFaculty, isStudent]);
 
   useEffect(() => { load(); }, [load]);
 
-  const filtered = assignments.filter((a) => {
+  const studentSubjectIds = useMemo(
+    () => new Set((subjects || []).map((s) => s.id)),
+    [subjects]
+  );
+  const visibleAssignments = isStudent
+    ? (assignments || []).filter((a) => a.subject?.id && studentSubjectIds.has(a.subject.id))
+    : (assignments || []);
+
+  const filtered = visibleAssignments.filter((a) => {
     const q = search.toLowerCase();
     return !q || a.title?.toLowerCase().includes(q) || a.subject?.name?.toLowerCase().includes(q) || a.faculty?.name?.toLowerCase().includes(q);
   });
@@ -596,7 +606,7 @@ export default function AssignmentsPage() {
           onClose={() => setModalOpen(false)}
           onSaved={load}
           subjects={subjects}
-          facultyId={user.id}
+          facultyId={user?.id}
         />
       )}
 

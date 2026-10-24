@@ -5,6 +5,8 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
+import java.util.List;
+
 public class RegisterRequest {
 
     @NotBlank(message = "Name is required")
@@ -23,7 +25,18 @@ public class RegisterRequest {
     @NotNull(message = "Role is required")
     private Role role;
 
+    // Single department (used by students)
     private Long departmentId;
+
+    // Multiple departments (used by faculty)
+    private List<Long> departmentIds;
+
+    // Student academic fields
+    private Integer year;
+    private Integer semester;
+
+    // Subject codes for optional subjects selected by the student
+    private List<String> optionalSubjectCodes;
 
     public String getName() {
         return name;
@@ -49,6 +62,22 @@ public class RegisterRequest {
         return departmentId;
     }
 
+    public List<Long> getDepartmentIds() {
+        return departmentIds;
+    }
+
+    public Integer getYear() {
+        return year;
+    }
+
+    public Integer getSemester() {
+        return semester;
+    }
+
+    public List<String> getOptionalSubjectCodes() {
+        return optionalSubjectCodes;
+    }
+
     public void setName(String name) {
         this.name = name;
     }
@@ -71,5 +100,21 @@ public class RegisterRequest {
 
     public void setDepartmentId(Long departmentId) {
         this.departmentId = departmentId;
+    }
+
+    public void setDepartmentIds(List<Long> departmentIds) {
+        this.departmentIds = departmentIds;
+    }
+
+    public void setYear(Integer year) {
+        this.year = year;
+    }
+
+    public void setSemester(Integer semester) {
+        this.semester = semester;
+    }
+
+    public void setOptionalSubjectCodes(List<String> optionalSubjectCodes) {
+        this.optionalSubjectCodes = optionalSubjectCodes;
     }
 }

@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
-import { getAllSubjects, createSubject, updateSubject, deleteSubject } from '../api/subjects';
+import { getAllSubjects, getSubjectsByStudent, createSubject, updateSubject, deleteSubject } from '../api/subjects';
 import { getAllDepartments } from '../api/departments';
 import { getAllUsers } from '../api/users';
 import { Plus, Pencil, Trash2, BookOpen, X, Search } from 'lucide-react';
@@ -120,7 +120,7 @@ function SubjectModal({ open, onClose, onSaved, departments, facultyList, editSu
 }
 
 export default function SubjectsPage() {
-  const { user, isAdminOrHod, isFaculty } = useAuth();
+  const { user, isAdminOrHod, isFaculty, isStudent } = useAuth();
   const [subjects, setSubjects] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [facultyList, setFacultyList] = useState([]);
@@ -133,7 +133,7 @@ export default function SubjectsPage() {
     setLoading(true);
     try {
       const [subRes, depRes, userRes] = await Promise.all([
-        getAllSubjects(),
+        isStudent ? getSubjectsByStudent(user.id) : getAllSubjects(),
         getAllDepartments(),
         getAllUsers(),
       ]);
@@ -143,7 +143,7 @@ export default function SubjectsPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user, isStudent]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -174,7 +174,9 @@ export default function SubjectsPage() {
         <div>
           <h2 className="page-title">Subjects</h2>
           <p className="page-subtitle">
-            {isFaculty ? `${filtered.length} subjects assigned to you` : `${subjects.length} total subjects`}
+            {isFaculty
+              ? `${filtered.length} subjects assigned to you`
+              : (isStudent ? `${filtered.length} subjects enrolled / chosen` : `${subjects.length} total subjects`)}
           </p>
         </div>
         {isAdminOrHod && (

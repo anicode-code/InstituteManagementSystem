@@ -1,0 +1,521 @@
+{
+  "departments": [
+    {
+      "code": "CSE",
+      "name": "Computer Science",
+      "semesters": {
+        "1": {
+          "year": 1,
+          "compulsory": [
+            { "code": "CS101", "name": "Programming Fundamentals (C)", "credits": 4, "type": "COMPULSORY" },
+            { "code": "MA101", "name": "Calculus and Linear Algebra", "credits": 4, "type": "COMPULSORY" },
+            { "code": "PH101", "name": "Engineering Physics", "credits": 3, "type": "COMPULSORY" },
+            { "code": "HS101", "name": "Technical Communication", "credits": 2, "type": "COMPULSORY" }
+          ],
+          "optional": [
+            { "code": "CS105", "name": "Introduction to Web Development", "credits": 2, "type": "OPTIONAL" },
+            { "code": "CS106", "name": "Digital Logic and Cyber Basics", "credits": 2, "type": "OPTIONAL" }
+          ]
+        },
+        "2": {
+          "year": 1,
+          "compulsory": [
+            { "code": "CS201", "name": "Object-Oriented Programming (Java)", "credits": 4, "type": "COMPULSORY" },
+            { "code": "MA201", "name": "Discrete Mathematics", "credits": 4, "type": "COMPULSORY" },
+            { "code": "CH201", "name": "Engineering Chemistry & Environmental Science", "credits": 3, "type": "COMPULSORY" },
+            { "code": "CS202", "name": "Computer Organization & Architecture", "credits": 3, "type": "COMPULSORY" }
+          ],
+          "optional": [
+            { "code": "CS205", "name": "Python Programming Fundamentals", "credits": 2, "type": "OPTIONAL" },
+            { "code": "CS206", "name": "Linux and Shell Scripting", "credits": 2, "type": "OPTIONAL" }
+          ]
+        },
+        "3": {
+          "year": 2,
+          "compulsory": [
+            { "code": "CS301", "name": "Data Structures and Algorithms", "credits": 4, "type": "COMPULSORY" },
+            { "code": "CS302", "name": "Digital Electronics", "credits": 3, "type": "COMPULSORY" },
+            { "code": "MA301", "name": "Probability and Statistics", "credits": 4, "type": "COMPULSORY" },
+            { "code": "CS303", "name": "Formal Languages & Automata Theory", "credits": 3, "type": "COMPULSORY" }
+          ],
+          "optional": [
+            { "code": "CS305", "name": "Object-Oriented Design & Design Patterns", "credits": 3, "type": "OPTIONAL" },
+            { "code": "CS306", "name": "Competitive Programming Techniques", "credits": 3, "type": "OPTIONAL" }
+          ]
+        },
+        "4": {
+          "year": 2,
+          "compulsory": [
+            { "code": "CS401", "name": "Operating Systems", "credits": 4, "type": "COMPULSORY" },
+            { "code": "CS402", "name": "Database Management Systems", "credits": 4, "type": "COMPULSORY" },
+            { "code": "CS403", "name": "Design & Analysis of Algorithms", "credits": 4, "type": "COMPULSORY" },
+            { "code": "CS404", "name": "Software Engineering", "credits": 3, "type": "COMPULSORY" }
+          ],
+          "optional": [
+            { "code": "CS405", "name": "NoSQL and Graph Databases", "credits": 3, "type": "OPTIONAL" },
+            { "code": "CS406", "name": "Full-Stack Web Technologies", "credits": 3, "type": "OPTIONAL" }
+          ]
+        },
+        "5": {
+          "year": 3,
+          "compulsory": [
+            { "code": "CS501", "name": "Computer Networks", "credits": 4, "type": "COMPULSORY" },
+            { "code": "CS502", "name": "Compiler Design", "credits": 4, "type": "COMPULSORY" },
+            { "code": "CS503", "name": "Theory of Computation", "credits": 3, "type": "COMPULSORY" }
+          ],
+          "optional": [
+            { "code": "CS505", "name": "Artificial Intelligence Fundamentals", "credits": 3, "type": "OPTIONAL" },
+            { "code": "CS506", "name": "Information & Network Security", "credits": 3, "type": "OPTIONAL" },
+            { "code": "CS507", "name": "Mobile Application Development", "credits": 3, "type": "OPTIONAL" }
+          ]
+        },
+        "6": {
+          "year": 3,
+          "compulsory": [
+            { "code": "CS601", "name": "Machine Learning", "credits": 4, "type": "COMPULSORY" },
+            { "code": "CS602", "name": "Distributed Systems", "credits": 3, "type": "COMPULSORY" },
+            { "code": "CS603", "name": "Cloud Computing Architecture", "credits": 3, "type": "COMPULSORY" }
+          ],
+          "optional": [
+            { "code": "CS605", "name": "Natural Language Processing", "credits": 3, "type": "OPTIONAL" },
+            { "code": "CS606", "name": "DevOps & Microservices", "credits": 3, "type": "OPTIONAL" },
+            { "code": "CS607", "name": "Computer Graphics & Multimedia", "credits": 3, "type": "OPTIONAL" }
+          ]
+        },
+        "7": {
+          "year": 4,
+          "compulsory": [
+            { "code": "CS701", "name": "Deep Learning & Neural Networks", "credits": 4, "type": "COMPULSORY" },
+            { "code": "CS702", "name": "Big Data Analytics", "credits": 3, "type": "COMPULSORY" },
+            { "code": "CS703", "name": "Major Project - Phase 1", "credits": 4, "type": "COMPULSORY" }
+          ],
+          "optional": [
+            { "code": "CS705", "name": "Blockchain & Smart Contracts", "credits": 3, "type": "OPTIONAL" },
+            { "code": "CS706", "name": "Internet of Things (IoT)", "credits": 3, "type": "OPTIONAL" },
+            { "code": "CS707", "name": "Cyber Forensics & Incident Response", "credits": 3, "type": "OPTIONAL" }
+          ]
+        },
+        "8": {
+          "year": 4,
+          "compulsory": [
+            { "code": "CS801", "name": "Ethics & Governance in Computing", "credits": 2, "type": "COMPULSORY" },
+            { "code": "CS802", "name": "Major Project - Phase 2", "credits": 8, "type": "COMPULSORY" },
+            { "code": "CS803", "name": "Industry Internship & Seminar", "credits": 4, "type": "COMPULSORY" }
+          ],
+          "optional": [
+            { "code": "CS805", "name": "Quantum Computing Fundamentals", "credits": 3, "type": "OPTIONAL" },
+            { "code": "CS806", "name": "Reinforcement Learning & Robotics", "credits": 3, "type": "OPTIONAL" }
+          ]
+        }
+      }
+    },
+    {
+      "code": "IT",
+      "name": "Information Technology",
+      "semesters": {
+        "1": {
+          "year": 1,
+          "compulsory": [
+            { "code": "IT101", "name": "Foundations of Information Technology", "credits": 4, "type": "COMPULSORY" },
+            { "code": "MA102", "name": "Applied Mathematics for IT", "credits": 4, "type": "COMPULSORY" },
+            { "code": "PH102", "name": "Applied Physics", "credits": 3, "type": "COMPULSORY" }
+          ],
+          "optional": [
+            { "code": "IT105", "name": "UI/UX & Web Styling Basics", "credits": 2, "type": "OPTIONAL" },
+            { "code": "IT106", "name": "Productivity Tools & Automation", "credits": 2, "type": "OPTIONAL" }
+          ]
+        },
+        "2": {
+          "year": 1,
+          "compulsory": [
+            { "code": "IT201", "name": "Data Structures with C++", "credits": 4, "type": "COMPULSORY" },
+            { "code": "IT202", "name": "Digital Logic and Computer Organization", "credits": 4, "type": "COMPULSORY" },
+            { "code": "MA202", "name": "Discrete Structures and Logic", "credits": 3, "type": "COMPULSORY" }
+          ],
+          "optional": [
+            { "code": "IT205", "name": "JavaScript & Modern Web Foundations", "credits": 2, "type": "OPTIONAL" },
+            { "code": "IT206", "name": "Open Source Tools & Git", "credits": 2, "type": "OPTIONAL" }
+          ]
+        },
+        "3": {
+          "year": 2,
+          "compulsory": [
+            { "code": "IT301", "name": "Database Systems & SQL", "credits": 4, "type": "COMPULSORY" },
+            { "code": "IT302", "name": "Object-Oriented Programming (Java)", "credits": 4, "type": "COMPULSORY" },
+            { "code": "IT303", "name": "Operating System Internals", "credits": 3, "type": "COMPULSORY" }
+          ],
+          "optional": [
+            { "code": "IT305", "name": "Enterprise Java & Spring Boot", "credits": 3, "type": "OPTIONAL" },
+            { "code": "IT306", "name": "System Administration & Virtualization", "credits": 3, "type": "OPTIONAL" }
+          ]
+        },
+        "4": {
+          "year": 2,
+          "compulsory": [
+            { "code": "IT401", "name": "Computer Communication Networks", "credits": 4, "type": "COMPULSORY" },
+            { "code": "IT402", "name": "Web Technology Frameworks", "credits": 4, "type": "COMPULSORY" },
+            { "code": "IT403", "name": "Software Engineering & Agile Lifecycle", "credits": 3, "type": "COMPULSORY" }
+          ],
+          "optional": [
+            { "code": "IT405", "name": "E-Commerce Systems Architecture", "credits": 3, "type": "OPTIONAL" },
+            { "code": "IT406", "name": "Mobile Computing Basics", "credits": 3, "type": "OPTIONAL" }
+          ]
+        },
+        "5": {
+          "year": 3,
+          "compulsory": [
+            { "code": "IT501", "name": "Information Security & Cryptography", "credits": 4, "type": "COMPULSORY" },
+            { "code": "IT502", "name": "Cloud Computing & SaaS Architectures", "credits": 3, "type": "COMPULSORY" },
+            { "code": "IT503", "name": "Data Warehousing and Data Mining", "credits": 3, "type": "COMPULSORY" }
+          ],
+          "optional": [
+            { "code": "IT505", "name": "Cyber Laws and Ethics", "credits": 3, "type": "OPTIONAL" },
+            { "code": "IT506", "name": "Human-Computer Interaction (HCI)", "credits": 3, "type": "OPTIONAL" }
+          ]
+        },
+        "6": {
+          "year": 3,
+          "compulsory": [
+            { "code": "IT601", "name": "Big Data Technologies & Hadoop", "credits": 4, "type": "COMPULSORY" },
+            { "code": "IT602", "name": "Machine Learning for Enterprise", "credits": 4, "type": "COMPULSORY" },
+            { "code": "IT603", "name": "Network Management and Monitoring", "credits": 3, "type": "COMPULSORY" }
+          ],
+          "optional": [
+            { "code": "IT605", "name": "Service-Oriented Architecture (SOA)", "credits": 3, "type": "OPTIONAL" },
+            { "code": "IT606", "name": "Software Testing & Quality Assurance", "credits": 3, "type": "OPTIONAL" }
+          ]
+        },
+        "7": {
+          "year": 4,
+          "compulsory": [
+            { "code": "IT701", "name": "DevSecOps & Cloud Security", "credits": 4, "type": "COMPULSORY" },
+            { "code": "IT702", "name": "Artificial Intelligence in IT", "credits": 3, "type": "COMPULSORY" },
+            { "code": "IT703", "name": "Capstone Project - Phase 1", "credits": 4, "type": "COMPULSORY" }
+          ],
+          "optional": [
+            { "code": "IT705", "name": "Business Intelligence & Power BI", "credits": 3, "type": "OPTIONAL" },
+            { "code": "IT706", "name": "Distributed Storage Systems", "credits": 3, "type": "OPTIONAL" }
+          ]
+        },
+        "8": {
+          "year": 4,
+          "compulsory": [
+            { "code": "IT801", "name": "IT Project Management & Governance", "credits": 3, "type": "COMPULSORY" },
+            { "code": "IT802", "name": "Capstone Project - Phase 2", "credits": 8, "type": "COMPULSORY" },
+            { "code": "IT803", "name": "Industrial Training & Colloquium", "credits": 4, "type": "COMPULSORY" }
+          ],
+          "optional": [
+            { "code": "IT805", "name": "Emerging Technologies (Web3 & AR/VR)", "credits": 3, "type": "OPTIONAL" },
+            { "code": "IT806", "name": "Disaster Recovery & Business Continuity", "credits": 3, "type": "OPTIONAL" }
+          ]
+        }
+      }
+    },
+    {
+      "code": "ECE",
+      "name": "Electronics & Communication",
+      "semesters": {
+        "1": {
+          "year": 1,
+          "compulsory": [
+            { "code": "EC101", "name": "Basic Electrical Engineering", "credits": 4, "type": "COMPULSORY" },
+            { "code": "MA103", "name": "Engineering Mathematics I", "credits": 4, "type": "COMPULSORY" },
+            { "code": "PH103", "name": "Semiconductor Physics", "credits": 3, "type": "COMPULSORY" }
+          ],
+          "optional": [
+            { "code": "EC105", "name": "Electronic Workshop & PCB Design", "credits": 2, "type": "OPTIONAL" },
+            { "code": "EC106", "name": "Introduction to Robotics", "credits": 2, "type": "OPTIONAL" }
+          ]
+        },
+        "2": {
+          "year": 1,
+          "compulsory": [
+            { "code": "EC201", "name": "Electronic Devices and Circuits", "credits": 4, "type": "COMPULSORY" },
+            { "code": "EC202", "name": "Network Theory and Analysis", "credits": 4, "type": "COMPULSORY" },
+            { "code": "MA203", "name": "Differential Equations & Complex Analysis", "credits": 4, "type": "COMPULSORY" }
+          ],
+          "optional": [
+            { "code": "EC205", "name": "C Programming for Embedded Systems", "credits": 2, "type": "OPTIONAL" },
+            { "code": "EC206", "name": "Sensors and Instrumentation Basics", "credits": 2, "type": "OPTIONAL" }
+          ]
+        },
+        "3": {
+          "year": 2,
+          "compulsory": [
+            { "code": "EC301", "name": "Analog Circuits", "credits": 4, "type": "COMPULSORY" },
+            { "code": "EC302", "name": "Digital System Design (VHDL/Verilog)", "credits": 4, "type": "COMPULSORY" },
+            { "code": "EC303", "name": "Signals and Systems", "credits": 4, "type": "COMPULSORY" }
+          ],
+          "optional": [
+            { "code": "EC305", "name": "Electromagnetic Fields & Waves", "credits": 3, "type": "OPTIONAL" },
+            { "code": "EC306", "name": "Biomedical Instrumentation", "credits": 3, "type": "OPTIONAL" }
+          ]
+        },
+        "4": {
+          "year": 2,
+          "compulsory": [
+            { "code": "EC401", "name": "Analog Communication", "credits": 4, "type": "COMPULSORY" },
+            { "code": "EC402", "name": "Microprocessors & Microcontrollers (8051/ARM)", "credits": 4, "type": "COMPULSORY" },
+            { "code": "EC403", "name": "Linear Integrated Circuits", "credits": 3, "type": "COMPULSORY" }
+          ],
+          "optional": [
+            { "code": "EC405", "name": "Control Systems Engineering", "credits": 3, "type": "OPTIONAL" },
+            { "code": "EC406", "name": "Python for Signal Processing", "credits": 3, "type": "OPTIONAL" }
+          ]
+        },
+        "5": {
+          "year": 3,
+          "compulsory": [
+            { "code": "EC501", "name": "Digital Communication Systems", "credits": 4, "type": "COMPULSORY" },
+            { "code": "EC502", "name": "Digital Signal Processing (DSP)", "credits": 4, "type": "COMPULSORY" },
+            { "code": "EC503", "name": "Antenna and Wave Propagation", "credits": 3, "type": "COMPULSORY" }
+          ],
+          "optional": [
+            { "code": "EC505", "name": "VLSI Design & Technology", "credits": 3, "type": "OPTIONAL" },
+            { "code": "EC506", "name": "Embedded Linux and RTOS", "credits": 3, "type": "OPTIONAL" }
+          ]
+        },
+        "6": {
+          "year": 3,
+          "compulsory": [
+            { "code": "EC601", "name": "Microwave and Radar Engineering", "credits": 4, "type": "COMPULSORY" },
+            { "code": "EC602", "name": "Wireless & Cellular Communications", "credits": 4, "type": "COMPULSORY" },
+            { "code": "EC603", "name": "Optical Fiber Communications", "credits": 3, "type": "COMPULSORY" }
+          ],
+          "optional": [
+            { "code": "EC605", "name": "Automotive Electronics & CAN Bus", "credits": 3, "type": "OPTIONAL" },
+            { "code": "EC606", "name": "DSP System Architecture & FPGA", "credits": 3, "type": "OPTIONAL" }
+          ]
+        },
+        "7": {
+          "year": 4,
+          "compulsory": [
+            { "code": "EC701", "name": "5G and Next-Gen Wireless Networks", "credits": 4, "type": "COMPULSORY" },
+            { "code": "EC702", "name": "Satellite Communication Systems", "credits": 3, "type": "COMPULSORY" },
+            { "code": "EC703", "name": "ECE Major Project - Phase 1", "credits": 4, "type": "COMPULSORY" }
+          ],
+          "optional": [
+            { "code": "EC705", "name": "Computer Vision for Embedded Systems", "credits": 3, "type": "OPTIONAL" },
+            { "code": "EC706", "name": "Nanoelectronics & MEMS", "credits": 3, "type": "OPTIONAL" }
+          ]
+        },
+        "8": {
+          "year": 4,
+          "compulsory": [
+            { "code": "EC801", "name": "Telecommunication Management & Policy", "credits": 2, "type": "COMPULSORY" },
+            { "code": "EC802", "name": "ECE Major Project - Phase 2", "credits": 8, "type": "COMPULSORY" },
+            { "code": "EC803", "name": "Industrial Internship / Project", "credits": 4, "type": "COMPULSORY" }
+          ],
+          "optional": [
+            { "code": "EC805", "name": "Deep Learning for Audio & Video", "credits": 3, "type": "OPTIONAL" },
+            { "code": "EC806", "name": "RF Circuit Design", "credits": 3, "type": "OPTIONAL" }
+          ]
+        }
+      }
+    },
+    {
+      "code": "ME",
+      "name": "Mechanical Engineering",
+      "semesters": {
+        "1": {
+          "year": 1,
+          "compulsory": [
+            { "code": "ME101", "name": "Engineering Mechanics (Statics & Dynamics)", "credits": 4, "type": "COMPULSORY" },
+            { "code": "ME102", "name": "Engineering Graphics & CAD", "credits": 3, "type": "COMPULSORY" },
+            { "code": "MA104", "name": "Calculus and Ordinary Differential Equations", "credits": 4, "type": "COMPULSORY" }
+          ],
+          "optional": [
+            { "code": "ME105", "name": "Workshop Practice & Manufacturing Basics", "credits": 2, "type": "OPTIONAL" },
+            { "code": "ME106", "name": "Energy Resources and Conservation", "credits": 2, "type": "OPTIONAL" }
+          ]
+        },
+        "2": {
+          "year": 1,
+          "compulsory": [
+            { "code": "ME201", "name": "Material Science and Metallurgy", "credits": 4, "type": "COMPULSORY" },
+            { "code": "ME202", "name": "Basic Thermodynamics", "credits": 4, "type": "COMPULSORY" },
+            { "code": "PH104", "name": "Physics for Mechanical Engineers", "credits": 3, "type": "COMPULSORY" }
+          ],
+          "optional": [
+            { "code": "ME205", "name": "3D Printing & Additive Manufacturing", "credits": 2, "type": "OPTIONAL" },
+            { "code": "ME206", "name": "Machine Drawing Standards", "credits": 2, "type": "OPTIONAL" }
+          ]
+        },
+        "3": {
+          "year": 2,
+          "compulsory": [
+            { "code": "ME301", "name": "Strength of Materials", "credits": 4, "type": "COMPULSORY" },
+            { "code": "ME302", "name": "Fluid Mechanics and Machinery", "credits": 4, "type": "COMPULSORY" },
+            { "code": "ME303", "name": "Kinematics of Machinery", "credits": 3, "type": "COMPULSORY" }
+          ],
+          "optional": [
+            { "code": "ME305", "name": "Applied Thermodynamics", "credits": 3, "type": "OPTIONAL" },
+            { "code": "ME306", "name": "Industrial Safety and Ergonomics", "credits": 3, "type": "OPTIONAL" }
+          ]
+        },
+        "4": {
+          "year": 2,
+          "compulsory": [
+            { "code": "ME401", "name": "Manufacturing Processes & Machining", "credits": 4, "type": "COMPULSORY" },
+            { "code": "ME402", "name": "Dynamics of Machinery", "credits": 4, "type": "COMPULSORY" },
+            { "code": "ME403", "name": "Thermal Engineering & IC Engines", "credits": 4, "type": "COMPULSORY" }
+          ],
+          "optional": [
+            { "code": "ME405", "name": "Metrology and Quality Control", "credits": 3, "type": "OPTIONAL" },
+            { "code": "ME406", "name": "Computational Fluid Dynamics (CFD) Basics", "credits": 3, "type": "OPTIONAL" }
+          ]
+        },
+        "5": {
+          "year": 3,
+          "compulsory": [
+            { "code": "ME501", "name": "Design of Machine Elements", "credits": 4, "type": "COMPULSORY" },
+            { "code": "ME502", "name": "Heat and Mass Transfer", "credits": 4, "type": "COMPULSORY" },
+            { "code": "ME503", "name": "Mechatronics and Industrial Automation", "credits": 3, "type": "COMPULSORY" }
+          ],
+          "optional": [
+            { "code": "ME505", "name": "Finite Element Analysis (FEA)", "credits": 3, "type": "OPTIONAL" },
+            { "code": "ME506", "name": "Refrigeration and Air Conditioning", "credits": 3, "type": "OPTIONAL" }
+          ]
+        },
+        "6": {
+          "year": 3,
+          "compulsory": [
+            { "code": "ME601", "name": "Computer Integrated Manufacturing (CIM)", "credits": 4, "type": "COMPULSORY" },
+            { "code": "ME602", "name": "Operations Research and Supply Chain", "credits": 3, "type": "COMPULSORY" },
+            { "code": "ME603", "name": "Automobile Engineering & Powertrains", "credits": 3, "type": "COMPULSORY" }
+          ],
+          "optional": [
+            { "code": "ME605", "name": "Robotics and Kinematic Control", "credits": 3, "type": "OPTIONAL" },
+            { "code": "ME606", "name": "Gas Turbines & Jet Propulsion", "credits": 3, "type": "OPTIONAL" }
+          ]
+        },
+        "7": {
+          "year": 4,
+          "compulsory": [
+            { "code": "ME701", "name": "Power Plant Engineering", "credits": 3, "type": "COMPULSORY" },
+            { "code": "ME702", "name": "Electric Vehicles Technology", "credits": 4, "type": "COMPULSORY" },
+            { "code": "ME703", "name": "Major Project - Phase 1", "credits": 4, "type": "COMPULSORY" }
+          ],
+          "optional": [
+            { "code": "ME705", "name": "Renewable Energy Systems", "credits": 3, "type": "OPTIONAL" },
+            { "code": "ME706", "name": "Composite Materials and Structures", "credits": 3, "type": "OPTIONAL" }
+          ]
+        },
+        "8": {
+          "year": 4,
+          "compulsory": [
+            { "code": "ME801", "name": "Total Quality Management (TQM)", "credits": 2, "type": "COMPULSORY" },
+            { "code": "ME802", "name": "Major Project - Phase 2", "credits": 8, "type": "COMPULSORY" },
+            { "code": "ME803", "name": "Industrial Internship / Project", "credits": 4, "type": "COMPULSORY" }
+          ],
+          "optional": [
+            { "code": "ME805", "name": "Cryogenics Engineering", "credits": 3, "type": "OPTIONAL" },
+            { "code": "ME806", "name": "Product Design and Development", "credits": 3, "type": "OPTIONAL" }
+          ]
+        }
+      }
+    },
+    {
+      "code": "CIVIL",
+      "name": "Civil Engineering",
+      "semesters": {
+        "1": {
+          "year": 1,
+          "compulsory": [
+            { "code": "CE101", "name": "Building Materials and Construction", "credits": 4, "type": "COMPULSORY" },
+            { "code": "CE102", "name": "Engineering Surveying I", "credits": 3, "type": "COMPULSORY" },
+            { "code": "MA105", "name": "Engineering Mathematics (Calculus & Vectors)", "credits": 4, "type": "COMPULSORY" }
+          ],
+          "optional": [
+            { "code": "CE105", "name": "Building Drawing and Computer Aided Drafting", "credits": 2, "type": "OPTIONAL" },
+            { "code": "CE106", "name": "Ecology & Environmental Studies", "credits": 2, "type": "OPTIONAL" }
+          ]
+        },
+        "2": {
+          "year": 1,
+          "compulsory": [
+            { "code": "CE201", "name": "Mechanics of Solids", "credits": 4, "type": "COMPULSORY" },
+            { "code": "CE202", "name": "Engineering Surveying II & GIS Basics", "credits": 4, "type": "COMPULSORY" },
+            { "code": "CE203", "name": "Fluid Mechanics for Civil Engineers", "credits": 3, "type": "COMPULSORY" }
+          ],
+          "optional": [
+            { "code": "CE205", "name": "Geology for Civil Engineers", "credits": 2, "type": "OPTIONAL" },
+            { "code": "CE206", "name": "Concrete Technology Basics", "credits": 2, "type": "OPTIONAL" }
+          ]
+        },
+        "3": {
+          "year": 2,
+          "compulsory": [
+            { "code": "CE301", "name": "Structural Analysis I", "credits": 4, "type": "COMPULSORY" },
+            { "code": "CE302", "name": "Water Resources Engineering", "credits": 3, "type": "COMPULSORY" },
+            { "code": "CE303", "name": "Advanced Concrete Technology", "credits": 3, "type": "COMPULSORY" }
+          ],
+          "optional": [
+            { "code": "CE305", "name": "Remote Sensing and Photogrammetry", "credits": 3, "type": "OPTIONAL" },
+            { "code": "CE306", "name": "Urban Planning and Architecture", "credits": 3, "type": "OPTIONAL" }
+          ]
+        },
+        "4": {
+          "year": 2,
+          "compulsory": [
+            { "code": "CE401", "name": "Structural Analysis II", "credits": 4, "type": "COMPULSORY" },
+            { "code": "CE402", "name": "Soil Mechanics & Geotechnical Engineering", "credits": 4, "type": "COMPULSORY" },
+            { "code": "CE403", "name": "Transportation & Highway Engineering", "credits": 3, "type": "COMPULSORY" }
+          ],
+          "optional": [
+            { "code": "CE405", "name": "Hydrology and Flood Modeling", "credits": 3, "type": "OPTIONAL" },
+            { "code": "CE406", "name": "Construction Equipment and Automation", "credits": 3, "type": "OPTIONAL" }
+          ]
+        },
+        "5": {
+          "year": 3,
+          "compulsory": [
+            { "code": "CE501", "name": "Design of Reinforced Concrete Structures", "credits": 4, "type": "COMPULSORY" },
+            { "code": "CE502", "name": "Environmental Engineering I (Water Supply)", "credits": 4, "type": "COMPULSORY" },
+            { "code": "CE503", "name": "Foundation Engineering", "credits": 3, "type": "COMPULSORY" }
+          ],
+          "optional": [
+            { "code": "CE505", "name": "Pavement Design and Traffic Engineering", "credits": 3, "type": "OPTIONAL" },
+            { "code": "CE506", "name": "Air and Noise Pollution Control", "credits": 3, "type": "OPTIONAL" }
+          ]
+        },
+        "6": {
+          "year": 3,
+          "compulsory": [
+            { "code": "CE601", "name": "Design of Steel Structures", "credits": 4, "type": "COMPULSORY" },
+            { "code": "CE602", "name": "Environmental Engineering II (Wastewater Treatment)", "credits": 4, "type": "COMPULSORY" },
+            { "code": "CE603", "name": "Quantity Surveying and Estimation", "credits": 3, "type": "COMPULSORY" }
+          ],
+          "optional": [
+            { "code": "CE605", "name": "Earthquake Resistant Design", "credits": 3, "type": "OPTIONAL" },
+            { "code": "CE606", "name": "Ground Improvement Techniques", "credits": 3, "type": "OPTIONAL" }
+          ]
+        },
+        "7": {
+          "year": 4,
+          "compulsory": [
+            { "code": "CE701", "name": "Construction Planning & Project Management", "credits": 4, "type": "COMPULSORY" },
+            { "code": "CE702", "name": "Prestressed Concrete Structures", "credits": 3, "type": "COMPULSORY" },
+            { "code": "CE703", "name": "Major Project - Phase 1", "credits": 4, "type": "COMPULSORY" }
+          ],
+          "optional": [
+            { "code": "CE705", "name": "Bridge Engineering", "credits": 3, "type": "OPTIONAL" },
+            { "code": "CE706", "name": "Solid & Hazardous Waste Management", "credits": 3, "type": "OPTIONAL" }
+          ]
+        },
+        "8": {
+          "year": 4,
+          "compulsory": [
+            { "code": "CE801", "name": "Infrastructure Finance and Contract Law", "credits": 2, "type": "COMPULSORY" },
+            { "code": "CE802", "name": "Major Project - Phase 2", "credits": 8, "type": "COMPULSORY" },
+            { "code": "CE803", "name": "Industrial Internship & Practical Training", "credits": 4, "type": "COMPULSORY" }
+          ],
+          "optional": [
+            { "code": "CE805", "name": "Smart Cities and Sustainable Infrastructure", "credits": 3, "type": "OPTIONAL" },
+            { "code": "CE806", "name": "Disaster Management & Structural Rehabilitation", "credits": 3, "type": "OPTIONAL" }
+          ]
+        }
+      }
+    }
+  ]
+}

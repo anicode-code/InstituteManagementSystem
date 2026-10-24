@@ -8,7 +8,7 @@ import {
   recordDayBatch,
   deleteDayAttendance,
 } from '../api/attendance';
-import { getAllSubjects, getSubjectsByFaculty } from '../api/subjects';
+import { getAllSubjects, getSubjectsByFaculty, getSubjectsByStudent } from '../api/subjects';
 import { getAllUsers } from '../api/users';
 import {
   CalendarCheck, Plus, Search, TrendingUp, AlertTriangle,
@@ -39,7 +39,9 @@ export default function AttendancePage() {
       setLoading(true);
       try {
         const [subRes, userRes] = await Promise.all([
-          isFaculty ? getSubjectsByFaculty(user.id) : getAllSubjects(),
+          isFaculty
+            ? getSubjectsByFaculty(user.id)
+            : (isStudent ? getSubjectsByStudent(user.id) : getAllSubjects()),
           getAllUsers(),
         ]);
 
@@ -62,7 +64,7 @@ export default function AttendancePage() {
       }
     };
     init();
-  }, [user, isFaculty]);
+  }, [user, isFaculty, isStudent]);
 
   // Load attendance records whenever selectedSubjectId changes
   const loadSubjectAttendance = useCallback(async () => {

@@ -1,9 +1,12 @@
 package com.institute.ims.model;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "users")
@@ -37,9 +40,38 @@ public class User {
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
+    // Primary department (backward-compatible, used by students)
     @ManyToOne
     @JoinColumn(name = "department_id")
+    @JsonIgnoreProperties({"hod"})
     private Department department;
+
+    // Multiple departments (used by faculty)
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "user_departments",
+        joinColumns = @JoinColumn(name = "user_id"),
+        inverseJoinColumns = @JoinColumn(name = "department_id")
+    )
+    @JsonIgnoreProperties({"hod"})
+    private Set<Department> departments = new HashSet<>();
+
+    // Student academic fields
+    @Column(name = "academic_year")
+    private Integer year;
+
+    @Column(name = "semester")
+    private Integer semester;
+
+    // Optional subjects selected by a student
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "student_selected_subjects",
+        joinColumns = @JoinColumn(name = "student_id"),
+        inverseJoinColumns = @JoinColumn(name = "subject_id")
+    )
+    @JsonIgnoreProperties({"faculty", "department"})
+    private Set<Subject> selectedSubjects = new HashSet<>();
 
     public User() {
     }
@@ -104,6 +136,22 @@ public class User {
         return department;
     }
 
+    public Set<Department> getDepartments() {
+        return departments;
+    }
+
+    public Integer getYear() {
+        return year;
+    }
+
+    public Integer getSemester() {
+        return semester;
+    }
+
+    public Set<Subject> getSelectedSubjects() {
+        return selectedSubjects;
+    }
+
     public void setId(Long id) {
         this.id = id;
     }
@@ -138,5 +186,21 @@ public class User {
 
     public void setDepartment(Department department) {
         this.department = department;
+    }
+
+    public void setDepartments(Set<Department> departments) {
+        this.departments = departments;
+    }
+
+    public void setYear(Integer year) {
+        this.year = year;
+    }
+
+    public void setSemester(Integer semester) {
+        this.semester = semester;
+    }
+
+    public void setSelectedSubjects(Set<Subject> selectedSubjects) {
+        this.selectedSubjects = selectedSubjects;
     }
 }

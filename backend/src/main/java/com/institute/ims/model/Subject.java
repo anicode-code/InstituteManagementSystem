@@ -1,5 +1,6 @@
 package com.institute.ims.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 
 @Entity
@@ -18,12 +19,22 @@ public class Subject {
 
     private Integer credits;
 
+    private Integer semester;
+
+    @Column(name = "academic_year")
+    private Integer academicYear;
+
+    @Enumerated(EnumType.STRING)
+    private SubjectType type = SubjectType.COMPULSORY;
+
     @ManyToOne
     @JoinColumn(name = "department_id")
+    @JsonIgnoreProperties({"hod"})
     private Department department;
 
     @ManyToOne
     @JoinColumn(name = "faculty_id")
+    @JsonIgnoreProperties({"password", "departments", "selectedSubjects", "department"})
     private User faculty;
 
     public Subject() {
@@ -75,5 +86,29 @@ public class Subject {
 
     public void setFaculty(User faculty) {
         this.faculty = faculty;
+    }
+
+    public Integer getSemester() {
+        return semester;
+    }
+
+    public void setSemester(Integer semester) {
+        this.semester = semester;
+    }
+
+    public Integer getAcademicYear() {
+        return academicYear;
+    }
+
+    public void setAcademicYear(Integer academicYear) {
+        this.academicYear = academicYear;
+    }
+
+    public SubjectType getType() {
+        return type;
+    }
+
+    public void setType(SubjectType type) {
+        this.type = type;
     }
 }

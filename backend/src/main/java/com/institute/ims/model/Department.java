@@ -1,5 +1,6 @@
 package com.institute.ims.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 
 @Entity
@@ -15,6 +16,11 @@ public class Department {
 
     @Column(nullable = false, unique = true)
     private String code;
+
+    @OneToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "hod_id")
+    @JsonIgnoreProperties({"password", "departments", "selectedSubjects", "department"})
+    private User hod;
 
     public Department() {
     }
@@ -36,6 +42,10 @@ public class Department {
         return code;
     }
 
+    public User getHod() {
+        return hod;
+    }
+
     public void setId(Long id) {
         this.id = id;
     }
@@ -46,5 +56,9 @@ public class Department {
 
     public void setCode(String code) {
         this.code = code;
+    }
+
+    public void setHod(User hod) {
+        this.hod = hod;
     }
 }

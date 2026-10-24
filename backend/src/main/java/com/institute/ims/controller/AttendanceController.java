@@ -3,8 +3,10 @@ package com.institute.ims.controller;
 import com.institute.ims.model.Attendance;
 import com.institute.ims.model.AttendanceStatus;
 import com.institute.ims.model.Role;
+import com.institute.ims.model.Subject;
 import com.institute.ims.model.User;
 import com.institute.ims.service.AttendanceService;
+import com.institute.ims.service.SubjectService;
 import com.institute.ims.service.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -21,13 +23,16 @@ public class AttendanceController {
 
     private final AttendanceService service;
     private final UserService userService;
+    private final SubjectService subjectService;
 
     public AttendanceController(
             AttendanceService service,
-            UserService userService) {
+            UserService userService,
+            SubjectService subjectService) {
 
         this.service = service;
         this.userService = userService;
+        this.subjectService = subjectService;
     }
 
     private User getAuthenticatedUser(Authentication authentication) {
@@ -55,7 +60,25 @@ public class AttendanceController {
 
     @GetMapping("/subject/{subjectId}")
     public ResponseEntity<List<Attendance>> getBySubject(
-            @PathVariable Long subjectId) {
+            @PathVariable Long subjectId,
+            Authentication authentication) {
+
+        if (authentication != null) {
+            User currentUser = getAuthenticatedUser(authentication);
+            if (currentUser != null && currentUser.getRole() == Role.STUDENT) {
+                // Ensure student is enrolled in this subject
+                List<Subject> enrolled = subjectService.getByStudent(currentUser.getId());
+                boolean isEnrolled = enrolled.stream().anyMatch(s -> s.getId().equals(subjectId));
+                if (!isEnrolled) {
+                    throw new RuntimeException("Unauthorized: You are not enrolled in this subject.");
+                }
+                // Return only this student's attendance in this subject
+                List<Attendance> studentAttendance = service.getByStudent(currentUser.getId()).stream()
+                        .filter(a -> a.getSubject() != null && a.getSubject().getId().equals(subjectId))
+                        .toList();
+                return ResponseEntity.ok(studentAttendance);
+            }
+        }
 
         return ResponseEntity.ok(service.getBySubject(subjectId));
     }

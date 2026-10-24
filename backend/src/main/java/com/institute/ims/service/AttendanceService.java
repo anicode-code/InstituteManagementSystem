@@ -12,6 +12,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class AttendanceService {
@@ -19,15 +21,18 @@ public class AttendanceService {
     private final AttendanceRepository attendanceRepository;
     private final UserRepository userRepository;
     private final SubjectRepository subjectRepository;
+    private final SubjectService subjectService;
 
     public AttendanceService(
             AttendanceRepository attendanceRepository,
             UserRepository userRepository,
-            SubjectRepository subjectRepository) {
+            SubjectRepository subjectRepository,
+            SubjectService subjectService) {
 
         this.attendanceRepository = attendanceRepository;
         this.userRepository = userRepository;
         this.subjectRepository = subjectRepository;
+        this.subjectService = subjectService;
     }
 
     private void validateFacultySubjectAccess(Subject subject, User requestingUser) {
@@ -144,7 +149,12 @@ public class AttendanceService {
     }
 
     public List<Attendance> getByStudent(Long studentId) {
-        return attendanceRepository.findByStudentId(studentId);
+        List<Attendance> records = attendanceRepository.findByStudentId(studentId);
+        List<Subject> enrolledSubjects = subjectService.getByStudent(studentId);
+        Set<Long> enrolledSubjectIds = enrolledSubjects.stream().map(Subject::getId).collect(Collectors.toSet());
+        return records.stream()
+                .filter(a -> a.getSubject() != null && enrolledSubjectIds.contains(a.getSubject().getId()))
+                .toList();
     }
 
     public List<Attendance> getBySubject(Long subjectId) {
@@ -157,7 +167,7 @@ public class AttendanceService {
 
     public List<Attendance> getScopedAttendance(User user) {
         if (user.getRole() == Role.STUDENT) {
-            return attendanceRepository.findByStudentId(user.getId());
+            return getByStudent(user.getId());
         } else if (user.getRole() == Role.FACULTY) {
             return attendanceRepository.findBySubjectFacultyId(user.getId());
         } else if (user.getRole() == Role.HOD && user.getDepartment() != null) {
@@ -195,9 +205,17 @@ public class AttendanceService {
             Long studentId,
             Long subjectId) {
 
-        List<Attendance> records = (subjectId != null)
-                ? attendanceRepository.findByStudentIdAndSubjectId(studentId, subjectId)
-                : attendanceRepository.findByStudentId(studentId);
+        List<Attendance> records;
+        if (subjectId != null) {
+            List<Subject> enrolled = subjectService.getByStudent(studentId);
+            boolean isEnrolled = enrolled.stream().anyMatch(s -> s.getId().equals(subjectId));
+            if (!isEnrolled) {
+                return 0.0;
+            }
+            records = attendanceRepository.findByStudentIdAndSubjectId(studentId, subjectId);
+        } else {
+            records = getByStudent(studentId);
+        }
 
         if (records.isEmpty()) {
             return 0.0;
