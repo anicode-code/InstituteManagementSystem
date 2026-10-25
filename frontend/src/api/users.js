@@ -22,3 +22,7 @@ export const getPendingUsers = () => api.get('/api/users/pending');
 export const verifyUser = (id) => api.put(`/api/users/${id}/verify`);
 
 export const verifyBulk = (userIds) => api.post('/api/users/verify-bulk', { userIds });
+
+export const rejectUser = (id) => api.delete(`/api/users/${id}/reject`);
+
+export const rejectUsers = (userIds) => api.post('/api/users/reject-bulk', { userIds });

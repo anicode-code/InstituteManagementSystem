@@ -653,6 +653,33 @@ tbody tr:hover { background: var(--bg-hover); }
 }
 .toolbar-left  { display: flex; align-items: center; gap: 12px; flex: 1; flex-wrap: wrap; }
 .toolbar-right { display: flex; align-items: center; gap: 8px; }
+.role-filter-row,
+.attendance-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: nowrap;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+}
+.role-filter-row > .form-select {
+  width: auto;
+  min-width: 145px;
+  flex: 0 0 auto;
+}
+.attendance-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+.attendance-filter > .form-select {
+  width: auto;
+  min-width: 150px;
+}
+.attendance-filter:last-child > .form-select { min-width: 250px; }
 
 /* ─── Attendance Register Matrix Grid ─── */
 .attendance-matrix-wrapper {
@@ -860,4 +887,3 @@ thead .sticky-col-pct {
   font-weight: 700;
   border-top: 2px solid var(--border);
 }
-

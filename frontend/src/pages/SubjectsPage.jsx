@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { Fragment, useEffect, useState, useCallback } from 'react';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import { getAllSubjects, getSubjectsByStudent, createSubject, updateSubject, deleteSubject } from '../api/subjects';
@@ -7,8 +7,18 @@ import { getAllUsers } from '../api/users';
 import { Plus, Pencil, Trash2, BookOpen, X, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 
+const semestersByYear = {
+  1: [1, 2],
+  2: [3, 4],
+  3: [5, 6],
+  4: [7, 8],
+};
+
 function SubjectModal({ open, onClose, onSaved, departments, facultyList, editSubject }) {
-  const empty = { name: '', code: '', credits: '', departmentId: '', facultyId: '' };
+  const empty = {
+    name: '', code: '', credits: '', departmentId: '', facultyId: '',
+    academicYear: 1, semester: 1, type: 'COMPULSORY',
+  };
   const [form, setForm] = useState(empty);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -21,6 +31,9 @@ function SubjectModal({ open, onClose, onSaved, departments, facultyList, editSu
         credits: editSubject.credits ?? '',
         departmentId: editSubject.department?.id || '',
         facultyId: editSubject.faculty?.id || '',
+        academicYear: editSubject.academicYear || 1,
+        semester: editSubject.semester || 1,
+        type: editSubject.type || 'COMPULSORY',
       });
     } else {
       setForm(empty);
@@ -31,6 +44,7 @@ function SubjectModal({ open, onClose, onSaved, departments, facultyList, editSu
   if (!open) return null;
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const formSemesters = semestersByYear[Number(form.academicYear)] || [];
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -42,6 +56,9 @@ function SubjectModal({ open, onClose, onSaved, departments, facultyList, editSu
           name: form.name,
           code: form.code,
           credits: form.credits ? Number(form.credits) : null,
+          academicYear: Number(form.academicYear),
+          semester: Number(form.semester),
+          type: form.type,
         });
         toast.success('Subject updated');
       } else {
@@ -52,6 +69,9 @@ function SubjectModal({ open, onClose, onSaved, departments, facultyList, editSu
           credits: form.credits ? Number(form.credits) : null,
           departmentId: Number(form.departmentId),
           facultyId: Number(form.facultyId),
+          academicYear: Number(form.academicYear),
+          semester: Number(form.semester),
+          type: form.type,
         });
         toast.success('Subject created');
       }
@@ -88,6 +108,34 @@ function SubjectModal({ open, onClose, onSaved, departments, facultyList, editSu
               <label className="form-label">Credits</label>
               <input className="form-input" type="number" min={1} max={10} value={form.credits} onChange={(e) => set('credits', e.target.value)} placeholder="e.g. 4" />
             </div>
+            <div className="grid-2">
+              <div className="form-group">
+                <label className="form-label">Year *</label>
+                <select className="form-select" value={form.academicYear} onChange={(e) => {
+                  const academicYear = Number(e.target.value);
+                  setForm((current) => ({
+                    ...current,
+                    academicYear,
+                    semester: semestersByYear[academicYear][0],
+                  }));
+                }}>
+                  {[1, 2, 3, 4].map((year) => <option key={year} value={year}>Year {year}</option>)}
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Semester *</label>
+                <select className="form-select" value={form.semester} onChange={(e) => set('semester', Number(e.target.value))}>
+                  {formSemesters.map((semester) => <option key={semester} value={semester}>Semester {semester}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Subject Type *</label>
+              <select className="form-select" value={form.type} onChange={(e) => set('type', e.target.value)}>
+                <option value="COMPULSORY">Compulsory</option>
+                <option value="OPTIONAL">Optional</option>
+              </select>
+            </div>
             {!editSubject && (
               <div className="grid-2">
                 <div className="form-group">
@@ -120,7 +168,7 @@ function SubjectModal({ open, onClose, onSaved, departments, facultyList, editSu
 }
 
 export default function SubjectsPage() {
-  const { user, isAdminOrHod, isFaculty, isStudent } = useAuth();
+  const { user, isAdmin, isAdminOrHod, isFaculty, isStudent } = useAuth();
   const [subjects, setSubjects] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [facultyList, setFacultyList] = useState([]);
@@ -128,6 +176,10 @@ export default function SubjectsPage() {
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [editSubject, setEditSubject] = useState(null);
+  const [departmentFilter, setDepartmentFilter] = useState('');
+  const [yearFilter, setYearFilter] = useState('');
+  const [semesterFilter, setSemesterFilter] = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -154,8 +206,37 @@ export default function SubjectsPage() {
 
   const filtered = visibleSubjects.filter((s) => {
     const q = search.toLowerCase();
-    return !q || s.name?.toLowerCase().includes(q) || s.code?.toLowerCase().includes(q) || s.department?.name?.toLowerCase().includes(q);
+    const year = s.academicYear || (s.semester ? Math.ceil(s.semester / 2) : null);
+    return (!q || s.name?.toLowerCase().includes(q) || s.code?.toLowerCase().includes(q) || s.department?.name?.toLowerCase().includes(q))
+      && (!isAdmin || !departmentFilter || String(s.department?.id) === departmentFilter)
+      && (!yearFilter || String(year) === yearFilter)
+      && (!semesterFilter || String(s.semester) === semesterFilter)
+      && (!typeFilter || s.type === typeFilter);
   });
+
+  const years = [...new Set(visibleSubjects.map((s) => s.academicYear || (s.semester ? Math.ceil(s.semester / 2) : null)).filter(Boolean))].sort((a, b) => a - b);
+  const semesters = yearFilter
+    ? semestersByYear[Number(yearFilter)]
+    : [1, 2, 3, 4, 5, 6, 7, 8];
+  const groupedSubjects = (() => {
+    const groups = new Map();
+    filtered.forEach((subject) => {
+      const year = subject.academicYear || (subject.semester ? Math.ceil(subject.semester / 2) : 'Unspecified year');
+      const semester = subject.semester || 'Unspecified semester';
+      const department = isAdmin ? (subject.department?.name || 'Unassigned department') : '';
+      const key = [department, year, semester, subject.type || 'COMPULSORY'].join('|');
+      if (!groups.has(key)) {
+        groups.set(key, { department, year, semester, type: subject.type || 'COMPULSORY', subjects: [] });
+      }
+      groups.get(key).subjects.push(subject);
+    });
+    return [...groups.values()].sort((a, b) =>
+      a.department.localeCompare(b.department)
+      || String(a.year).localeCompare(String(b.year), undefined, { numeric: true })
+      || String(a.semester).localeCompare(String(b.semester), undefined, { numeric: true })
+      || a.type.localeCompare(b.type)
+    );
+  })();
 
   const handleDelete = async (s) => {
     if (!window.confirm(`Delete subject "${s.name}"?`)) return;
@@ -176,7 +257,9 @@ export default function SubjectsPage() {
           <p className="page-subtitle">
             {isFaculty
               ? `${filtered.length} subjects assigned to you`
-              : (isStudent ? `${filtered.length} subjects enrolled / chosen` : `${subjects.length} total subjects`)}
+              : (isStudent
+                ? `${filtered.length} subjects enrolled / chosen`
+                : (isAdminOrHod ? `${filtered.length} subjects shown` : `${subjects.length} total subjects`))}
           </p>
         </div>
         {isAdminOrHod && (
@@ -192,6 +275,35 @@ export default function SubjectsPage() {
             <Search />
             <input placeholder="Search subjects..." value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
+          {isAdminOrHod && (
+            <div className="role-filter-row">
+              {isAdmin && (
+                <select className="form-select" aria-label="Filter by department" value={departmentFilter} onChange={(e) => setDepartmentFilter(e.target.value)}>
+                  <option value="">All Departments</option>
+                  {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                </select>
+              )}
+              <select className="form-select" aria-label="Filter by year" value={yearFilter} onChange={(e) => {
+                const nextYear = e.target.value;
+                setYearFilter(nextYear);
+                if (semesterFilter && nextYear && !semestersByYear[Number(nextYear)].includes(Number(semesterFilter))) {
+                  setSemesterFilter('');
+                }
+              }}>
+                <option value="">All Years</option>
+                {years.map((year) => <option key={year} value={year}>Year {year}</option>)}
+              </select>
+              <select className="form-select" aria-label="Filter by semester" value={semesterFilter} onChange={(e) => setSemesterFilter(e.target.value)}>
+                <option value="">All Semesters</option>
+                {semesters.map((semester) => <option key={semester} value={semester}>Semester {semester}</option>)}
+              </select>
+              <select className="form-select" aria-label="Filter by subject type" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
+                <option value="">All Types</option>
+                <option value="COMPULSORY">Compulsory</option>
+                <option value="OPTIONAL">Optional</option>
+              </select>
+            </div>
+          )}
         </div>
       </div>
 
@@ -218,27 +330,46 @@ export default function SubjectsPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((s) => (
-                  <tr key={s.id}>
-                    <td style={{ fontWeight: 600 }}>{s.name}</td>
-                    <td>
-                      <span style={{ background: 'var(--bg-hover)', padding: '2px 8px', borderRadius: 4, fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>
-                        {s.code}
-                      </span>
-                    </td>
-                    <td style={{ color: 'var(--text-secondary)' }}>{s.credits ?? '—'}</td>
-                    <td style={{ color: 'var(--text-secondary)' }}>{s.department?.name || '—'}</td>
-                    <td>
-                      {s.faculty ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <div className="avatar sm" style={{ background: 'var(--warning-light)', color: 'var(--warning)', fontSize: '0.65rem' }}>
-                            {s.faculty.name?.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)}
-                          </div>
-                          <span style={{ fontSize: '0.875rem' }}>{s.faculty.name}</span>
-                        </div>
-                      ) : '—'}
-                    </td>
-                    {isAdminOrHod && (
+                {groupedSubjects.map((group) => (
+                  <Fragment key={`${group.department}-${group.year}-${group.semester}-${group.type}`}>
+                    <tr>
+                      <td colSpan={isAdminOrHod ? 6 : 5} style={{ background: 'var(--bg-secondary)', fontWeight: 700, color: 'var(--text-secondary)' }}>
+                        {[
+                          group.department && `Department: ${group.department}`,
+                          group.year && `Year ${group.year}`,
+                          group.semester && `Semester ${group.semester}`,
+                          group.type === 'OPTIONAL' ? 'Optional' : 'Compulsory',
+                        ].filter(Boolean).join(' · ')}
+                      </td>
+                    </tr>
+                    {group.subjects.map((s) => (
+                      <tr key={s.id}>
+                        <td style={{ fontWeight: 600 }}>
+                          {s.name}
+                          <span style={{
+                            marginLeft: 8, padding: '2px 7px', borderRadius: 10, fontSize: '0.7rem', fontWeight: 700,
+                            background: s.type === 'OPTIONAL' ? 'var(--warning-light)' : 'var(--success-light)',
+                            color: s.type === 'OPTIONAL' ? 'var(--warning)' : 'var(--success)',
+                          }}>{s.type === 'OPTIONAL' ? 'Optional' : 'Compulsory'}</span>
+                        </td>
+                        <td>
+                          <span style={{ background: 'var(--bg-hover)', padding: '2px 8px', borderRadius: 4, fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>
+                            {s.code}
+                          </span>
+                        </td>
+                        <td style={{ color: 'var(--text-secondary)' }}>{s.credits ?? '—'}</td>
+                        <td style={{ color: 'var(--text-secondary)' }}>{s.department?.name || '—'}</td>
+                        <td>
+                          {s.faculty ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <div className="avatar sm" style={{ background: 'var(--warning-light)', color: 'var(--warning)', fontSize: '0.65rem' }}>
+                                {s.faculty.name?.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)}
+                              </div>
+                              <span style={{ fontSize: '0.875rem' }}>{s.faculty.name}</span>
+                            </div>
+                          ) : '—'}
+                        </td>
+                        {isAdminOrHod && (
                       <td>
                         <div style={{ display: 'flex', gap: 6 }}>
                           <button className="btn btn-ghost btn-icon btn-sm" onClick={() => { setEditSubject(s); setModalOpen(true); }}>
@@ -249,8 +380,10 @@ export default function SubjectsPage() {
                           </button>
                         </div>
                       </td>
-                    )}
-                  </tr>
+                        )}
+                      </tr>
+                    ))}
+                  </Fragment>
                 ))}
               </tbody>
             </table>

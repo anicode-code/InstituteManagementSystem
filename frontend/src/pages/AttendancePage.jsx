@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -9,6 +9,7 @@ import {
   deleteDayAttendance,
 } from '../api/attendance';
 import { getAllSubjects, getSubjectsByFaculty, getSubjectsByStudent } from '../api/subjects';
+import { getAllDepartments } from '../api/departments';
 import { getAllUsers } from '../api/users';
 import {
   CalendarCheck, Plus, Search, TrendingUp, AlertTriangle,
@@ -20,9 +21,13 @@ export default function AttendancePage() {
   const { user, isFaculty, isStudent, isAdminOrHod } = useAuth();
 
   const [subjects, setSubjects] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState('');
+  const [selectedSemester, setSelectedSemester] = useState('');
   const [selectedSubjectId, setSelectedSubjectId] = useState(null);
   const [students, setStudents] = useState([]);
   const [records, setRecords] = useState([]);
+  const attendanceRequestId = useRef(0);
   const [loading, setLoading] = useState(true);
   const [gridLoading, setGridLoading] = useState(false);
   const [search, setSearch] = useState('');
@@ -38,15 +43,17 @@ export default function AttendancePage() {
     const init = async () => {
       setLoading(true);
       try {
-        const [subRes, userRes] = await Promise.all([
+        const [subRes, userRes, departmentRes] = await Promise.all([
           isFaculty
             ? getSubjectsByFaculty(user.id)
             : (isStudent ? getSubjectsByStudent(user.id) : getAllSubjects()),
           getAllUsers(),
+          user?.role === 'ADMIN' ? getAllDepartments() : Promise.resolve({ data: [] }),
         ]);
 
         const loadedSubjects = subRes.data || [];
         setSubjects(loadedSubjects);
+        setDepartments(departmentRes.data || []);
 
         // Filter all verified students
         const allVerifiedStudents = (userRes.data || []).filter(
@@ -54,7 +61,7 @@ export default function AttendancePage() {
         );
         setStudents(allVerifiedStudents);
 
-        if (loadedSubjects.length > 0) {
+        if (!isAdminOrHod && loadedSubjects.length > 0) {
           setSelectedSubjectId(loadedSubjects[0].id);
         }
       } catch (err) {
@@ -64,11 +71,39 @@ export default function AttendancePage() {
       }
     };
     init();
-  }, [user, isFaculty, isStudent]);
+  }, [user, isFaculty, isStudent, isAdminOrHod]);
+
+  const availableSemesters = useMemo(() => {
+    const departmentSubjects = subjects.filter((subject) =>
+      !selectedDepartmentId || String(subject.department?.id) === selectedDepartmentId
+    );
+    return [...new Set(departmentSubjects.map((subject) => subject.semester).filter(Boolean))]
+      .sort((a, b) => a - b);
+  }, [subjects, selectedDepartmentId]);
+
+  const availableSubjects = useMemo(() => subjects.filter((subject) =>
+    (!isAdminOrHod || !selectedSemester || String(subject.semester) === selectedSemester)
+    && (user?.role !== 'ADMIN' || !selectedDepartmentId || String(subject.department?.id) === selectedDepartmentId)
+  ), [subjects, isAdminOrHod, user, selectedSemester, selectedDepartmentId]);
+
+  const selectedSubject = useMemo(
+    () => {
+      if (isAdminOrHod && !selectedSemester) return undefined;
+      if (user?.role === 'ADMIN' && !selectedDepartmentId) return undefined;
+      return availableSubjects.find((s) => s.id === Number(selectedSubjectId));
+    },
+    [availableSubjects, isAdminOrHod, selectedSubjectId, selectedSemester, selectedDepartmentId, user]
+  );
 
   // Load attendance records whenever selectedSubjectId changes
   const loadSubjectAttendance = useCallback(async () => {
-    if (!selectedSubjectId) return;
+    if (!selectedSubject) {
+      attendanceRequestId.current += 1;
+      setRecords([]);
+      setGridLoading(false);
+      return;
+    }
+    const requestId = ++attendanceRequestId.current;
     setGridLoading(true);
     try {
       if (isStudent) {
@@ -77,26 +112,21 @@ export default function AttendancePage() {
         const subjectRecords = (res.data || []).filter(
           (r) => r.subject?.id === Number(selectedSubjectId)
         );
-        setRecords(subjectRecords);
+        if (attendanceRequestId.current === requestId) setRecords(subjectRecords);
       } else {
         const res = await getAttendanceBySubject(selectedSubjectId);
-        setRecords(res.data || []);
+        if (attendanceRequestId.current === requestId) setRecords(res.data || []);
       }
     } catch (err) {
-      toast.error('Failed to load attendance records');
+      if (attendanceRequestId.current === requestId) toast.error('Failed to load attendance records');
     } finally {
-      setGridLoading(false);
+      if (attendanceRequestId.current === requestId) setGridLoading(false);
     }
-  }, [selectedSubjectId, isStudent, user]);
+  }, [selectedSubject, selectedSubjectId, isStudent, user]);
 
   useEffect(() => {
     loadSubjectAttendance();
   }, [loadSubjectAttendance]);
-
-  const selectedSubject = useMemo(
-    () => subjects.find((s) => s.id === Number(selectedSubjectId)),
-    [subjects, selectedSubjectId]
-  );
 
   // Extract sorted distinct dates (Day 1, Day 2, ...) for this subject
   const distinctDays = useMemo(() => {
@@ -154,12 +184,23 @@ export default function AttendancePage() {
     return map;
   }, [records]);
 
-  // Filter students by search
-  const visibleStudents = useMemo(() => {
+  const eligibleStudents = useMemo(() => {
     let list = students;
     if (isStudent) {
       list = list.filter((s) => s.id === user.id);
     }
+    if (isAdminOrHod && selectedSubject) {
+      list = list.filter((student) =>
+        String(student.department?.id) === String(selectedSubject.department?.id)
+        && Number(student.semester) === Number(selectedSubject.semester)
+      );
+    }
+    return list;
+  }, [students, isStudent, isAdminOrHod, selectedSubject, user]);
+
+  // Filter the selected subject's roster by search
+  const visibleStudents = useMemo(() => {
+    let list = eligibleStudents;
     if (!search.trim()) return list;
     const q = search.toLowerCase();
     return list.filter(
@@ -168,7 +209,7 @@ export default function AttendancePage() {
         s.rollNumber?.toLowerCase().includes(q) ||
         s.email?.toLowerCase().includes(q)
     );
-  }, [students, isStudent, user, search]);
+  }, [eligibleStudents, search]);
 
   // Student subject-level statistics
   const studentStatsMap = useMemo(() => {
@@ -315,7 +356,7 @@ export default function AttendancePage() {
     setSubmittingDay(true);
     try {
       const initialStatus = defaultPresent ? 'PRESENT' : 'ABSENT';
-      const entries = students.map((s) => ({
+      const entries = eligibleStudents.map((s) => ({
         studentId: s.id,
         status: initialStatus,
         performanceMarks: null,
@@ -365,35 +406,93 @@ export default function AttendancePage() {
       {/* ──────── 8. Subject Selection at Top ──────── */}
       <div className="card" style={{ padding: '16px 20px', marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <BookOpen size={17} color="var(--accent)" /> Select Subject:
-            </span>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {subjects.map((s) => {
-                const isSelected = Number(selectedSubjectId) === s.id;
-                return (
-                  <button
-                    key={s.id}
-                    onClick={() => setSelectedSubjectId(s.id)}
-                    style={{
-                      padding: '7px 14px',
-                      borderRadius: 20,
-                      fontSize: '0.82rem',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      background: isSelected ? 'var(--accent)' : 'var(--bg-secondary)',
-                      color: isSelected ? '#fff' : 'var(--text-secondary)',
-                      border: `1px solid ${isSelected ? 'var(--accent)' : 'var(--border)'}`,
-                      boxShadow: isSelected ? '0 0 14px var(--accent-glow)' : 'none',
+          <div className="attendance-filter-row">
+            {user?.role === 'ADMIN' && (
+              <label className="attendance-filter">
+                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Department:</span>
+                <select className="form-select" value={selectedDepartmentId} onChange={(e) => {
+                  setSelectedDepartmentId(e.target.value);
+                  setSelectedSemester('');
+                  setSelectedSubjectId(null);
+                  setRecords([]);
+                }}>
+                  <option value="">Select department</option>
+                  {departments.map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}
+                </select>
+              </label>
+            )}
+            {isAdminOrHod ? (
+              <>
+                <label className="attendance-filter">
+                  <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Semester:</span>
+                  <select
+                    className="form-select"
+                    value={selectedSemester}
+                    disabled={user?.role === 'ADMIN' && !selectedDepartmentId}
+                    onChange={(e) => {
+                      setSelectedSemester(e.target.value);
+                      setSelectedSubjectId(null);
+                      setRecords([]);
                     }}
                   >
-                    {s.name} ({s.code})
-                  </button>
-                );
-              })}
-            </div>
+                    <option value="">Select semester</option>
+                    {availableSemesters.map((semester) => <option key={semester} value={semester}>Semester {semester}</option>)}
+                  </select>
+                </label>
+                <label className="attendance-filter">
+                  <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
+                    <BookOpen size={17} color="var(--accent)" /> Subject:
+                  </span>
+                  <select
+                    className="form-select"
+                    value={selectedSubjectId || ''}
+                    disabled={!selectedSemester || (user?.role === 'ADMIN' && !selectedDepartmentId)}
+                    onChange={(e) => {
+                      setSelectedSubjectId(e.target.value ? Number(e.target.value) : null);
+                      setRecords([]);
+                    }}
+                  >
+                    <option value="">Select subject</option>
+                    {availableSubjects.map((subject) => (
+                      <option key={subject.id} value={subject.id}>
+                        {subject.name} ({subject.code}) · {subject.type === 'OPTIONAL' ? 'Optional' : 'Compulsory'}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </>
+            ) : (
+              <>
+                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <BookOpen size={17} color="var(--accent)" /> Select Subject:
+                </span>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {subjects.map((s) => {
+                    const isSelected = Number(selectedSubjectId) === s.id;
+                    return (
+                      <button
+                        key={s.id}
+                        onClick={() => setSelectedSubjectId(s.id)}
+                        style={{
+                          padding: '7px 14px',
+                          borderRadius: 20,
+                          fontSize: '0.82rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          background: isSelected ? 'var(--accent)' : 'var(--bg-secondary)',
+                          color: isSelected ? '#fff' : 'var(--text-secondary)',
+                          border: `1px solid ${isSelected ? 'var(--accent)' : 'var(--border)'}`,
+                          boxShadow: isSelected ? '0 0 14px var(--accent-glow)' : 'none',
+                        }}
+                      >
+                        {s.name} ({s.code}) · {s.type === 'OPTIONAL' ? 'Optional' : 'Compulsory'}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </div>
 
           {selectedSubject && (
@@ -468,8 +567,12 @@ export default function AttendancePage() {
       ) : !selectedSubject ? (
         <div className="empty-state">
           <BookOpen />
-          <h3>No subjects available</h3>
-          <p>You have not been assigned to any subjects yet.</p>
+          <h3>{isAdminOrHod && ((user?.role === 'ADMIN' && !selectedDepartmentId) || !selectedSemester) ? 'Select attendance filters' : 'No subjects available'}</h3>
+          <p>
+            {isAdminOrHod && ((user?.role === 'ADMIN' && !selectedDepartmentId) || !selectedSemester)
+              ? 'Choose the required department and semester, then select a subject to view attendance.'
+              : (isAdminOrHod ? 'There are no subjects for the selected department and semester.' : 'You have not been assigned to any subjects yet.')}
+          </p>
         </div>
       ) : (
         <div className="attendance-matrix-wrapper">

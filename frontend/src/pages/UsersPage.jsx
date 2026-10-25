@@ -1,9 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
-import { getAllUsers, updateUser, deleteUser, getPendingUsers, verifyUser, verifyBulk } from '../api/users';
-import { getAllDepartments } from '../api/departments';
-import { Search, Pencil, Trash2, X, Users, ShieldCheck, CheckSquare, Square } from 'lucide-react';
+import { getAllUsers, getPendingUsers, verifyUser, verifyBulk, rejectUser, rejectUsers } from '../api/users';
+import { Search, Users, ShieldCheck, Check, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const ROLES = ['ADMIN', 'HOD', 'FACULTY', 'STUDENT'];
@@ -43,107 +42,6 @@ function StatusBadge({ status }) {
     }}>
       {status}
     </span>
-  );
-}
-
-function EditModal({ open, onClose, onSaved, departments, editUser }) {
-  const empty = { name: '', email: '', role: 'STUDENT', departmentId: '' };
-  const [form, setForm] = useState(empty);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    if (editUser) {
-      setForm({
-        name: editUser.name || '',
-        email: editUser.email || '',
-        role: editUser.role || 'STUDENT',
-        departmentId: editUser.department?.id || '',
-      });
-    } else {
-      setForm(empty);
-    }
-    setError('');
-  }, [editUser, open]);
-
-  if (!open) return null;
-
-  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    if (!form.name || !form.role) {
-      setError('Name and role are required.');
-      return;
-    }
-    setLoading(true);
-    try {
-      const payload = {
-        name: form.name,
-        email: form.email || undefined,
-        role: form.role,
-        departmentId: form.departmentId ? Number(form.departmentId) : undefined,
-      };
-      await updateUser(editUser.id, payload);
-      toast.success('User updated');
-      onSaved();
-      onClose();
-    } catch (err) {
-      const msg = err?.response?.data || err?.message || 'Error saving user';
-      setError(typeof msg === 'string' ? msg : JSON.stringify(msg));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3 className="modal-title">Edit User</h3>
-          <button className="btn btn-ghost btn-icon" onClick={onClose}><X size={18} /></button>
-        </div>
-        <form onSubmit={handleSubmit}>
-          <div className="modal-body">
-            {error && <div className="alert alert-error">{error}</div>}
-            <div className="form-group">
-              <label className="form-label">Roll Number</label>
-              <input className="form-input" value={editUser?.rollNumber || ''} disabled />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Full Name *</label>
-              <input className="form-input" value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="John Doe" />
-            </div>
-            <div className="grid-2">
-              <div className="form-group">
-                <label className="form-label">Email</label>
-                <input className="form-input" type="email" value={form.email} onChange={(e) => set('email', e.target.value)} placeholder="john@example.com" />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Role *</label>
-                <select className="form-select" value={form.role} onChange={(e) => set('role', e.target.value)}>
-                  {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
-                </select>
-              </div>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Department</label>
-              <select className="form-select" value={form.departmentId} onChange={(e) => set('departmentId', e.target.value)}>
-                <option value="">None</option>
-                {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-              </select>
-            </div>
-          </div>
-          <div className="modal-footer">
-            <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn btn-primary" disabled={loading}>
-              {loading ? <span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} /> : 'Update'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
   );
 }
 
@@ -187,17 +85,34 @@ function PendingVerificationPanel({ onVerified }) {
     });
   };
 
-  const handleVerifyOne = async (user) => {
+  const handleApproveOne = async (user) => {
     if (verifying) return;
     setVerifying(true);
     try {
       await verifyUser(user.id);
-      toast.success(`${user.name} verified`);
+      toast.success(`${user.name} approved`);
       await loadPending();
       onVerified();
     } catch (err) {
       const msg = err?.response?.data?.message || err?.message || 'Verification failed';
       toast.error(typeof msg === 'string' ? msg : 'Verification failed');
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  const handleRejectOne = async (user) => {
+    if (verifying) return;
+    if (!window.confirm(`Reject ${user.name}'s registration? This will permanently delete the pending account.`)) return;
+    setVerifying(true);
+    try {
+      await rejectUser(user.id);
+      toast.success(`${user.name}'s registration was rejected`);
+      await loadPending();
+      onVerified();
+    } catch (err) {
+      const msg = err?.response?.data?.message || err?.message || 'Registration rejection failed';
+      toast.error(typeof msg === 'string' ? msg : 'Registration rejection failed');
     } finally {
       setVerifying(false);
     }
@@ -215,6 +130,24 @@ function PendingVerificationPanel({ onVerified }) {
     } catch (err) {
       const msg = err?.response?.data?.message || err?.message || 'Bulk verification failed';
       toast.error(typeof msg === 'string' ? msg : 'Bulk verification failed');
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  const handleRejectSelected = async () => {
+    if (selected.size === 0) { toast.error('No users selected'); return; }
+    if (!window.confirm(`Reject and permanently delete ${selected.size} selected pending registration(s)?`)) return;
+    if (verifying) return;
+    setVerifying(true);
+    try {
+      const res = await rejectUsers([...selected]);
+      toast.success(res.data);
+      await loadPending();
+      onVerified();
+    } catch (err) {
+      const msg = err?.response?.data?.message || err?.response?.data || err?.message || 'Bulk rejection failed';
+      toast.error(typeof msg === 'string' ? msg : 'Bulk rejection failed');
     } finally {
       setVerifying(false);
     }
@@ -240,22 +173,33 @@ function PendingVerificationPanel({ onVerified }) {
             </span>
           </h3>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: 2 }}>
-            Self-registered users awaiting admin verification
+            Self-registered users awaiting approval
           </p>
         </div>
         {selected.size > 0 && (
-          <button
-            className="btn btn-primary"
-            onClick={handleVerifySelected}
-            disabled={verifying}
-            style={{ gap: 6 }}
-          >
-            {verifying
-              ? <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />
-              : <ShieldCheck size={15} />
-            }
-            Verify Selected ({selected.size})
-          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              className="btn btn-primary"
+              onClick={handleVerifySelected}
+              disabled={verifying}
+              style={{ gap: 6 }}
+            >
+              {verifying
+                ? <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />
+                : <ShieldCheck size={15} />
+              }
+              Approve Selected ({selected.size})
+            </button>
+            <button
+              className="btn btn-secondary"
+              onClick={handleRejectSelected}
+              disabled={verifying}
+              style={{ gap: 6, color: 'var(--danger)' }}
+            >
+              <X size={15} />
+              Reject Selected ({selected.size})
+            </button>
+          </div>
         )}
       </div>
 
@@ -284,9 +228,8 @@ function PendingVerificationPanel({ onVerified }) {
                 <th>Name</th>
                 <th>Email</th>
                 <th>Role</th>
-                <th>Department</th>
                 <th>Registered</th>
-                <th>Action</th>
+                <th>Decision</th>
               </tr>
             </thead>
             <tbody>
@@ -314,20 +257,30 @@ function PendingVerificationPanel({ onVerified }) {
                     </td>
                     <td style={{ color: 'var(--text-secondary)' }}>{u.email || '—'}</td>
                     <td><RoleBadge role={u.role} /></td>
-                    <td style={{ color: 'var(--text-secondary)' }}>{u.department?.name || '—'}</td>
                     <td style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>
                       {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—'}
                     </td>
                     <td>
-                      <button
-                        className="btn btn-primary btn-sm"
-                        onClick={() => handleVerifyOne(u)}
-                        disabled={verifying}
-                        style={{ gap: 4, fontSize: '0.78rem', padding: '4px 10px' }}
-                      >
-                        <ShieldCheck size={13} />
-                        Verify
-                      </button>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button
+                          className="btn btn-primary btn-sm"
+                          onClick={() => handleApproveOne(u)}
+                          disabled={verifying}
+                          style={{ gap: 4, fontSize: '0.78rem', padding: '4px 10px' }}
+                        >
+                          <Check size={13} />
+                          Approve
+                        </button>
+                        <button
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => handleRejectOne(u)}
+                          disabled={verifying}
+                          style={{ gap: 4, fontSize: '0.78rem', padding: '4px 10px', color: 'var(--danger)' }}
+                        >
+                          <X size={13} />
+                          Reject
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -344,20 +297,15 @@ function PendingVerificationPanel({ onVerified }) {
 export default function UsersPage() {
   const { user: me, isAdminOrHod } = useAuth();
   const [users, setUsers] = useState([]);
-  const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
-  const [editModalOpen, setEditModalOpen] = useState(false);
-  const [editUser, setEditUser] = useState(null);
-
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [usersRes, depsRes] = await Promise.all([getAllUsers(), getAllDepartments()]);
+      const usersRes = await getAllUsers();
       setUsers(usersRes.data);
-      setDepartments(depsRes.data);
     } finally {
       setLoading(false);
     }
@@ -375,29 +323,6 @@ export default function UsersPage() {
       || u.email?.toLowerCase().includes(q);
     return matchRole && matchStatus && matchSearch;
   });
-
-  const handleDelete = async (u) => {
-    if (u.id === me.id) { toast.error("You can't delete yourself"); return; }
-    if (!window.confirm(`Delete user "${u.name}"?`)) return;
-    try {
-      await deleteUser(u.id);
-      toast.success('User deleted');
-      load();
-    } catch (err) {
-      const data = err?.response?.data;
-      let msg;
-      if (typeof data === 'string') {
-        msg = data;
-      } else if (data?.message) {
-        msg = data.message;
-      } else if (err?.response?.status === 500) {
-        msg = `Cannot delete ${u.role.toLowerCase()} "${u.name}" — they still have linked records (attendance / subjects / assignments). Remove those first.`;
-      } else {
-        msg = err?.message || 'Delete failed';
-      }
-      toast.error(msg, { duration: 5000 });
-    }
-  };
 
   return (
     <Layout pageTitle="Users">
@@ -463,8 +388,6 @@ export default function UsersPage() {
                   <th>Email</th>
                   <th>Role</th>
                   <th>Status</th>
-                  <th>Department</th>
-                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -483,17 +406,6 @@ export default function UsersPage() {
                       <td style={{ color: 'var(--text-secondary)' }}>{u.email || '—'}</td>
                       <td><RoleBadge role={u.role} /></td>
                       <td><StatusBadge status={u.status} /></td>
-                      <td style={{ color: 'var(--text-secondary)' }}>{u.department?.name || '—'}</td>
-                      <td>
-                        <div style={{ display: 'flex', gap: 6 }}>
-                          <button className="btn btn-ghost btn-icon btn-sm" title="Edit" onClick={() => { setEditUser(u); setEditModalOpen(true); }}>
-                            <Pencil size={15} />
-                          </button>
-                          <button className="btn btn-ghost btn-icon btn-sm" title="Delete" style={{ color: 'var(--danger)' }} onClick={() => handleDelete(u)}>
-                            <Trash2 size={15} />
-                          </button>
-                        </div>
-                      </td>
                     </tr>
                   );
                 })}
@@ -503,13 +415,6 @@ export default function UsersPage() {
         )}
       </div>
 
-      <EditModal
-        open={editModalOpen}
-        onClose={() => setEditModalOpen(false)}
-        onSaved={load}
-        departments={departments}
-        editUser={editUser}
-      />
     </Layout>
   );
 }

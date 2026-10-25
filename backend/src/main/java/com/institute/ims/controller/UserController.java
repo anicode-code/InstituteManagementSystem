@@ -92,6 +92,26 @@ public class UserController {
         );
     }
 
+    @DeleteMapping("/{id}/reject")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HOD')")
+    public ResponseEntity<String> rejectUser(
+            @PathVariable Long id,
+            Authentication authentication) {
+
+        userService.rejectUser(id, authentication.getName());
+        return ResponseEntity.ok("Registration rejected successfully");
+    }
+
+    @PostMapping("/reject-bulk")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HOD')")
+    public ResponseEntity<String> rejectBulk(
+            @Valid @RequestBody VerifyBulkRequest request,
+            Authentication authentication) {
+
+        int rejectedCount = userService.rejectUsers(request, authentication.getName());
+        return ResponseEntity.ok(rejectedCount + " registration(s) rejected successfully.");
+    }
+
     @PostMapping("/verify-bulk")
     @PreAuthorize("hasAnyRole('ADMIN', 'HOD')")
     public ResponseEntity<VerifyBulkResponse> verifyBulk(

@@ -13,6 +13,7 @@ import com.institute.ims.repository.UserRepository;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -160,6 +161,48 @@ public class UserService {
 
         user.setStatus(VerificationStatus.VERIFIED);
         return userRepository.save(user);
+    }
+
+    public void rejectUser(Long id, String requestingUserRollNumber) {
+        User requester = getUserByRollNumber(requestingUserRollNumber);
+        User user = getUserById(id);
+        ensureHodStudentScope(requester, user);
+
+        if (user.getStatus() != VerificationStatus.PENDING) {
+            throw new RuntimeException("Only pending registrations can be rejected.");
+        }
+        if (user.getRollNumber().equals(requestingUserRollNumber)) {
+            throw new RuntimeException("Users cannot reject their own registration.");
+        }
+
+        userRepository.delete(user);
+    }
+
+    @Transactional
+    public int rejectUsers(VerifyBulkRequest request, String requestingUserRollNumber) {
+        if (request.getUserIds() == null || request.getUserIds().isEmpty()) {
+            throw new RuntimeException("No user IDs provided for rejection.");
+        }
+
+        User requester = getUserByRollNumber(requestingUserRollNumber);
+        List<Long> userIds = request.getUserIds().stream().distinct().toList();
+        List<User> users = userRepository.findByIdIn(userIds);
+        if (users.size() != userIds.size()) {
+            throw new RuntimeException("One or more selected users could not be found.");
+        }
+
+        for (User user : users) {
+            ensureHodStudentScope(requester, user);
+            if (user.getStatus() != VerificationStatus.PENDING) {
+                throw new RuntimeException("Only pending registrations can be rejected.");
+            }
+            if (user.getRollNumber().equals(requestingUserRollNumber)) {
+                throw new RuntimeException("Users cannot reject their own registration.");
+            }
+        }
+
+        userRepository.deleteAll(users);
+        return users.size();
     }
 
     /**
