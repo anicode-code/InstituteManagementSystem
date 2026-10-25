@@ -3,6 +3,12 @@ import api from './axios';
 export const getAllUsers = (role) =>
   api.get('/api/users', { params: role ? { role } : {} });
 
+export const getHodStudentRoster = (year, sortBy = 'rollNumber', direction = 'asc') =>
+  api.get('/api/hod/students', { params: { year, sortBy, direction } });
+
+export const getHodStudentDetails = (studentId) =>
+  api.get(`/api/hod/students/${studentId}`);
+
 export const getUserById = (id) => api.get(`/api/users/${id}`);
 
 export const getCurrentUser = () => api.get('/api/users/me');

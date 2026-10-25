@@ -10,11 +10,14 @@ import com.institute.ims.model.User;
 import com.institute.ims.model.VerificationStatus;
 import com.institute.ims.repository.DepartmentRepository;
 import com.institute.ims.repository.UserRepository;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class UserService {
@@ -46,13 +49,38 @@ public class UserService {
         return userRepository.findByRole(role);
     }
 
+    public List<User> getUsersForRequestingUser(Role role, String requestingUserRollNumber) {
+        User requester = getUserByRollNumber(requestingUserRollNumber);
+        List<User> users = role == null ? userRepository.findAll() : userRepository.findByRole(role);
+        if (requester.getRole() != Role.HOD) {
+            return users;
+        }
+        return filterStudentsToHodDepartments(users, requester);
+    }
+
     public List<User> getPendingUsers() {
         return userRepository.findByStatus(VerificationStatus.PENDING);
+    }
+
+    public List<User> getPendingUsers(String requestingUserRollNumber) {
+        User requester = getUserByRollNumber(requestingUserRollNumber);
+        List<User> pendingUsers = getPendingUsers();
+        if (requester.getRole() != Role.HOD) {
+            return pendingUsers;
+        }
+        return filterStudentsToHodDepartments(pendingUsers, requester);
     }
 
     public User getUserById(Long id) {
         return userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+    }
+
+    public User getUserById(Long id, String requestingUserRollNumber) {
+        User requester = getUserByRollNumber(requestingUserRollNumber);
+        User user = getUserById(id);
+        ensureHodStudentScope(requester, user);
+        return user;
     }
 
     public User createUser(CreateUserRequest request) {
@@ -117,7 +145,10 @@ public class UserService {
      * Verify a single user. Only PENDING users can be verified.
      */
     public User verifyUser(Long id, String requestingUserRollNumber) {
+        User requester = getUserByRollNumber(requestingUserRollNumber);
         User user = getUserById(id);
+
+        ensureHodStudentScope(requester, user);
 
         if (user.getRollNumber().equals(requestingUserRollNumber)) {
             throw new RuntimeException("Users cannot verify themselves.");
@@ -139,10 +170,19 @@ public class UserService {
             throw new RuntimeException("No user IDs provided for verification.");
         }
 
+        User requester = getUserByRollNumber(requestingUserRollNumber);
         List<User> users = userRepository.findByIdIn(request.getUserIds());
         List<Long> verifiedIds = new ArrayList<>();
+        Set<Long> departmentIds = requester.getRole() == Role.HOD
+                ? getHodDepartmentIds(requester)
+                : Set.of();
 
         for (User user : users) {
+            if (requester.getRole() == Role.HOD && user.getRole() == Role.STUDENT
+                    && (user.getDepartment() == null
+                    || !departmentIds.contains(user.getDepartment().getId()))) {
+                continue;
+            }
             // Skip self-verification
             if (user.getRollNumber().equals(requestingUserRollNumber)) {
                 continue;
@@ -177,5 +217,27 @@ public class UserService {
         }
 
         userRepository.deleteById(id);
+    }
+
+    private void ensureHodStudentScope(User requester, User target) {
+        if (requester.getRole() == Role.HOD && target.getRole() == Role.STUDENT
+                && (target.getDepartment() == null
+                || !getHodDepartmentIds(requester).contains(target.getDepartment().getId()))) {
+            throw new AccessDeniedException("You may only manage students in your assigned department.");
+        }
+    }
+
+    private List<User> filterStudentsToHodDepartments(List<User> users, User hod) {
+        Set<Long> departmentIds = getHodDepartmentIds(hod);
+        return users.stream()
+                .filter(user -> user.getRole() != Role.STUDENT
+                        || (user.getDepartment() != null && departmentIds.contains(user.getDepartment().getId())))
+                .toList();
+    }
+
+    private Set<Long> getHodDepartmentIds(User hod) {
+        return departmentRepository.findByHodId(hod.getId()).stream()
+                .map(Department::getId)
+                .collect(Collectors.toSet());
     }
 }

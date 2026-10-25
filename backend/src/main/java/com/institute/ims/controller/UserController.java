@@ -26,25 +26,20 @@ public class UserController {
 
     @GetMapping
     public ResponseEntity<List<User>> getUsers(
-            @RequestParam(required = false) Role role) {
-
-        if (role != null) {
-            return ResponseEntity.ok(
-                    userService.getUsersByRole(role)
-            );
-        }
-
+            @RequestParam(required = false) Role role,
+            Authentication authentication) {
         return ResponseEntity.ok(
-                userService.getAllUsers()
+                userService.getUsersForRequestingUser(role, authentication.getName())
         );
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<User> getUser(
-            @PathVariable Long id) {
+            @PathVariable Long id,
+            Authentication authentication) {
 
         return ResponseEntity.ok(
-                userService.getUserById(id)
+                userService.getUserById(id, authentication.getName())
         );
     }
 
@@ -82,8 +77,8 @@ public class UserController {
 
     @GetMapping("/pending")
     @PreAuthorize("hasAnyRole('ADMIN', 'HOD')")
-    public ResponseEntity<List<User>> getPendingUsers() {
-        return ResponseEntity.ok(userService.getPendingUsers());
+    public ResponseEntity<List<User>> getPendingUsers(Authentication authentication) {
+        return ResponseEntity.ok(userService.getPendingUsers(authentication.getName()));
     }
 
     @PutMapping("/{id}/verify")

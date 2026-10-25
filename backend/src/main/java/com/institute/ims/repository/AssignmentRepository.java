@@ -12,5 +12,7 @@ public interface AssignmentRepository
 
     List<Assignment> findBySubjectId(Long subjectId);
 
+    List<Assignment> findBySubjectIdIn(List<Long> subjectIds);
+
     List<Assignment> findBySubjectDepartmentId(Long departmentId);
 }

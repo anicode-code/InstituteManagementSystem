@@ -22,6 +22,11 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     List<User> findByDepartmentId(Long departmentId);
 
+    List<User> findByRoleAndYearAndDepartmentIdInOrderByRollNumberAsc(
+            Role role,
+            Integer year,
+            List<Long> departmentIds);
+
     List<User> findByStatus(VerificationStatus status);
 
     List<User> findByIdIn(List<Long> ids);
@@ -35,4 +40,3 @@ public interface UserRepository extends JpaRepository<User, Long> {
             @Param("roles") List<Role> roles,
             @Param("status") VerificationStatus status);
 }
-

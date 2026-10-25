@@ -11,6 +11,7 @@ import SubjectsPage from './pages/SubjectsPage';
 import AssignmentsPage from './pages/AssignmentsPage';
 import AttendancePage from './pages/AttendancePage';
 import ProfilePage from './pages/ProfilePage';
+import HodStudentsPage from './pages/HodStudentsPage';
 
 export default function App() {
   return (
@@ -53,6 +54,11 @@ export default function App() {
           } />
           <Route path="/profile" element={
             <ProtectedRoute><ProfilePage /></ProtectedRoute>
+          } />
+          <Route path="/students" element={
+            <ProtectedRoute allowedRoles={['HOD']}>
+              <HodStudentsPage />
+            </ProtectedRoute>
           } />
 
           {/* Protected — ADMIN and HOD only */}

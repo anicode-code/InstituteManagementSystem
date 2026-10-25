@@ -34,7 +34,8 @@ export default function Layout({ children, pageTitle }) {
     {
       label: 'Management',
       items: [
-        { to: '/users',       icon: <Users />,        text: 'User Verification', show: isAdminOrHod },
+      { to: '/students',    icon: <GraduationCap />, text: 'Student Roster',     show: user?.role === 'HOD' },
+      { to: '/users',       icon: <Users />,        text: 'User Verification', show: isAdminOrHod },
         { to: '/departments', icon: <Building2 />,    text: 'Departments',       show: isAdminOrHod },
         { to: '/subjects',    icon: <BookOpen />,     text: 'Subjects',          show: true },
         { to: '/assignments', icon: <ClipboardList />,text: 'Assignments',       show: true },
