@@ -6,6 +6,7 @@ import com.institute.ims.repository.AssignmentSubmissionRepository;
 import com.institute.ims.repository.SubjectRepository;
 import com.institute.ims.repository.UserRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -38,7 +39,7 @@ public class AssignmentService {
 
     public List<Assignment> getScopedAssignments(User user) {
         if (user.getRole() == Role.FACULTY) {
-            return assignmentRepository.findByFacultyId(user.getId());
+            return assignmentRepository.findBySubjectFacultyId(user.getId());
         } else if (user.getRole() == Role.HOD && user.getDepartment() != null) {
             return assignmentRepository.findBySubjectDepartmentId(user.getDepartment().getId());
         }
@@ -58,6 +59,7 @@ public class AssignmentService {
         return assignmentRepository.findBySubjectId(subjectId);
     }
 
+    @Transactional
     public Assignment create(
             String title,
             String description,
@@ -75,7 +77,7 @@ public class AssignmentService {
 
         // RBAC validation: Faculty can only create assignments for their assigned subjects
         if (requestingUser.getRole() == Role.FACULTY) {
-            if (subject.getFaculty() == null || !subject.getFaculty().getId().equals(requestingUser.getId())) {
+            if (!isFacultyAssignedToSubject(subject, requestingUser)) {
                 throw new RuntimeException("You can only create assignments for your assigned subjects.");
             }
         } else if (requestingUser.getRole() == Role.STUDENT) {
@@ -93,11 +95,12 @@ public class AssignmentService {
         return assignmentRepository.save(assignment);
     }
 
+    @Transactional
     public void delete(Long id, User requestingUser) {
         Assignment assignment = getById(id);
 
         if (requestingUser.getRole() == Role.FACULTY) {
-            if (!assignment.getFaculty().getId().equals(requestingUser.getId())) {
+            if (!isFacultyAssignedToSubject(assignment.getSubject(), requestingUser)) {
                 throw new RuntimeException("You can only delete your own assignments.");
             }
         } else if (requestingUser.getRole() == Role.STUDENT) {
@@ -148,6 +151,7 @@ public class AssignmentService {
         return submissionRepository.findByAssignmentIdAndStudentId(assignmentId, studentId);
     }
 
+    @Transactional(readOnly = true)
     public List<AssignmentSubmission> getSubmissionsForAssignment(
             Long assignmentId,
             User requestingUser) {
@@ -156,7 +160,7 @@ public class AssignmentService {
 
         // RBAC: Faculty can only view submissions for their own assignments
         if (requestingUser.getRole() == Role.FACULTY) {
-            if (!assignment.getFaculty().getId().equals(requestingUser.getId())) {
+            if (!isFacultyAssignedToSubject(assignment.getSubject(), requestingUser)) {
                 throw new RuntimeException("You can only view submissions for your own assignments.");
             }
         } else if (requestingUser.getRole() == Role.STUDENT) {
@@ -166,6 +170,7 @@ public class AssignmentService {
         return submissionRepository.findByAssignmentId(assignmentId);
     }
 
+    @Transactional
     public AssignmentSubmission evaluateSubmission(
             Long submissionId,
             Integer marks,
@@ -179,7 +184,7 @@ public class AssignmentService {
 
         // RBAC: Only the assignment's faculty (or Admin) can evaluate
         if (requestingUser.getRole() == Role.FACULTY) {
-            if (!assignment.getFaculty().getId().equals(requestingUser.getId())) {
+            if (!isFacultyAssignedToSubject(assignment.getSubject(), requestingUser)) {
                 throw new RuntimeException("You can only grade submissions for your own assignments.");
             }
         } else if (requestingUser.getRole() == Role.STUDENT) {
@@ -199,5 +204,10 @@ public class AssignmentService {
         }
 
         return submissionRepository.save(submission);
+    }
+
+    private boolean isFacultyAssignedToSubject(Subject subject, User faculty) {
+        return subject.getFacultyMembers().stream()
+                .anyMatch(member -> member.getId().equals(faculty.getId()));
     }
 }

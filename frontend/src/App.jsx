@@ -12,6 +12,8 @@ import AssignmentsPage from './pages/AssignmentsPage';
 import AttendancePage from './pages/AttendancePage';
 import ProfilePage from './pages/ProfilePage';
 import HodStudentsPage from './pages/HodStudentsPage';
+import FacultySubjectRequestsPage from './pages/FacultySubjectRequestsPage';
+import HodSubjectAssignmentsPage from './pages/HodSubjectAssignmentsPage';
 
 export default function App() {
   return (
@@ -51,6 +53,12 @@ export default function App() {
           } />
           <Route path="/attendance" element={
             <ProtectedRoute><AttendancePage /></ProtectedRoute>
+          } />
+          <Route path="/subject-requests" element={
+            <ProtectedRoute allowedRoles={['FACULTY']}><FacultySubjectRequestsPage /></ProtectedRoute>
+          } />
+          <Route path="/subject-assignments" element={
+            <ProtectedRoute allowedRoles={['HOD']}><HodSubjectAssignmentsPage /></ProtectedRoute>
           } />
           <Route path="/profile" element={
             <ProtectedRoute><ProfilePage /></ProtectedRoute>

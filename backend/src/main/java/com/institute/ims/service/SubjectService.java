@@ -79,6 +79,7 @@ public class SubjectService {
         return subjectRepository.findByDepartmentIdAndSemester(departmentId, semester);
     }
 
+    @Transactional
     public Subject create(
             String name,
             String code,
@@ -88,6 +89,7 @@ public class SubjectService {
         return create(name, code, credits, departmentId, facultyId, 1, 1, SubjectType.COMPULSORY);
     }
 
+    @Transactional
     public Subject create(
             String name,
             String code,
@@ -107,7 +109,7 @@ public class SubjectService {
         User faculty = null;
         if (facultyId != null) {
             faculty = userRepository.findById(facultyId)
-                    .orElse(null);
+                    .orElseThrow(() -> new RuntimeException("Faculty not found"));
         }
 
         Subject subject = new Subject();
@@ -124,6 +126,7 @@ public class SubjectService {
         return subjectRepository.save(subject);
     }
 
+    @Transactional
     public Subject update(
             Long id,
             String name,
@@ -132,6 +135,7 @@ public class SubjectService {
         return update(id, name, code, credits, null, null, null, null);
     }
 
+    @Transactional
     public Subject update(
             Long id,
             String name,

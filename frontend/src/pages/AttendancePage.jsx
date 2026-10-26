@@ -497,7 +497,11 @@ export default function AttendancePage() {
 
           {selectedSubject && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-              <span>Faculty: <strong>{selectedSubject.faculty?.name || '—'}</strong></span>
+              <span>Faculty: <strong>{
+                selectedSubject.facultyMembers?.length
+                  ? selectedSubject.facultyMembers.map((faculty) => faculty.name).join(', ')
+                  : (selectedSubject.faculty?.name || '—')
+              }</strong></span>
               <span>Classes Taken: <strong style={{ color: 'var(--accent)' }}>{distinctDays.length}</strong></span>
               <span>Class Avg: <strong style={{ color: overallClassAverage >= 75 ? 'var(--success)' : 'var(--danger)' }}>{overallClassAverage}%</strong></span>
             </div>

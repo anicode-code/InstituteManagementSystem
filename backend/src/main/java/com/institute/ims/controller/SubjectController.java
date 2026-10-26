@@ -9,6 +9,7 @@ import com.institute.ims.repository.DepartmentRepository;
 import com.institute.ims.service.SubjectService;
 import com.institute.ims.service.UserService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -136,6 +137,9 @@ public class SubjectController {
         Long facultyId = body.get("facultyId") == null
                 ? null
                 : ((Number) body.get("facultyId")).longValue();
+        if (facultyId != null) {
+            throw new AccessDeniedException("Use HOD subject assignment management to assign teaching faculty.");
+        }
 
         Integer semester = body.get("semester") == null
                 ? 1
@@ -158,7 +162,7 @@ public class SubjectController {
                         code,
                         credits,
                         departmentId,
-                        facultyId,
+                        null,
                         semester,
                         academicYear,
                         type
@@ -182,6 +186,9 @@ public class SubjectController {
         Long facultyId = body.get("facultyId") == null
                 ? null
                 : ((Number) body.get("facultyId")).longValue();
+        if (facultyId != null) {
+            throw new AccessDeniedException("Use HOD subject assignment management to change teaching faculty.");
+        }
 
         Integer semester = body.get("semester") == null
                 ? null
@@ -204,7 +211,7 @@ public class SubjectController {
                         name,
                         code,
                         credits,
-                        facultyId,
+                        null,
                         semester,
                         academicYear,
                         type

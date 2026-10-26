@@ -3,6 +3,9 @@ package com.institute.ims.model;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 
+import java.util.HashSet;
+import java.util.Set;
+
 @Entity
 @Table(name = "subjects")
 public class Subject {
@@ -32,10 +35,21 @@ public class Subject {
     @JsonIgnoreProperties({"hod"})
     private Department department;
 
-    @ManyToOne
-    @JoinColumn(name = "faculty_id")
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "subject_faculty",
+        joinColumns = @JoinColumn(name = "subject_id"),
+        inverseJoinColumns = @JoinColumn(name = "faculty_id"),
+        uniqueConstraints = @UniqueConstraint(columnNames = {"subject_id", "faculty_id"})
+    )
     @JsonIgnoreProperties({"password", "departments", "selectedSubjects", "department"})
-    private User faculty;
+    private Set<User> facultyMembers = new HashSet<>();
+
+    // Retained read-only to support the one-time backfill from the legacy column.
+    @ManyToOne
+    @JoinColumn(name = "faculty_id", insertable = false, updatable = false)
+    @JsonIgnoreProperties({"password", "departments", "selectedSubjects", "department"})
+    private User legacyFaculty;
 
     public Subject() {
     }
@@ -60,8 +74,15 @@ public class Subject {
         return department;
     }
 
+    public Set<User> getFacultyMembers() {
+        return facultyMembers;
+    }
+
     public User getFaculty() {
-        return faculty;
+        if (facultyMembers != null && !facultyMembers.isEmpty()) {
+            return facultyMembers.iterator().next();
+        }
+        return null;
     }
 
     public void setId(Long id) {
@@ -85,7 +106,14 @@ public class Subject {
     }
 
     public void setFaculty(User faculty) {
-        this.faculty = faculty;
+        this.facultyMembers.clear();
+        if (faculty != null) {
+            this.facultyMembers.add(faculty);
+        }
+    }
+
+    public void setFacultyMembers(Set<User> facultyMembers) {
+        this.facultyMembers = facultyMembers != null ? facultyMembers : new HashSet<>();
     }
 
     public Integer getSemester() {

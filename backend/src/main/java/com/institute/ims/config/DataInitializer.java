@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.InputStream;
@@ -26,7 +27,8 @@ public class DataInitializer {
             UserRepository userRepository,
             DepartmentRepository departmentRepository,
             SubjectRepository subjectRepository,
-            PasswordEncoder passwordEncoder) {
+            PasswordEncoder passwordEncoder,
+            JdbcTemplate jdbcTemplate) {
 
 
         return args -> {
@@ -92,6 +94,17 @@ public class DataInitializer {
                 demoStudent.setSelectedSubjects(demoSubjects);
                 userRepository.save(demoStudent);
             }
+
+            jdbcTemplate.update("""
+                    INSERT INTO subject_faculty (subject_id, faculty_id)
+                    SELECT id, faculty_id FROM subjects WHERE faculty_id IS NOT NULL
+                    ON CONFLICT DO NOTHING
+                    """);
+            jdbcTemplate.execute("""
+                    CREATE UNIQUE INDEX IF NOT EXISTS ux_faculty_subject_requests_pending
+                    ON faculty_subject_requests (faculty_id, subject_id)
+                    WHERE status = 'PENDING'
+                    """);
         };
     }
 

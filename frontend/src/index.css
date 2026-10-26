@@ -410,6 +410,7 @@ tbody tr:hover { background: var(--bg-hover); }
 }
 .badge-present  { background: var(--success-light); color: var(--success); }
 .badge-absent   { background: var(--danger-light);  color: var(--danger); }
+.text-muted     { color: var(--text-muted); font-size: 0.85rem; }
 
 /* ─── Modal ─── */
 .modal-overlay {

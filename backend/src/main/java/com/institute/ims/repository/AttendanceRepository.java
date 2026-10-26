@@ -3,6 +3,8 @@ package com.institute.ims.repository;
 import com.institute.ims.model.Attendance;
 import com.institute.ims.model.AttendanceStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -32,7 +34,8 @@ public interface AttendanceRepository
             LocalDate date
     );
 
-    List<Attendance> findBySubjectFacultyId(Long facultyId);
+    @Query("SELECT a FROM Attendance a JOIN a.subject.facultyMembers f WHERE f.id = :facultyId")
+    List<Attendance> findBySubjectFacultyId(@Param("facultyId") Long facultyId);
 
     List<Attendance> findBySubjectDepartmentId(Long departmentId);
 

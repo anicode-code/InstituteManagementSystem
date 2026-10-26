@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, Users, Building2, BookOpen,
-  ClipboardList, CalendarCheck, User, LogOut, GraduationCap, Menu, X
+  ClipboardList, CalendarCheck, User, LogOut, GraduationCap, Menu, X, ClipboardCheck
 } from 'lucide-react';
 
 const ROLE_BADGE = {
@@ -38,6 +38,8 @@ export default function Layout({ children, pageTitle }) {
       { to: '/users',       icon: <Users />,        text: 'User Verification', show: isAdminOrHod },
         { to: '/departments', icon: <Building2 />,    text: 'Departments',       show: isAdminOrHod },
         { to: '/subjects',    icon: <BookOpen />,     text: 'Subjects',          show: true },
+        { to: '/subject-requests', icon: <ClipboardCheck />, text: 'Subject Requests', show: isFaculty },
+        { to: '/subject-assignments', icon: <ClipboardCheck />, text: 'Subject Assignments', show: user?.role === 'HOD' },
         { to: '/assignments', icon: <ClipboardList />,text: 'Assignments',       show: true },
         { to: '/attendance',  icon: <CalendarCheck />,text: 'Attendance',        show: true },
       ],

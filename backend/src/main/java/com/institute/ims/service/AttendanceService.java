@@ -37,7 +37,8 @@ public class AttendanceService {
 
     private void validateFacultySubjectAccess(Subject subject, User requestingUser) {
         if (requestingUser.getRole() == Role.FACULTY) {
-            if (subject.getFaculty() == null || !subject.getFaculty().getId().equals(requestingUser.getId())) {
+            if (subject.getFacultyMembers().stream()
+                    .noneMatch(member -> member.getId().equals(requestingUser.getId()))) {
                 throw new RuntimeException("You can only manage attendance for your assigned subjects.");
             }
         } else if (requestingUser.getRole() == Role.HOD) {
@@ -50,6 +51,7 @@ public class AttendanceService {
         }
     }
 
+    @Transactional
     public Attendance createOrUpdate(
             Long studentId,
             Long subjectId,
@@ -176,6 +178,7 @@ public class AttendanceService {
         return attendanceRepository.findAll();
     }
 
+    @Transactional
     public Attendance update(
             Long id,
             AttendanceStatus status,
@@ -183,6 +186,7 @@ public class AttendanceService {
         return update(id, status, null, requestingUser);
     }
 
+    @Transactional
     public Attendance update(
             Long id,
             AttendanceStatus status,

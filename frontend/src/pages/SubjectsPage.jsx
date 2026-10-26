@@ -3,7 +3,6 @@ import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import { getAllSubjects, getSubjectsByStudent, createSubject, updateSubject, deleteSubject } from '../api/subjects';
 import { getAllDepartments } from '../api/departments';
-import { getAllUsers } from '../api/users';
 import { Plus, Pencil, Trash2, BookOpen, X, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -14,9 +13,9 @@ const semestersByYear = {
   4: [7, 8],
 };
 
-function SubjectModal({ open, onClose, onSaved, departments, facultyList, editSubject }) {
+function SubjectModal({ open, onClose, onSaved, departments, editSubject }) {
   const empty = {
-    name: '', code: '', credits: '', departmentId: '', facultyId: '',
+    name: '', code: '', credits: '', departmentId: '',
     academicYear: 1, semester: 1, type: 'COMPULSORY',
   };
   const [form, setForm] = useState(empty);
@@ -30,7 +29,6 @@ function SubjectModal({ open, onClose, onSaved, departments, facultyList, editSu
         code: editSubject.code || '',
         credits: editSubject.credits ?? '',
         departmentId: editSubject.department?.id || '',
-        facultyId: editSubject.faculty?.id || '',
         academicYear: editSubject.academicYear || 1,
         semester: editSubject.semester || 1,
         type: editSubject.type || 'COMPULSORY',
@@ -62,13 +60,12 @@ function SubjectModal({ open, onClose, onSaved, departments, facultyList, editSu
         });
         toast.success('Subject updated');
       } else {
-        if (!form.departmentId || !form.facultyId) { setError('Department and faculty are required.'); setLoading(false); return; }
+        if (!form.departmentId) { setError('Department is required.'); setLoading(false); return; }
         await createSubject({
           name: form.name,
           code: form.code,
           credits: form.credits ? Number(form.credits) : null,
           departmentId: Number(form.departmentId),
-          facultyId: Number(form.facultyId),
           academicYear: Number(form.academicYear),
           semester: Number(form.semester),
           type: form.type,
@@ -145,13 +142,6 @@ function SubjectModal({ open, onClose, onSaved, departments, facultyList, editSu
                     {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
                   </select>
                 </div>
-                <div className="form-group">
-                  <label className="form-label">Faculty *</label>
-                  <select className="form-select" value={form.facultyId} onChange={(e) => set('facultyId', e.target.value)}>
-                    <option value="">Select Faculty</option>
-                    {facultyList.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
-                  </select>
-                </div>
               </div>
             )}
           </div>
@@ -171,7 +161,6 @@ export default function SubjectsPage() {
   const { user, isAdmin, isAdminOrHod, isFaculty, isStudent } = useAuth();
   const [subjects, setSubjects] = useState([]);
   const [departments, setDepartments] = useState([]);
-  const [facultyList, setFacultyList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
@@ -184,14 +173,12 @@ export default function SubjectsPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [subRes, depRes, userRes] = await Promise.all([
+      const [subRes, depRes] = await Promise.all([
         isStudent ? getSubjectsByStudent(user.id) : getAllSubjects(),
         getAllDepartments(),
-        getAllUsers(),
       ]);
       setSubjects(subRes.data);
       setDepartments(depRes.data);
-      setFacultyList(userRes.data.filter((u) => u.role === 'FACULTY'));
     } finally {
       setLoading(false);
     }
@@ -201,7 +188,7 @@ export default function SubjectsPage() {
 
   // Faculty only see their own subjects
   const visibleSubjects = isFaculty
-    ? subjects.filter((s) => s.faculty?.id === user.id)
+    ? subjects.filter((s) => (s.facultyMembers || (s.faculty ? [s.faculty] : [])).some((faculty) => faculty.id === user.id))
     : subjects;
 
   const filtered = visibleSubjects.filter((s) => {
@@ -360,12 +347,14 @@ export default function SubjectsPage() {
                         <td style={{ color: 'var(--text-secondary)' }}>{s.credits ?? '—'}</td>
                         <td style={{ color: 'var(--text-secondary)' }}>{s.department?.name || '—'}</td>
                         <td>
-                          {s.faculty ? (
+                          {(s.facultyMembers?.length || s.faculty) ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                               <div className="avatar sm" style={{ background: 'var(--warning-light)', color: 'var(--warning)', fontSize: '0.65rem' }}>
-                                {s.faculty.name?.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)}
+                                {(s.facultyMembers?.[0] || s.faculty).name?.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)}
                               </div>
-                              <span style={{ fontSize: '0.875rem' }}>{s.faculty.name}</span>
+                              <span style={{ fontSize: '0.875rem' }}>
+                                {(s.facultyMembers || [s.faculty]).filter(Boolean).map((faculty) => faculty.name).join(', ')}
+                              </span>
                             </div>
                           ) : '—'}
                         </td>
@@ -396,7 +385,6 @@ export default function SubjectsPage() {
         onClose={() => setModalOpen(false)}
         onSaved={load}
         departments={departments}
-        facultyList={facultyList}
         editSubject={editSubject}
       />
     </Layout>
