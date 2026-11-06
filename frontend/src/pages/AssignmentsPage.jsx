@@ -13,6 +13,7 @@ import {
   BookOpen, Send, Award, CheckCircle, Clock,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import DepartmentSectionNav from '../components/DepartmentSectionNav';
 
 function AssignmentModal({ open, onClose, onSaved, subjects, facultyId }) {
   const empty = { title: '', description: '', dueDate: '', maxMarks: 100, subjectId: '' };
@@ -422,7 +423,7 @@ function FacultySubmissionsModal({ open, onClose, assignment }) {
 }
 
 // ──────── Main AssignmentsPage ────────
-export default function AssignmentsPage() {
+export default function AssignmentsPage({ departmentId }) {
   const { user, isFaculty, isStudent, isAdminOrHod } = useAuth();
   const [assignments, setAssignments] = useState([]);
   const [subjects, setSubjects] = useState([]);
@@ -459,8 +460,14 @@ export default function AssignmentsPage() {
   const visibleAssignments = isStudent
     ? (assignments || []).filter((a) => a.subject?.id && studentSubjectIds.has(a.subject.id))
     : (assignments || []);
+  const departmentAssignments = departmentId
+    ? visibleAssignments.filter((assignment) => String(assignment.subject?.department?.id) === String(departmentId))
+    : visibleAssignments;
+  const departmentSubjects = departmentId
+    ? subjects.filter((subject) => String(subject.department?.id) === String(departmentId))
+    : subjects;
 
-  const filtered = visibleAssignments.filter((a) => {
+  const filtered = departmentAssignments.filter((a) => {
     const q = search.toLowerCase();
     return !q || a.title?.toLowerCase().includes(q) || a.subject?.name?.toLowerCase().includes(q) || a.faculty?.name?.toLowerCase().includes(q);
   });
@@ -480,6 +487,7 @@ export default function AssignmentsPage() {
 
   return (
     <Layout pageTitle="Assignments">
+      {departmentId && <DepartmentSectionNav departmentId={departmentId} />}
       <div className="page-header">
         <div>
           <h2 className="page-title">Assignments</h2>
@@ -605,7 +613,7 @@ export default function AssignmentsPage() {
           open={modalOpen}
           onClose={() => setModalOpen(false)}
           onSaved={load}
-          subjects={subjects}
+          subjects={departmentSubjects}
           facultyId={user?.id}
         />
       )}

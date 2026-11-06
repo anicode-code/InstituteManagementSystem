@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -80,6 +80,20 @@ export default function App() {
               <DepartmentsPage />
             </ProtectedRoute>
           } />
+          <Route path="/departments/:departmentId" element={
+            <ProtectedRoute allowedRoles={['ADMIN']}>
+              <DepartmentHomeRoute />
+            </ProtectedRoute>
+          } />
+          <Route path="/departments/:departmentId/subjects" element={
+            <ProtectedRoute allowedRoles={['ADMIN']}><DepartmentSubjectsRoute /></ProtectedRoute>
+          } />
+          <Route path="/departments/:departmentId/assignments" element={
+            <ProtectedRoute allowedRoles={['ADMIN']}><DepartmentAssignmentsRoute /></ProtectedRoute>
+          } />
+          <Route path="/departments/:departmentId/attendance" element={
+            <ProtectedRoute allowedRoles={['ADMIN']}><DepartmentAttendanceRoute /></ProtectedRoute>
+          } />
 
           {/* Catch-all */}
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
@@ -87,4 +101,24 @@ export default function App() {
       </BrowserRouter>
     </AuthProvider>
   );
+}
+
+function DepartmentSubjectsRoute() {
+  const { departmentId } = useParams();
+  return <SubjectsPage departmentId={departmentId} />;
+}
+
+function DepartmentHomeRoute() {
+  const { departmentId } = useParams();
+  return <Navigate to={`/departments/${departmentId}/subjects`} replace />;
+}
+
+function DepartmentAssignmentsRoute() {
+  const { departmentId } = useParams();
+  return <AssignmentsPage departmentId={departmentId} />;
+}
+
+function DepartmentAttendanceRoute() {
+  const { departmentId } = useParams();
+  return <AttendancePage departmentId={departmentId} />;
 }

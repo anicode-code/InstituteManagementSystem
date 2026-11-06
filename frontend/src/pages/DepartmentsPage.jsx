@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import {
   getAllDepartments, createDepartment, updateDepartment, deleteDepartment,
   getEligibleHods, assignHod, removeHod,
@@ -231,6 +232,7 @@ function AssignHodModal({ open, onClose, onSaved, department }) {
 // ─── Main Page ────────────────────────────────────────────────────────
 export default function DepartmentsPage() {
   const { isAdmin } = useAuth();
+  const navigate = useNavigate();
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -322,7 +324,26 @@ export default function DepartmentsPage() {
       ) : (
         <div className="grid-3">
           {filtered.map((d) => (
-            <div key={d.id} className="card">
+            <div
+              key={d.id}
+              className="card"
+              role={isAdmin ? 'link' : undefined}
+              tabIndex={isAdmin ? 0 : undefined}
+              aria-label={isAdmin ? `Open ${d.name} department` : undefined}
+              onClick={(event) => {
+                if (isAdmin && !event.target.closest('button')) {
+                  navigate(`/departments/${d.id}`);
+                }
+              }}
+              onKeyDown={(event) => {
+                if (isAdmin && event.target === event.currentTarget
+                    && (event.key === 'Enter' || event.key === ' ')) {
+                  event.preventDefault();
+                  navigate(`/departments/${d.id}`);
+                }
+              }}
+              style={{ cursor: isAdmin ? 'pointer' : undefined }}
+            >
               {/* Header Row */}
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -330,7 +351,24 @@ export default function DepartmentsPage() {
                     <Building2 size={20} color="var(--accent)" />
                   </div>
                   <div>
-                    <div style={{ fontWeight: 700, fontSize: '1rem', marginBottom: 2 }}>{d.name}</div>
+                    <button
+                      type="button"
+                      onClick={() => isAdmin && navigate(`/departments/${d.id}`)}
+                      style={{
+                        display: 'block',
+                        padding: 0,
+                        marginBottom: 2,
+                        border: 0,
+                        background: 'transparent',
+                        color: 'var(--text-primary)',
+                        fontWeight: 700,
+                        fontSize: '1rem',
+                        cursor: isAdmin ? 'pointer' : 'default',
+                        textAlign: 'left',
+                      }}
+                    >
+                      {d.name}
+                    </button>
                     <span style={{
                       background: 'var(--bg-hover)',
                       padding: '2px 8px',
@@ -339,7 +377,7 @@ export default function DepartmentsPage() {
                       fontWeight: 700,
                       color: 'var(--text-muted)',
                       letterSpacing: '0.06em',
-                    }}>{d.code}</span>
+                    }}                    >{d.code}</span>
                   </div>
                 </div>
                 {isAdmin && (

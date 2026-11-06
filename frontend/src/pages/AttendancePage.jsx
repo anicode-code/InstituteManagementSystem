@@ -16,13 +16,14 @@ import {
   BookOpen, Trash2, X, Check, Calendar, ChevronRight,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import DepartmentSectionNav from '../components/DepartmentSectionNav';
 
-export default function AttendancePage() {
+export default function AttendancePage({ departmentId }) {
   const { user, isFaculty, isStudent, isAdminOrHod } = useAuth();
 
   const [subjects, setSubjects] = useState([]);
   const [departments, setDepartments] = useState([]);
-  const [selectedDepartmentId, setSelectedDepartmentId] = useState('');
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState(departmentId || '');
   const [selectedSemester, setSelectedSemester] = useState('');
   const [selectedSubjectId, setSelectedSubjectId] = useState(null);
   const [students, setStudents] = useState([]);
@@ -37,6 +38,14 @@ export default function AttendancePage() {
   const [newDayDate, setNewDayDate] = useState(new Date().toISOString().split('T')[0]);
   const [defaultPresent, setDefaultPresent] = useState(true);
   const [submittingDay, setSubmittingDay] = useState(false);
+
+  useEffect(() => {
+    if (!departmentId) return;
+    setSelectedDepartmentId(String(departmentId));
+    setSelectedSemester('');
+    setSelectedSubjectId(null);
+    setRecords([]);
+  }, [departmentId]);
 
   // Load Subjects and Verified Students once
   useEffect(() => {
@@ -54,6 +63,7 @@ export default function AttendancePage() {
         const loadedSubjects = subRes.data || [];
         setSubjects(loadedSubjects);
         setDepartments(departmentRes.data || []);
+        if (departmentId) setSelectedDepartmentId(String(departmentId));
 
         // Filter all verified students
         const allVerifiedStudents = (userRes.data || []).filter(
@@ -71,7 +81,7 @@ export default function AttendancePage() {
       }
     };
     init();
-  }, [user, isFaculty, isStudent, isAdminOrHod]);
+  }, [user, isFaculty, isStudent, isAdminOrHod, departmentId]);
 
   const availableSemesters = useMemo(() => {
     const departmentSubjects = subjects.filter((subject) =>
@@ -387,6 +397,7 @@ export default function AttendancePage() {
 
   return (
     <Layout pageTitle="Attendance Register">
+      {departmentId && <DepartmentSectionNav departmentId={departmentId} />}
       <div className="page-header" style={{ marginBottom: 16 }}>
         <div>
           <h2 className="page-title">Attendance Register</h2>
@@ -407,7 +418,7 @@ export default function AttendancePage() {
       <div className="card" style={{ padding: '16px 20px', marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14 }}>
           <div className="attendance-filter-row">
-            {user?.role === 'ADMIN' && (
+            {user?.role === 'ADMIN' && !departmentId && (
               <label className="attendance-filter">
                 <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Department:</span>
                 <select className="form-select" value={selectedDepartmentId} onChange={(e) => {

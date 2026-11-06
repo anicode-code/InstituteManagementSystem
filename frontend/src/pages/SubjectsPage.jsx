@@ -3,6 +3,7 @@ import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import { getAllSubjects, getSubjectsByStudent, createSubject, updateSubject, deleteSubject } from '../api/subjects';
 import { getAllDepartments } from '../api/departments';
+import DepartmentSectionNav from '../components/DepartmentSectionNav';
 import { Plus, Pencil, Trash2, BookOpen, X, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -13,9 +14,9 @@ const semestersByYear = {
   4: [7, 8],
 };
 
-function SubjectModal({ open, onClose, onSaved, departments, editSubject }) {
+function SubjectModal({ open, onClose, onSaved, departments, editSubject, departmentId }) {
   const empty = {
-    name: '', code: '', credits: '', departmentId: '',
+    name: '', code: '', credits: '', departmentId: departmentId || '',
     academicYear: 1, semester: 1, type: 'COMPULSORY',
   };
   const [form, setForm] = useState(empty);
@@ -37,7 +38,7 @@ function SubjectModal({ open, onClose, onSaved, departments, editSubject }) {
       setForm(empty);
     }
     setError('');
-  }, [editSubject, open]);
+  }, [editSubject, open, departmentId]);
 
   if (!open) return null;
 
@@ -133,7 +134,7 @@ function SubjectModal({ open, onClose, onSaved, departments, editSubject }) {
                 <option value="OPTIONAL">Optional</option>
               </select>
             </div>
-            {!editSubject && (
+            {!editSubject && !departmentId && (
               <div className="grid-2">
                 <div className="form-group">
                   <label className="form-label">Department *</label>
@@ -142,6 +143,16 @@ function SubjectModal({ open, onClose, onSaved, departments, editSubject }) {
                     {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
                   </select>
                 </div>
+              </div>
+            )}
+            {!editSubject && departmentId && (
+              <div className="form-group">
+                <label className="form-label">Department</label>
+                <input
+                  className="form-input"
+                  value={departments.find((department) => String(department.id) === String(departmentId))?.name || ''}
+                  disabled
+                />
               </div>
             )}
           </div>
@@ -157,7 +168,7 @@ function SubjectModal({ open, onClose, onSaved, departments, editSubject }) {
   );
 }
 
-export default function SubjectsPage() {
+export default function SubjectsPage({ departmentId }) {
   const { user, isAdmin, isAdminOrHod, isFaculty, isStudent } = useAuth();
   const [subjects, setSubjects] = useState([]);
   const [departments, setDepartments] = useState([]);
@@ -191,7 +202,11 @@ export default function SubjectsPage() {
     ? subjects.filter((s) => (s.facultyMembers || (s.faculty ? [s.faculty] : [])).some((faculty) => faculty.id === user.id))
     : subjects;
 
-  const filtered = visibleSubjects.filter((s) => {
+  const departmentSubjects = departmentId
+    ? visibleSubjects.filter((subject) => String(subject.department?.id) === String(departmentId))
+    : visibleSubjects;
+
+  const filtered = departmentSubjects.filter((s) => {
     const q = search.toLowerCase();
     const year = s.academicYear || (s.semester ? Math.ceil(s.semester / 2) : null);
     return (!q || s.name?.toLowerCase().includes(q) || s.code?.toLowerCase().includes(q) || s.department?.name?.toLowerCase().includes(q))
@@ -238,6 +253,7 @@ export default function SubjectsPage() {
 
   return (
     <Layout pageTitle="Subjects">
+      {departmentId && <DepartmentSectionNav departmentId={departmentId} />}
       <div className="page-header">
         <div>
           <h2 className="page-title">Subjects</h2>
@@ -264,7 +280,7 @@ export default function SubjectsPage() {
           </div>
           {isAdminOrHod && (
             <div className="role-filter-row">
-              {isAdmin && (
+              {isAdmin && !departmentId && (
                 <select className="form-select" aria-label="Filter by department" value={departmentFilter} onChange={(e) => setDepartmentFilter(e.target.value)}>
                   <option value="">All Departments</option>
                   {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
@@ -386,6 +402,7 @@ export default function SubjectsPage() {
         onSaved={load}
         departments={departments}
         editSubject={editSubject}
+        departmentId={departmentId}
       />
     </Layout>
   );

@@ -14,7 +14,7 @@ const ROLE_BADGE = {
 };
 
 export default function Layout({ children, pageTitle }) {
-  const { user, logout, isAdminOrHod, isFaculty, isStudent } = useAuth();
+  const { user, logout, isAdmin, isAdminOrHod, isFaculty } = useAuth();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -37,11 +37,11 @@ export default function Layout({ children, pageTitle }) {
       { to: '/students',    icon: <GraduationCap />, text: 'Student Roster',     show: user?.role === 'HOD' },
       { to: '/users',       icon: <Users />,        text: 'User Verification', show: isAdminOrHod },
         { to: '/departments', icon: <Building2 />,    text: 'Departments',       show: isAdminOrHod },
-        { to: '/subjects',    icon: <BookOpen />,     text: 'Subjects',          show: true },
+        { to: '/subjects',    icon: <BookOpen />,     text: 'Subjects',          show: !isAdmin },
         { to: '/subject-requests', icon: <ClipboardCheck />, text: 'Subject Requests', show: isFaculty },
         { to: '/subject-assignments', icon: <ClipboardCheck />, text: 'Subject Assignments', show: user?.role === 'HOD' },
-        { to: '/assignments', icon: <ClipboardList />,text: 'Assignments',       show: true },
-        { to: '/attendance',  icon: <CalendarCheck />,text: 'Attendance',        show: true },
+        { to: '/assignments', icon: <ClipboardList />,text: 'Assignments',       show: !isAdmin },
+        { to: '/attendance',  icon: <CalendarCheck />,text: 'Attendance',        show: !isAdmin },
       ],
     },
   ];
