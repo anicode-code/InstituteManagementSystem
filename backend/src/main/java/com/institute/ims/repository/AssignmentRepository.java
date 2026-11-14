@@ -12,6 +12,8 @@ public interface AssignmentRepository
 
     List<Assignment> findByFacultyId(Long facultyId);
 
+    List<Assignment> findByFacultyIdAndSubjectIdIn(Long facultyId, List<Long> subjectIds);
+
     @Query("SELECT DISTINCT a FROM Assignment a JOIN a.subject.facultyMembers f WHERE f.id = :facultyId")
     List<Assignment> findBySubjectFacultyId(@Param("facultyId") Long facultyId);
 

@@ -46,4 +46,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
             @Param("departmentId") Long departmentId,
             @Param("roles") List<Role> roles,
             @Param("status") VerificationStatus status);
+
+    @Query("SELECT DISTINCT u FROM User u LEFT JOIN u.departments d "
+            + "WHERE u.role = :role AND (d.id = :departmentId OR u.department.id = :departmentId)")
+    List<User> findByRoleAndAssociatedDepartmentId(
+            @Param("role") Role role,
+            @Param("departmentId") Long departmentId);
 }

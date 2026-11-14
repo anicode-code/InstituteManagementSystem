@@ -11,6 +11,8 @@ public interface AssignmentSubmissionRepository
 
     List<AssignmentSubmission> findByAssignmentId(Long assignmentId);
 
+    List<AssignmentSubmission> findByAssignmentIdIn(List<Long> assignmentIds);
+
     Optional<AssignmentSubmission> findByAssignmentIdAndStudentId(Long assignmentId, Long studentId);
 
     List<AssignmentSubmission> findByStudentId(Long studentId);

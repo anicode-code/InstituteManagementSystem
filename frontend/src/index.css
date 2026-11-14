@@ -909,3 +909,98 @@ thead .sticky-col-pct {
   .admin-student-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .admin-student-filters .search-bar { grid-column: 1 / -1; }
 }
+
+/* ADMIN department faculty management only */
+.admin-faculty-directory { padding: 14px; }
+.admin-faculty-directory .toolbar { margin-bottom: 12px; }
+.admin-faculty-directory .toolbar-left { min-width: 260px; }
+.admin-faculty-directory .form-select { min-width: 145px; }
+.admin-faculty-directory .admin-faculty-filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 540px;
+  min-width: 0;
+}
+.admin-faculty-directory .admin-faculty-filters .form-select {
+  width: 100%;
+  min-width: 0;
+}
+.admin-faculty-row { cursor: pointer; }
+.admin-faculty-row:hover,
+.admin-faculty-row:focus {
+  background: var(--bg-hover);
+  outline: none;
+}
+.admin-faculty-pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-top: 12px;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+.admin-faculty-hero {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+  padding: 16px;
+}
+.admin-faculty-section {
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+.admin-faculty-section > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  cursor: pointer;
+  list-style: none;
+}
+.admin-faculty-section > summary::-webkit-details-marker { display: none; }
+.admin-faculty-section > summary::before {
+  content: '+';
+  color: var(--accent);
+  font-weight: 800;
+  margin-right: 2px;
+}
+.admin-faculty-section[open] > summary::before { content: '-'; }
+.admin-faculty-section > summary > span { flex: 1; }
+.admin-faculty-section > summary strong { display: block; font-size: 0.95rem; }
+.admin-faculty-section > summary small {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+.admin-faculty-section-content {
+  padding: 0 16px 16px;
+  overflow-x: auto;
+}
+.admin-faculty-subheading {
+  margin: 14px 0 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+@media (max-width: 1100px) {
+  .admin-faculty-directory .toolbar-left { flex-wrap: wrap; }
+  .admin-faculty-directory .search-bar { flex: 1 1 100%; }
+}
+@media (max-width: 640px) {
+  .admin-faculty-directory { padding: 10px; }
+  .admin-faculty-directory .toolbar-left,
+  .admin-faculty-directory .toolbar-right { width: 100%; }
+  .admin-faculty-directory .form-select { flex: 1 1 140px; min-width: 0; }
+  .admin-faculty-directory .admin-faculty-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .admin-faculty-pagination { align-items: flex-start; }
+  .admin-faculty-section > summary { padding: 12px; }
+  .admin-faculty-section-content { padding: 0 12px 12px; }
+}

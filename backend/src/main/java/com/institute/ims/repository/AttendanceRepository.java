@@ -20,6 +20,8 @@ public interface AttendanceRepository
 
     List<Attendance> findBySubjectId(Long subjectId);
 
+    List<Attendance> findBySubjectIdIn(List<Long> subjectIds);
+
     List<Attendance> findByStudentIdAndSubjectId(
             Long studentId,
             Long subjectId

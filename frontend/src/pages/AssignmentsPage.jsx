@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -425,6 +426,8 @@ function FacultySubmissionsModal({ open, onClose, assignment }) {
 // ──────── Main AssignmentsPage ────────
 export default function AssignmentsPage({ departmentId }) {
   const { user, isFaculty, isStudent, isAdminOrHod } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [assignments, setAssignments] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -452,6 +455,17 @@ export default function AssignmentsPage({ departmentId }) {
   }, [user, isFaculty, isStudent]);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    const assignmentId = location.state?.adminAssignmentId;
+    if (!departmentId || user?.role !== 'ADMIN' || !assignmentId || loading) return;
+    const assignment = assignments.find((item) =>
+      String(item.id) === String(assignmentId)
+      && String(item.subject?.department?.id) === String(departmentId)
+    );
+    if (assignment) setActiveAssignmentForFaculty(assignment);
+    navigate(location.pathname, { replace: true, state: null });
+  }, [assignments, departmentId, loading, location.pathname, location.state, navigate, user?.role]);
 
   const studentSubjectIds = useMemo(
     () => new Set((subjects || []).map((s) => s.id)),

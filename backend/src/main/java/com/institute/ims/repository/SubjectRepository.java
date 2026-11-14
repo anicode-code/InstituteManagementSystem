@@ -14,6 +14,9 @@ public interface SubjectRepository
     @Query("SELECT DISTINCT s FROM Subject s JOIN s.facultyMembers f WHERE f.id = :facultyId")
     List<Subject> findByFacultyId(@Param("facultyId") Long facultyId);
 
+    @Query("SELECT DISTINCT s FROM Subject s LEFT JOIN FETCH s.facultyMembers WHERE s.department.id = :departmentId")
+    List<Subject> findByDepartmentIdWithFacultyMembers(@Param("departmentId") Long departmentId);
+
     List<Subject> findByDepartmentId(Long departmentId);
 
     List<Subject> findByDepartmentIdIn(List<Long> departmentIds);
