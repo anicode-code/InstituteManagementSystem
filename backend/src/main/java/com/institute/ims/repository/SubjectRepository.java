@@ -20,6 +20,8 @@ public interface SubjectRepository
 
     List<Subject> findByDepartmentIdAndSemester(Long departmentId, Integer semester);
 
+    List<Subject> findByDepartmentIdAndSemesterIn(Long departmentId, List<Integer> semesters);
+
     Optional<Subject> findByCode(String code);
 
     boolean existsByCode(String code);

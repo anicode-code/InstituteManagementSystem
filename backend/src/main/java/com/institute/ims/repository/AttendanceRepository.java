@@ -16,6 +16,8 @@ public interface AttendanceRepository
 
     List<Attendance> findByStudentId(Long studentId);
 
+    List<Attendance> findByStudentIdIn(List<Long> studentIds);
+
     List<Attendance> findBySubjectId(Long subjectId);
 
     List<Attendance> findByStudentIdAndSubjectId(

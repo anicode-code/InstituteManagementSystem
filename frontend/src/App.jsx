@@ -14,6 +14,7 @@ import ProfilePage from './pages/ProfilePage';
 import HodStudentsPage from './pages/HodStudentsPage';
 import FacultySubjectRequestsPage from './pages/FacultySubjectRequestsPage';
 import HodSubjectAssignmentsPage from './pages/HodSubjectAssignmentsPage';
+import AdminDepartmentStudentsPage from './pages/AdminDepartmentStudentsPage';
 
 export default function App() {
   return (
@@ -94,6 +95,12 @@ export default function App() {
           <Route path="/departments/:departmentId/attendance" element={
             <ProtectedRoute allowedRoles={['ADMIN']}><DepartmentAttendanceRoute /></ProtectedRoute>
           } />
+          <Route path="/departments/:departmentId/students" element={
+            <ProtectedRoute allowedRoles={['ADMIN']}><DepartmentStudentsRoute /></ProtectedRoute>
+          } />
+          <Route path="/departments/:departmentId/students/:studentId" element={
+            <ProtectedRoute allowedRoles={['ADMIN']}><DepartmentStudentProfileRoute /></ProtectedRoute>
+          } />
 
           {/* Catch-all */}
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
@@ -121,4 +128,14 @@ function DepartmentAssignmentsRoute() {
 function DepartmentAttendanceRoute() {
   const { departmentId } = useParams();
   return <AttendancePage departmentId={departmentId} />;
+}
+
+function DepartmentStudentsRoute() {
+  const { departmentId } = useParams();
+  return <AdminDepartmentStudentsPage departmentId={departmentId} />;
+}
+
+function DepartmentStudentProfileRoute() {
+  const { departmentId, studentId } = useParams();
+  return <AdminDepartmentStudentsPage departmentId={departmentId} studentId={studentId} />;
 }

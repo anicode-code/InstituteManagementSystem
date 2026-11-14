@@ -888,3 +888,24 @@ thead .sticky-col-pct {
   font-weight: 700;
   border-top: 2px solid var(--border);
 }
+
+/* ADMIN department student management only */
+.admin-student-filters {
+  display: grid;
+  grid-template-columns: minmax(220px, 2fr) repeat(4, minmax(130px, 1fr));
+  gap: 8px;
+  align-items: center;
+}
+.admin-student-row:hover,
+.admin-student-row:focus {
+  background: var(--bg-hover);
+  outline: none;
+}
+@media (max-width: 1100px) {
+  .admin-student-filters { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .admin-student-filters .search-bar { grid-column: span 2; }
+}
+@media (max-width: 640px) {
+  .admin-student-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .admin-student-filters .search-bar { grid-column: 1 / -1; }
+}
