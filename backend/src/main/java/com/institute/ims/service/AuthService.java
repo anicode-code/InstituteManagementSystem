@@ -6,7 +6,6 @@ import com.institute.ims.dto.RegisterRequest;
 import com.institute.ims.dto.RegisterResponse;
 import com.institute.ims.model.*;
 import com.institute.ims.repository.DepartmentRepository;
-import com.institute.ims.repository.SubjectRepository;
 import com.institute.ims.repository.UserRepository;
 import com.institute.ims.security.JwtService;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -28,7 +27,6 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
     private final DepartmentRepository departmentRepository;
-    private final SubjectRepository subjectRepository;
     private final UserDetailsService userDetailsService;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
@@ -37,7 +35,6 @@ public class AuthService {
             AuthenticationManager authenticationManager,
             UserRepository userRepository,
             DepartmentRepository departmentRepository,
-            SubjectRepository subjectRepository,
             UserDetailsService userDetailsService,
             PasswordEncoder passwordEncoder,
             JwtService jwtService) {
@@ -45,7 +42,6 @@ public class AuthService {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.departmentRepository = departmentRepository;
-        this.subjectRepository = subjectRepository;
         this.userDetailsService = userDetailsService;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
@@ -109,45 +105,6 @@ public class AuthService {
 
             user.setDepartment(department);
 
-            // Year and Semester are mandatory
-            if (request.getYear() == null || request.getSemester() == null) {
-                throw new RuntimeException(
-                        "Year and Semester are required for students.");
-            }
-            if (request.getYear() < 1 || request.getYear() > 4) {
-                throw new RuntimeException(
-                        "Year must be between 1 and 4.");
-            }
-            if (request.getSemester() < 1 || request.getSemester() > 8) {
-                throw new RuntimeException(
-                        "Semester must be between 1 and 8.");
-            }
-
-            user.setYear(request.getYear());
-            user.setSemester(request.getSemester());
-
-            // Enroll student in compulsory subjects for their department & semester,
-            // plus any optional subjects chosen during registration
-            Set<Subject> enrolledSubjects = new HashSet<>();
-
-            List<Subject> compulsory = subjectRepository.findByDepartmentIdAndSemester(
-                    department.getId(), request.getSemester()
-            ).stream()
-             .filter(s -> s.getType() == SubjectType.COMPULSORY)
-             .toList();
-            enrolledSubjects.addAll(compulsory);
-
-            if (request.getOptionalSubjectCodes() != null &&
-                    !request.getOptionalSubjectCodes().isEmpty()) {
-
-                List<Subject> selectedSubjects =
-                        subjectRepository.findByCodeIn(
-                                request.getOptionalSubjectCodes());
-
-                enrolledSubjects.addAll(selectedSubjects);
-            }
-
-            user.setSelectedSubjects(enrolledSubjects);
         }
 
         // ─── FACULTY registration ───

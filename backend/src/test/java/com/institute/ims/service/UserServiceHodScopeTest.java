@@ -6,6 +6,7 @@ import com.institute.ims.model.Role;
 import com.institute.ims.model.User;
 import com.institute.ims.model.VerificationStatus;
 import com.institute.ims.repository.DepartmentRepository;
+import com.institute.ims.repository.SubjectRepository;
 import com.institute.ims.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,6 +33,9 @@ class UserServiceHodScopeTest {
 
     @Mock
     private DepartmentRepository departmentRepository;
+
+    @Mock
+    private SubjectRepository subjectRepository;
 
     @Mock
     private PasswordEncoder passwordEncoder;

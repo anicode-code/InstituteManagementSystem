@@ -63,6 +63,11 @@ export function AuthProvider({ children }) {
     setUser(null);
   }, []);
 
+  const syncUser = useCallback((userData) => {
+    setUser(userData);
+    localStorage.setItem('ims_user', JSON.stringify(userData));
+  }, []);
+
   const isAdmin = user?.role === 'ADMIN';
   const isHod = user?.role === 'HOD';
   const isFaculty = user?.role === 'FACULTY';
@@ -71,7 +76,7 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, login, logout, register, isAdmin, isHod, isFaculty, isStudent, isAdminOrHod }}
+      value={{ user, login, logout, register, syncUser, isAdmin, isHod, isFaculty, isStudent, isAdminOrHod }}
     >
       {children}
     </AuthContext.Provider>

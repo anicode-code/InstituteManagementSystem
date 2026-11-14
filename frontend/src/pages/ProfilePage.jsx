@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
-import { getCurrentUser, updateUser } from '../api/users';
-import { User, Mail, Hash, Building2, Shield, Pencil, X, Save } from 'lucide-react';
+import { getCurrentUser, updateMyProfile } from '../api/users';
+import { getCurriculumByDeptAndSemester } from '../data/curriculumSubjects';
+import { User, Mail, Hash, Building2, Shield, Pencil, X, Save, BookOpen, CheckSquare, Square } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const ROLE_COLORS = {
@@ -11,6 +12,30 @@ const ROLE_COLORS = {
   FACULTY: { bg: 'var(--warning-light)',  color: 'var(--warning)' },
   STUDENT: { bg: 'var(--success-light)',  color: 'var(--success)' },
 };
+
+const YEARS = [
+  { value: 1, label: '1st Year' },
+  { value: 2, label: '2nd Year' },
+  { value: 3, label: '3rd Year' },
+  { value: 4, label: '4th Year' },
+];
+
+const SEMESTERS_BY_YEAR = {
+  1: [{ value: 1, label: 'Semester 1' }, { value: 2, label: 'Semester 2' }],
+  2: [{ value: 3, label: 'Semester 3' }, { value: 4, label: 'Semester 4' }],
+  3: [{ value: 5, label: 'Semester 5' }, { value: 6, label: 'Semester 6' }],
+  4: [{ value: 7, label: 'Semester 7' }, { value: 8, label: 'Semester 8' }],
+};
+
+const profileForm = (user) => ({
+  name: user?.name || '',
+  email: user?.email || '',
+  year: user?.year ? String(user.year) : '',
+  semester: user?.semester ? String(user.semester) : '',
+  optionalSubjectCodes: user?.selectedSubjects
+    ?.filter((subject) => subject.type === 'OPTIONAL')
+    .map((subject) => subject.code) || [],
+});
 
 function InfoRow({ icon, label, value }) {
   return (
@@ -28,11 +53,11 @@ function InfoRow({ icon, label, value }) {
 }
 
 export default function ProfilePage() {
-  const { user: authUser, login } = useAuth();
+  const { user: authUser, syncUser } = useAuth();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState({ name: '', email: '' });
+  const [form, setForm] = useState(profileForm(null));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -41,7 +66,9 @@ export default function ProfilePage() {
       try {
         const res = await getCurrentUser();
         setProfile(res.data);
-        setForm({ name: res.data.name || '', email: res.data.email || '' });
+        setForm(profileForm(res.data));
+      } catch {
+        setError('Could not load your profile. Please try again.');
       } finally {
         setLoading(false);
       }
@@ -49,17 +76,81 @@ export default function ProfilePage() {
     load();
   }, []);
 
+  const handleYearChange = (event) => {
+    setForm((current) => ({
+      ...current,
+      year: event.target.value,
+      semester: '',
+      optionalSubjectCodes: [],
+    }));
+  };
+
+  const handleSemesterChange = (event) => {
+    setForm((current) => ({
+      ...current,
+      semester: event.target.value,
+      optionalSubjectCodes: [],
+    }));
+  };
+
+  const toggleOptionalSubject = (code) => {
+    setForm((current) => ({
+      ...current,
+      optionalSubjectCodes: current.optionalSubjectCodes.includes(code)
+        ? current.optionalSubjectCodes.filter((selectedCode) => selectedCode !== code)
+        : [...current.optionalSubjectCodes, code],
+    }));
+  };
+
+  const handleCancel = () => {
+    setForm(profileForm(profile));
+    setEditing(false);
+    setError('');
+  };
+
   const handleSave = async () => {
     setError('');
-    if (!form.name) { setError('Name is required.'); return; }
+    if (!form.name.trim()) { setError('Name is required.'); return; }
+
+    const request = { name: form.name.trim(), email: form.email.trim() };
+    if (profile?.role === 'STUDENT') {
+      const hasYear = Boolean(form.year);
+      const hasSemester = Boolean(form.semester);
+      if (hasYear !== hasSemester) {
+        setError('Select both academic year and semester.');
+        return;
+      }
+      if (hasYear && Number(form.year) !== Math.ceil(Number(form.semester) / 2)) {
+        setError('Select a semester that matches the academic year.');
+        return;
+      }
+      if (hasYear) {
+        request.year = Number(form.year);
+        request.semester = Number(form.semester);
+        request.optionalSubjectCodes = form.optionalSubjectCodes;
+      }
+    }
+
     setSaving(true);
     try {
-      const res = await updateUser(authUser.id, { name: form.name, email: form.email });
+      const res = await updateMyProfile(request);
       setProfile(res.data);
+      setForm(profileForm(res.data));
+      syncUser({
+        ...authUser,
+        name: res.data.name,
+        email: res.data.email,
+        role: res.data.role,
+        status: res.data.status,
+        department: res.data.department,
+        departments: res.data.departments,
+        year: res.data.year,
+        semester: res.data.semester,
+      });
       toast.success('Profile updated');
       setEditing(false);
     } catch (err) {
-      setError(err?.response?.data || 'Update failed');
+      setError(err?.response?.data?.message || 'Update failed');
     } finally {
       setSaving(false);
     }
@@ -76,6 +167,9 @@ export default function ProfilePage() {
   const p = profile || authUser;
   const initials = p?.name?.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2) || '?';
   const roleStyle = ROLE_COLORS[p?.role] || {};
+  const curriculum = p?.role === 'STUDENT'
+    ? getCurriculumByDeptAndSemester(p?.department?.code, form.semester)
+    : null;
 
   return (
     <Layout pageTitle="My Profile">
@@ -103,7 +197,8 @@ export default function ProfilePage() {
             </div>
             <button
               className={`btn ${editing ? 'btn-secondary' : 'btn-primary'}`}
-              onClick={() => { setEditing(!editing); setError(''); }}
+              onClick={() => { editing ? handleCancel() : setEditing(true); setError(''); }}
+              type="button"
             >
               {editing ? <><X size={16} /> Cancel</> : <><Pencil size={16} /> Edit</>}
             </button>
@@ -134,6 +229,109 @@ export default function ProfilePage() {
                 placeholder="your@email.com"
               />
             </div>
+            {p?.role === 'STUDENT' && (
+              <>
+                <div className="grid-2">
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="profile-year">Academic Year</label>
+                    <select
+                      id="profile-year"
+                      className="form-select"
+                      value={form.year}
+                      onChange={handleYearChange}
+                      disabled={saving}
+                    >
+                      <option value="">Select year</option>
+                      {YEARS.map((year) => (
+                        <option key={year.value} value={year.value}>{year.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="profile-semester">Semester</label>
+                    <select
+                      id="profile-semester"
+                      className="form-select"
+                      value={form.semester}
+                      onChange={handleSemesterChange}
+                      disabled={saving || !form.year}
+                    >
+                      <option value="">Select semester</option>
+                      {form.year && SEMESTERS_BY_YEAR[form.year]?.map((semester) => (
+                        <option key={semester.value} value={semester.value}>{semester.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                {curriculum && (
+                  <div style={{ marginBottom: 16 }}>
+                    {curriculum.compulsory?.length > 0 && (
+                      <div style={{ marginBottom: 14 }}>
+                        <div className="form-label" style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <BookOpen size={14} />
+                          Compulsory Subjects (automatically enrolled)
+                        </div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                          {curriculum.compulsory.map((subject) => (
+                            <span key={subject.code} style={{
+                              background: 'var(--success-light)',
+                              color: 'var(--success)',
+                              padding: '4px 10px',
+                              borderRadius: 20,
+                              fontSize: '0.72rem',
+                              fontWeight: 600,
+                            }}>
+                              {subject.code} · {subject.name}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {curriculum.optional?.length > 0 && (
+                      <div>
+                        <div className="form-label" style={{ marginBottom: 8 }}>
+                          Optional Subjects — select your preferences
+                        </div>
+                        <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
+                          {curriculum.optional.map((subject, index) => {
+                            const selected = form.optionalSubjectCodes.includes(subject.code);
+                            return (
+                              <button
+                                key={subject.code}
+                                type="button"
+                                onClick={() => toggleOptionalSubject(subject.code)}
+                                disabled={saving}
+                                style={{
+                                  width: '100%',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 10,
+                                  padding: '10px 14px',
+                                  background: selected ? 'var(--accent-light)' : 'transparent',
+                                  border: 'none',
+                                  borderTop: index > 0 ? '1px solid var(--border)' : 'none',
+                                  cursor: 'pointer',
+                                  textAlign: 'left',
+                                  color: selected ? 'var(--accent)' : 'var(--text-primary)',
+                                }}
+                              >
+                                {selected ? <CheckSquare size={16} /> : <Square size={16} style={{ opacity: 0.4 }} />}
+                                <span style={{ flex: 1 }}>
+                                  <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>{subject.name}</span>
+                                  <span style={{ marginLeft: 6, fontSize: '0.72rem', opacity: 0.6 }}>
+                                    {subject.code}{subject.credits ? ` · ${subject.credits} cr` : ''}
+                                  </span>
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
             <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
               {saving ? <span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} /> : <><Save size={16} /> Save Changes</>}
             </button>
@@ -150,6 +348,17 @@ export default function ProfilePage() {
           <InfoRow icon={<Mail size={18} />}      label="Email"       value={p?.email} />
           <InfoRow icon={<Shield size={18} />}    label="Role"        value={p?.role} />
           <InfoRow icon={<Building2 size={18} />} label="Department"  value={p?.department?.name} />
+          {p?.role === 'STUDENT' && (
+            <>
+              <InfoRow icon={<BookOpen size={18} />} label="Academic Year" value={p?.year ? `Year ${p.year}` : null} />
+              <InfoRow icon={<BookOpen size={18} />} label="Semester" value={p?.semester ? `Semester ${p.semester}` : null} />
+              <InfoRow
+                icon={<BookOpen size={18} />}
+                label="Enrolled Subjects"
+                value={p?.selectedSubjects?.map((subject) => subject.name).join(', ')}
+              />
+            </>
+          )}
           <div style={{ paddingTop: 12, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
             User ID: #{p?.id}
           </div>

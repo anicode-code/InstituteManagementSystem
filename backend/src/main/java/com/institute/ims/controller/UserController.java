@@ -1,6 +1,7 @@
 package com.institute.ims.controller;
 
 import com.institute.ims.dto.UpdateUserRequest;
+import com.institute.ims.dto.UpdateProfileRequest;
 import com.institute.ims.dto.VerifyBulkRequest;
 import com.institute.ims.dto.VerifyBulkResponse;
 import com.institute.ims.model.Role;
@@ -44,12 +45,23 @@ public class UserController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<User> updateUser(
             @PathVariable Long id,
             @RequestBody UpdateUserRequest request) {
 
         return ResponseEntity.ok(
                 userService.updateUser(id, request)
+        );
+    }
+
+    @PutMapping("/me")
+    public ResponseEntity<User> updateCurrentUser(
+            @Valid @RequestBody UpdateProfileRequest request,
+            Authentication authentication) {
+
+        return ResponseEntity.ok(
+                userService.updateOwnProfile(authentication.getName(), request)
         );
     }
 

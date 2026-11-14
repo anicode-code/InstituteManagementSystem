@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Navigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { GraduationCap, Eye, EyeOff, UserPlus, CheckSquare, Square, BookOpen } from 'lucide-react';
+import { GraduationCap, Eye, EyeOff, UserPlus, CheckSquare, Square } from 'lucide-react';
 import { getAllDepartments } from '../api/departments';
-import { getCurriculumByDeptAndSemester } from '../data/curriculumSubjects';
 import toast from 'react-hot-toast';
 
 // Only STUDENT and FACULTY can self-register
@@ -11,20 +10,6 @@ const ROLES = [
   { value: 'STUDENT', label: 'Student' },
   { value: 'FACULTY', label: 'Faculty' },
 ];
-
-const YEARS = [
-  { value: 1, label: '1st Year' },
-  { value: 2, label: '2nd Year' },
-  { value: 3, label: '3rd Year' },
-  { value: 4, label: '4th Year' },
-];
-
-const SEMESTERS_BY_YEAR = {
-  1: [{ value: 1, label: 'Semester 1' }, { value: 2, label: 'Semester 2' }],
-  2: [{ value: 3, label: 'Semester 3' }, { value: 4, label: 'Semester 4' }],
-  3: [{ value: 5, label: 'Semester 5' }, { value: 6, label: 'Semester 6' }],
-  4: [{ value: 7, label: 'Semester 7' }, { value: 8, label: 'Semester 8' }],
-};
 
 export default function RegisterPage() {
   const { user, register } = useAuth();
@@ -40,11 +25,6 @@ export default function RegisterPage() {
     departmentId: '',
     // Faculty: multiple departments
     departmentIds: [],
-    // Student academic
-    year: '',
-    semester: '',
-    // Student electives
-    optionalSubjectCodes: [],
   });
 
   const [departments, setDepartments] = useState([]);
@@ -52,9 +32,6 @@ export default function RegisterPage() {
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
-  // Derived curriculum for the selected department+semester
-  const [curriculum, setCurriculum] = useState(null);
 
   if (user) return <Navigate to="/dashboard" replace />;
 
@@ -67,38 +44,15 @@ export default function RegisterPage() {
       .finally(() => setDepartmentsLoading(false));
   }, []);
 
-  // Update curriculum whenever dept or semester changes (student only)
-  useEffect(() => {
-    if (form.role !== 'STUDENT' || !form.departmentId || !form.semester) {
-      setCurriculum(null);
-      return;
-    }
-    const selectedDept = departments.find((d) => String(d.id) === String(form.departmentId));
-    if (!selectedDept) { setCurriculum(null); return; }
-    const data = getCurriculumByDeptAndSemester(selectedDept.code, form.semester);
-    setCurriculum(data);
-    // Clear previous elective selections when dept/semester changes
-    setForm((f) => ({ ...f, optionalSubjectCodes: [] }));
-  }, [form.departmentId, form.semester, form.role, departments]);
-
-  // When year changes, reset semester
-  const handleYearChange = (e) => {
-    setForm((f) => ({ ...f, year: e.target.value, semester: '' }));
-    setError('');
-  };
-
   const handleChange = (e) => {
     const { name, value } = e.target;
-    // When role changes, clear dept selections and academic fields
+    // When role changes, clear department selections.
     if (name === 'role') {
       setForm((f) => ({
         ...f,
         role: value,
         departmentId: '',
         departmentIds: [],
-        year: '',
-        semester: '',
-        optionalSubjectCodes: [],
       }));
     } else {
       setForm((f) => ({ ...f, [name]: value }));
@@ -117,16 +71,6 @@ export default function RegisterPage() {
     setError('');
   };
 
-  // Student: toggle optional subject selection
-  const toggleOptionalSubject = (code) => {
-    setForm((f) => {
-      const codes = f.optionalSubjectCodes.includes(code)
-        ? f.optionalSubjectCodes.filter((c) => c !== code)
-        : [...f.optionalSubjectCodes, code];
-      return { ...f, optionalSubjectCodes: codes };
-    });
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -139,8 +83,6 @@ export default function RegisterPage() {
 
     if (form.role === 'STUDENT') {
       if (!form.departmentId) { setError('Please select your department.'); return; }
-      if (!form.year) { setError('Please select your academic year.'); return; }
-      if (!form.semester) { setError('Please select your semester.'); return; }
     }
 
     if (form.role === 'FACULTY') {
@@ -159,11 +101,6 @@ export default function RegisterPage() {
 
       if (form.role === 'STUDENT') {
         payload.departmentId = Number(form.departmentId);
-        payload.year = Number(form.year);
-        payload.semester = Number(form.semester);
-        if (form.optionalSubjectCodes.length > 0) {
-          payload.optionalSubjectCodes = form.optionalSubjectCodes;
-        }
       }
 
       if (form.role === 'FACULTY') {
@@ -322,134 +259,6 @@ export default function RegisterPage() {
                   </option>
                 ))}
               </select>
-            </div>
-          )}
-
-          {/* ── STUDENT: Year & Semester ── */}
-          {form.role === 'STUDENT' && (
-            <div className="grid-2">
-              <div className="form-group">
-                <label className="form-label" htmlFor="year">Academic Year *</label>
-                <select
-                  id="year"
-                  className="form-select"
-                  name="year"
-                  value={form.year}
-                  onChange={handleYearChange}
-                  disabled={loading}
-                >
-                  <option value="">Select year</option>
-                  {YEARS.map((y) => (
-                    <option key={y.value} value={y.value}>{y.label}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="form-group">
-                <label className="form-label" htmlFor="semester">Semester *</label>
-                <select
-                  id="semester"
-                  className="form-select"
-                  name="semester"
-                  value={form.semester}
-                  onChange={handleChange}
-                  disabled={loading || !form.year}
-                >
-                  <option value="">Select semester</option>
-                  {form.year && SEMESTERS_BY_YEAR[form.year]?.map((s) => (
-                    <option key={s.value} value={s.value}>{s.label}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          )}
-
-          {/* ── STUDENT: Curriculum display ── */}
-          {form.role === 'STUDENT' && curriculum && (
-            <div style={{ marginBottom: 20 }}>
-              {/* Compulsory Subjects */}
-              {curriculum.compulsory?.length > 0 && (
-                <div style={{ marginBottom: 16 }}>
-                  <div className="form-label" style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <BookOpen size={14} />
-                    Compulsory Subjects (automatically enrolled)
-                  </div>
-                  <div style={{
-                    background: 'var(--bg-hover)',
-                    borderRadius: 'var(--radius-sm)',
-                    border: '1px solid var(--border)',
-                    padding: '10px 12px',
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    gap: 8,
-                  }}>
-                    {curriculum.compulsory.map((sub) => (
-                      <span key={sub.code} style={{
-                        background: 'var(--success-light)',
-                        color: 'var(--success)',
-                        padding: '4px 10px',
-                        borderRadius: 20,
-                        fontSize: '0.72rem',
-                        fontWeight: 600,
-                        display: 'inline-flex',
-                        gap: 4,
-                        alignItems: 'center',
-                      }}>
-                        <span style={{ opacity: 0.7 }}>{sub.code}</span>
-                        {sub.name}
-                        {sub.credits && <span style={{ opacity: 0.6 }}>({sub.credits}cr)</span>}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Optional Subjects */}
-              {curriculum.optional?.length > 0 && (
-                <div>
-                  <div className="form-label" style={{ marginBottom: 8 }}>
-                    Optional Subjects — select your preferences
-                  </div>
-                  <div style={{
-                    border: '1px solid var(--border)',
-                    borderRadius: 'var(--radius-sm)',
-                    overflow: 'hidden',
-                  }}>
-                    {curriculum.optional.map((sub, idx) => {
-                      const selected = form.optionalSubjectCodes.includes(sub.code);
-                      return (
-                        <button
-                          key={sub.code}
-                          type="button"
-                          onClick={() => toggleOptionalSubject(sub.code)}
-                          disabled={loading}
-                          style={{
-                            width: '100%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 10,
-                            padding: '10px 14px',
-                            background: selected ? 'var(--accent-light)' : 'transparent',
-                            border: 'none',
-                            borderTop: idx > 0 ? '1px solid var(--border)' : 'none',
-                            cursor: 'pointer',
-                            textAlign: 'left',
-                            color: selected ? 'var(--accent)' : 'var(--text-primary)',
-                            transition: 'background 0.15s',
-                          }}
-                        >
-                          {selected ? <CheckSquare size={16} /> : <Square size={16} style={{ opacity: 0.4 }} />}
-                          <span style={{ flex: 1 }}>
-                            <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>{sub.name}</span>
-                            <span style={{ marginLeft: 6, fontSize: '0.72rem', opacity: 0.6 }}>
-                              {sub.code}{sub.credits ? ` · ${sub.credits} cr` : ''}
-                            </span>
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
             </div>
           )}
 

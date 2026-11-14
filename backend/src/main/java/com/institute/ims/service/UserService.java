@@ -2,13 +2,17 @@ package com.institute.ims.service;
 
 import com.institute.ims.dto.CreateUserRequest;
 import com.institute.ims.dto.UpdateUserRequest;
+import com.institute.ims.dto.UpdateProfileRequest;
 import com.institute.ims.dto.VerifyBulkRequest;
 import com.institute.ims.dto.VerifyBulkResponse;
 import com.institute.ims.model.Department;
 import com.institute.ims.model.Role;
+import com.institute.ims.model.Subject;
+import com.institute.ims.model.SubjectType;
 import com.institute.ims.model.User;
 import com.institute.ims.model.VerificationStatus;
 import com.institute.ims.repository.DepartmentRepository;
+import com.institute.ims.repository.SubjectRepository;
 import com.institute.ims.repository.UserRepository;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -16,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -25,15 +30,18 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final DepartmentRepository departmentRepository;
+    private final SubjectRepository subjectRepository;
     private final PasswordEncoder passwordEncoder;
 
     public UserService(
             UserRepository userRepository,
             DepartmentRepository departmentRepository,
+            SubjectRepository subjectRepository,
             PasswordEncoder passwordEncoder) {
 
         this.userRepository = userRepository;
         this.departmentRepository = departmentRepository;
+        this.subjectRepository = subjectRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -139,6 +147,79 @@ public class UserService {
             user.setDepartment(department);
         }
 
+        return userRepository.save(user);
+    }
+
+    @Transactional
+    public User updateOwnProfile(String rollNumber, UpdateProfileRequest request) {
+        User user = getUserByRollNumber(rollNumber);
+        user.setName(request.getName().trim());
+
+        String email = request.getEmail() == null ? null : request.getEmail().trim();
+        if (email != null && !email.isEmpty()
+                && userRepository.existsByEmailAndIdNot(email, user.getId())) {
+            throw new RuntimeException("Email already exists");
+        }
+        user.setEmail(email == null || email.isEmpty() ? null : email);
+
+        boolean hasAcademicFields = request.getYear() != null
+                || request.getSemester() != null
+                || request.getOptionalSubjectCodes() != null;
+        if (user.getRole() != Role.STUDENT) {
+            if (hasAcademicFields) {
+                throw new AccessDeniedException("Only students can update academic details.");
+            }
+            return userRepository.save(user);
+        }
+
+        if (request.getYear() == null && request.getSemester() == null) {
+            if (request.getOptionalSubjectCodes() != null
+                    && !request.getOptionalSubjectCodes().isEmpty()) {
+                throw new RuntimeException("Select an academic year and semester before choosing subjects.");
+            }
+            return userRepository.save(user);
+        }
+
+        if (request.getYear() == null || request.getSemester() == null) {
+            throw new RuntimeException("Academic year and semester must both be provided.");
+        }
+        if (request.getYear() < 1 || request.getYear() > 4
+                || request.getSemester() < 1 || request.getSemester() > 8
+                || request.getYear() != (request.getSemester() + 1) / 2) {
+            throw new RuntimeException("Select a valid academic year and matching semester.");
+        }
+        if (user.getDepartment() == null) {
+            throw new RuntimeException("A department is required before selecting subjects.");
+        }
+
+        List<String> optionalSubjectCodes = request.getOptionalSubjectCodes() == null
+                ? List.of()
+                : request.getOptionalSubjectCodes();
+        Set<String> requestedCodes = new HashSet<>(optionalSubjectCodes);
+        if (requestedCodes.size() != optionalSubjectCodes.size()) {
+            throw new RuntimeException("Duplicate subject choices are not allowed.");
+        }
+
+        List<Subject> semesterSubjects = subjectRepository.findByDepartmentIdAndSemester(
+                user.getDepartment().getId(), request.getSemester());
+        Set<String> availableOptionalCodes = semesterSubjects.stream()
+                .filter(subject -> subject.getType() == SubjectType.OPTIONAL)
+                .map(Subject::getCode)
+                .collect(Collectors.toSet());
+        if (!availableOptionalCodes.containsAll(requestedCodes)) {
+            throw new RuntimeException("Choose only optional subjects for your department and semester.");
+        }
+
+        Set<Subject> selectedSubjects = new HashSet<>();
+        for (Subject subject : semesterSubjects) {
+            if (subject.getType() == SubjectType.COMPULSORY
+                    || requestedCodes.contains(subject.getCode())) {
+                selectedSubjects.add(subject);
+            }
+        }
+        user.setYear(request.getYear());
+        user.setSemester(request.getSemester());
+        user.setSelectedSubjects(selectedSubjects);
         return userRepository.save(user);
     }
 
