@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { getDepartmentById } from '../api/departments';
-import { BookOpen, CalendarCheck, ClipboardList, GraduationCap, Users } from 'lucide-react';
+import { BookOpen, CalendarCheck, ClipboardList, GraduationCap, UserCog, Users } from 'lucide-react';
 
 const sections = [
   { key: 'subjects', label: 'Subjects', icon: <BookOpen size={16} /> },
   { key: 'faculty', label: 'Faculty', icon: <Users size={16} /> },
+  { key: 'hod', label: 'HOD', icon: <UserCog size={16} /> },
   { key: 'students', label: 'Students', icon: <GraduationCap size={16} /> },
   { key: 'assignments', label: 'Assignments', icon: <ClipboardList size={16} /> },
   { key: 'attendance', label: 'Attendance', icon: <CalendarCheck size={16} /> },
