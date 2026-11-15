@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
+import SortableTh from '../components/SortableTh';
+import { useTableSorting } from '../utils/tableSorting';
 import { getAllUsers } from '../api/users';
 import { getAllDepartments } from '../api/departments';
 import { getAllSubjects, getSubjectsByFaculty, getSubjectsByStudent } from '../api/subjects';
@@ -29,6 +31,8 @@ function StatCard({ icon, value, label, color, bg }) {
 
 export default function DashboardPage() {
   const { user, isAdmin, isHod, isFaculty, isStudent, isAdminOrHod } = useAuth();
+  const { getSorts, getSortedRows, toggleSort } = useTableSorting();
+  const assignmentSorts = getSorts('dashboard-assignments');
   const navigate = useNavigate();
   const [stats, setStats] = useState({});
   const [loading, setLoading] = useState(true);
@@ -233,15 +237,23 @@ export default function DashboardPage() {
             <table>
               <thead>
                 <tr>
-                  <th>Title</th>
-                  <th>Subject</th>
-                  <th>Faculty</th>
-                  <th>Max Marks</th>
-                  <th>Due Date</th>
+                  {isAdmin ? (
+                    <>
+                      <SortableTh tableId="dashboard-assignments" columnKey="title" label="Title" sorts={assignmentSorts} onSort={toggleSort} />
+                      <SortableTh tableId="dashboard-assignments" columnKey="subject.name" label="Subject" sorts={assignmentSorts} onSort={toggleSort} />
+                      <SortableTh tableId="dashboard-assignments" columnKey="faculty.name" label="Faculty" sorts={assignmentSorts} onSort={toggleSort} />
+                      <SortableTh tableId="dashboard-assignments" columnKey="maxMarks" label="Max Marks" sorts={assignmentSorts} onSort={toggleSort} />
+                      <SortableTh tableId="dashboard-assignments" columnKey="dueDate" label="Due Date" sorts={assignmentSorts} onSort={toggleSort} />
+                    </>
+                  ) : (
+                    <>
+                      <th>Title</th><th>Subject</th><th>Faculty</th><th>Max Marks</th><th>Due Date</th>
+                    </>
+                  )}
                 </tr>
               </thead>
               <tbody>
-                {recentAssignments.map((a) => (
+                {(isAdmin ? getSortedRows('dashboard-assignments', recentAssignments) : recentAssignments).map((a) => (
                   <tr key={a.id}>
                     <td style={{ fontWeight: 600 }}>{a.title}</td>
                     <td style={{ color: 'var(--text-secondary)' }}>{a.subject?.name} ({a.subject?.code})</td>

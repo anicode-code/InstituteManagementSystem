@@ -58,6 +58,23 @@ public class AdminDepartmentStudentsService {
             String direction,
             int page,
             int size) {
+        return getRoster(
+                departmentId, year, semester, status, search, attention, null, sortBy, direction, page, size);
+    }
+
+    @Transactional(readOnly = true)
+    public AdminStudentRosterPage getRoster(
+            Long departmentId,
+            Integer year,
+            Integer semester,
+            VerificationStatus status,
+            String search,
+            String attention,
+            String sort,
+            String sortBy,
+            String direction,
+            int page,
+            int size) {
         requireDepartment(departmentId);
         validatePagination(page, size);
             validateAcademicFilters(year, semester);
@@ -83,7 +100,7 @@ public class AdminDepartmentStudentsService {
 
         List<AdminStudentRosterItem> visibleStudents = roster.stream()
                 .filter(student -> matchesAttention(student, attention))
-                .sorted(rosterComparator(sortBy, direction))
+                .sorted(rosterComparator(sort, sortBy, direction))
                 .toList();
         long fromIndex = (long) page * size;
         int from = (int) Math.min(fromIndex, visibleStudents.size());
@@ -446,41 +463,75 @@ public class AdminDepartmentStudentsService {
         }
     }
 
-    private Comparator<AdminStudentRosterItem> rosterComparator(String sortBy, String direction) {
-        boolean descending = "desc".equalsIgnoreCase(direction);
-        if (!descending && !"asc".equalsIgnoreCase(direction)) {
-            throw new IllegalArgumentException("Sort direction must be 'asc' or 'desc'.");
+    private Comparator<AdminStudentRosterItem> rosterComparator(
+            String sort,
+            String defaultSortBy,
+            String defaultDirection) {
+        Comparator<AdminStudentRosterItem> comparator = null;
+        for (SortCriterion criterion : parseSort(sort, defaultSortBy, defaultDirection)) {
+            boolean descending = "desc".equals(criterion.direction());
+            Comparator<AdminStudentRosterItem> next = switch (criterion.field()) {
+                case "name" -> nullableComparator(AdminStudentRosterItem::name, descending, String.CASE_INSENSITIVE_ORDER);
+                case "attendance" -> nullableComparator(AdminStudentRosterItem::attendancePercentage, descending, Comparator.naturalOrder());
+                case "performance" -> nullableComparator(AdminStudentRosterItem::academicPerformance, descending, Comparator.naturalOrder());
+                case "assignments" -> Comparator.comparingLong(AdminStudentRosterItem::pendingAssignments);
+                case "submittedAssignments" -> Comparator.comparingLong(AdminStudentRosterItem::submittedAssignments);
+                case "totalAssignments" -> Comparator.comparingLong(AdminStudentRosterItem::totalAssignments);
+                case "year" -> nullableComparator(AdminStudentRosterItem::year, descending, Comparator.naturalOrder());
+                case "semester" -> nullableComparator(AdminStudentRosterItem::semester, descending, Comparator.naturalOrder());
+                case "yearSemester" -> nullableComparator(
+                        (AdminStudentRosterItem item) -> item.year() == null && item.semester() == null
+                                ? null
+                                : (item.year() == null ? 0 : item.year()) * 100
+                                + (item.semester() == null ? 0 : item.semester()),
+                        descending,
+                        Comparator.<Integer>naturalOrder());
+                case "status" -> nullableComparator(item -> item.status() == null ? null : item.status().name(), descending, String.CASE_INSENSITIVE_ORDER);
+                case "attention" -> Comparator.comparing(AdminStudentRosterItem::requiresAttention);
+                case "rollNumber" -> nullableComparator(AdminStudentRosterItem::rollNumber, descending, String.CASE_INSENSITIVE_ORDER);
+                default -> throw new IllegalArgumentException("Unsupported student sort field.");
+            };
+            if (descending && Set.of("assignments", "submittedAssignments", "totalAssignments", "attention").contains(criterion.field())) {
+                next = next.reversed();
+            }
+            comparator = comparator == null ? next : comparator.thenComparing(next);
         }
-        Comparator<AdminStudentRosterItem> comparator = switch (sortBy) {
-            case "name" -> Comparator.comparing(AdminStudentRosterItem::name, String.CASE_INSENSITIVE_ORDER);
-            case "attendance" -> Comparator.comparing(
-                    AdminStudentRosterItem::attendancePercentage,
-                    nullableOrder(descending));
-            case "performance" -> Comparator.comparing(
-                    AdminStudentRosterItem::academicPerformance,
-                    nullableOrder(descending));
-            case "assignments" -> Comparator.comparingLong(AdminStudentRosterItem::pendingAssignments);
-            case "year" -> Comparator.comparing(
-                    AdminStudentRosterItem::year,
-                    nullableOrder(descending));
-            case "semester" -> Comparator.comparing(
-                    AdminStudentRosterItem::semester,
-                    nullableOrder(descending));
-            case "rollNumber" -> Comparator.comparing(
-                    AdminStudentRosterItem::rollNumber,
-                    String.CASE_INSENSITIVE_ORDER);
-            default -> throw new IllegalArgumentException("Unsupported student sort field.");
-        };
-        if (descending && !Set.of("attendance", "performance", "year", "semester").contains(sortBy)) {
-            comparator = comparator.reversed();
-        }
-        return comparator.thenComparing(AdminStudentRosterItem::rollNumber, String.CASE_INSENSITIVE_ORDER);
+        return comparator.thenComparing(
+                AdminStudentRosterItem::rollNumber,
+                Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
     }
 
-    private <T extends Comparable<? super T>> Comparator<T> nullableOrder(boolean descending) {
-        Comparator<T> order = descending ? Comparator.<T>reverseOrder() : Comparator.<T>naturalOrder();
-        return Comparator.nullsLast(order);
+    private List<SortCriterion> parseSort(String sort, String defaultSortBy, String defaultDirection) {
+        if (sort == null || sort.isBlank()) {
+            return List.of(new SortCriterion(defaultSortBy, defaultDirection.toLowerCase(Locale.ROOT)));
+        }
+        return Arrays.stream(sort.split(","))
+                .map(value -> value.split(":", -1))
+                .map(parts -> {
+                    if (parts.length != 2 || !Set.of(
+                            "rollNumber", "name", "attendance", "performance", "assignments",
+                            "submittedAssignments", "totalAssignments", "year", "semester", "yearSemester", "status", "attention")
+                            .contains(parts[0])) {
+                        throw new IllegalArgumentException("Unsupported student sort field.");
+                    }
+                    String direction = parts[1].toLowerCase(Locale.ROOT);
+                    if (!Set.of("asc", "desc").contains(direction)) {
+                        throw new IllegalArgumentException("Sort direction must be 'asc' or 'desc'.");
+                    }
+                    return new SortCriterion(parts[0], direction);
+                })
+                .toList();
     }
+
+    private <T> Comparator<AdminStudentRosterItem> nullableComparator(
+            Function<AdminStudentRosterItem, T> extractor,
+            boolean descending,
+            Comparator<T> order) {
+        Comparator<T> selectedOrder = descending ? order.reversed() : order;
+        return Comparator.comparing(extractor, Comparator.nullsLast(selectedOrder));
+    }
+
+    private record SortCriterion(String field, String direction) {}
 
     private void requireDepartment(Long departmentId) {
         if (!departmentRepository.existsById(departmentId)) {

@@ -170,6 +170,27 @@ class AdminDepartmentStudentsServiceTest {
     }
 
     @Test
+    void rosterAppliesSecondarySortsWhenPrimaryValuesAreEqual() {
+        User alice = student(1L, "001");
+        alice.setName("Alice");
+        User bob = student(2L, "002");
+        bob.setName("Bob");
+        User charlie = student(3L, "003");
+        charlie.setName("Charlie");
+        when(userRepository.findByRoleAndDepartmentId(Role.STUDENT, 20L))
+                .thenReturn(List.of(alice, bob, charlie));
+        when(userRepository.findWithSelectedSubjectsByIdIn(List.of(1L, 2L, 3L)))
+                .thenReturn(List.of(alice, bob, charlie));
+        when(attendanceRepository.findByStudentIdIn(List.of(1L, 2L, 3L))).thenReturn(List.of());
+
+        var result = service.getRoster(
+                20L, null, null, null, null, null, "attendance:asc,name:desc", "rollNumber", "asc", 0, 1);
+
+        assertThat(result.totalElements()).isEqualTo(3);
+        assertThat(result.students()).extracting(item -> item.name()).containsExactly("Charlie");
+    }
+
+    @Test
     void adminCannotReadAStudentOutsideTheSelectedDepartment() {
         Department anotherDepartment = new Department("Information Technology", "IT");
         anotherDepartment.setId(21L);

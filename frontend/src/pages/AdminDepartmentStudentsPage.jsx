@@ -2,14 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DepartmentSectionNav from '../components/DepartmentSectionNav';
 import Layout from '../components/Layout';
+import SortableTh from '../components/SortableTh';
+import { useTableSorting } from '../utils/tableSorting';
 import {
   getAdminDepartmentStudentProfile,
   getAdminDepartmentStudents,
 } from '../api/adminDepartmentStudents';
 import {
-  ArrowDown,
   ArrowLeft,
-  ArrowUp,
   BookOpen,
   CalendarCheck,
   Search,
@@ -30,16 +30,6 @@ const SEMESTERS_BY_YEAR = {
   3: [5, 6],
   4: [7, 8],
 };
-
-const SORT_OPTIONS = [
-  { value: 'rollNumber', label: 'Roll number' },
-  { value: 'name', label: 'Student name' },
-  { value: 'attendance', label: 'Attendance' },
-  { value: 'performance', label: 'Academic performance' },
-  { value: 'assignments', label: 'Pending assignments' },
-  { value: 'year', label: 'Year' },
-  { value: 'semester', label: 'Semester' },
-];
 
 const tableHeaderStyle = {
   textAlign: 'left',
@@ -106,6 +96,7 @@ function Metric({ label, value }) {
 
 function StudentProfile({ departmentId, studentId }) {
   const navigate = useNavigate();
+  const { getSorts, getSortedRows, toggleSort } = useTableSorting();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -222,9 +213,15 @@ function StudentProfile({ departmentId, studentId }) {
             ) : (
               <div className="table-container">
                 <table>
-                  <thead><tr>{['Subject', 'Code', 'Attendance', 'Marks (/10)', 'Grade'].map((label) => <th key={label}>{label}</th>)}</tr></thead>
+                  <thead><tr>
+                    <SortableTh tableId="student-subject-performance" columnKey="subject" label="Subject" sorts={getSorts('student-subject-performance')} onSort={toggleSort} />
+                    <SortableTh tableId="student-subject-performance" columnKey="code" label="Code" sorts={getSorts('student-subject-performance')} onSort={toggleSort} />
+                    <SortableTh tableId="student-subject-performance" columnKey="attendancePercentage" label="Attendance" sorts={getSorts('student-subject-performance')} onSort={toggleSort} />
+                    <SortableTh tableId="student-subject-performance" columnKey="averageMarks" label="Marks (/10)" sorts={getSorts('student-subject-performance')} onSort={toggleSort} />
+                    <SortableTh tableId="student-subject-performance" columnKey="grade" label="Grade" sorts={getSorts('student-subject-performance')} onSort={toggleSort} />
+                  </tr></thead>
                   <tbody>
-                    {profile.subjectPerformance.map((subject) => (
+                    {getSortedRows('student-subject-performance', profile.subjectPerformance).map((subject) => (
                       <tr key={subject.subjectId}>
                         <td>{subject.subject}</td>
                         <td>{subject.code}</td>
@@ -248,9 +245,15 @@ function StudentProfile({ departmentId, studentId }) {
             ) : (
               <div className="table-container">
                 <table>
-                  <thead><tr>{['Date', 'Subject', 'Code', 'Status', 'Performance marks'].map((label) => <th key={label}>{label}</th>)}</tr></thead>
+                  <thead><tr>
+                    <SortableTh tableId="student-attendance" columnKey="date" label="Date" sorts={getSorts('student-attendance')} onSort={toggleSort} />
+                    <SortableTh tableId="student-attendance" columnKey="subject" label="Subject" sorts={getSorts('student-attendance')} onSort={toggleSort} />
+                    <SortableTh tableId="student-attendance" columnKey="code" label="Code" sorts={getSorts('student-attendance')} onSort={toggleSort} />
+                    <SortableTh tableId="student-attendance" columnKey="status" label="Status" sorts={getSorts('student-attendance')} onSort={toggleSort} />
+                    <SortableTh tableId="student-attendance" columnKey="performanceMarks" label="Performance marks" sorts={getSorts('student-attendance')} onSort={toggleSort} />
+                  </tr></thead>
                   <tbody>
-                    {profile.attendanceDetails.map((record) => (
+                    {getSortedRows('student-attendance', profile.attendanceDetails).map((record) => (
                       <tr key={record.id}>
                         <td>{record.date || 'N/A'}</td>
                         <td>{record.subject}</td>
@@ -274,9 +277,16 @@ function StudentProfile({ departmentId, studentId }) {
             ) : (
               <div className="table-container">
                 <table>
-                  <thead><tr>{['Assignment', 'Subject', 'Due date', 'Status', 'Submitted', 'Marks'].map((label) => <th key={label}>{label}</th>)}</tr></thead>
+                  <thead><tr>
+                    <SortableTh tableId="student-assignments" columnKey="assignment" label="Assignment" sorts={getSorts('student-assignments')} onSort={toggleSort} />
+                    <SortableTh tableId="student-assignments" columnKey="subject" label="Subject" sorts={getSorts('student-assignments')} onSort={toggleSort} />
+                    <SortableTh tableId="student-assignments" columnKey="dueDate" label="Due date" sorts={getSorts('student-assignments')} onSort={toggleSort} />
+                    <SortableTh tableId="student-assignments" columnKey="submissionStatus" label="Status" sorts={getSorts('student-assignments')} onSort={toggleSort} />
+                    <SortableTh tableId="student-assignments" columnKey="submittedAt" label="Submitted" sorts={getSorts('student-assignments')} onSort={toggleSort} />
+                    <SortableTh tableId="student-assignments" columnKey="marks" label="Marks" sorts={getSorts('student-assignments')} onSort={toggleSort} />
+                  </tr></thead>
                   <tbody>
-                    {profile.assignmentHistory.map((assignment) => (
+                    {getSortedRows('student-assignments', profile.assignmentHistory).map((assignment) => (
                       <tr key={assignment.id}>
                         <td>{assignment.assignment}</td>
                         <td>{assignment.subject} ({assignment.code})</td>
@@ -306,13 +316,13 @@ function StudentProfile({ departmentId, studentId }) {
 
 function StudentsList({ departmentId }) {
   const navigate = useNavigate();
+  const { getSorts, toggleSort } = useTableSorting();
   const [search, setSearch] = useState('');
   const [year, setYear] = useState('');
   const [semester, setSemester] = useState('');
   const [status, setStatus] = useState('');
   const [attention, setAttention] = useState('');
-  const [sortBy, setSortBy] = useState('rollNumber');
-  const [direction, setDirection] = useState('asc');
+  const sorts = getSorts('student-roster');
   const [page, setPage] = useState(0);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -329,8 +339,7 @@ function StudentsList({ departmentId }) {
         ...(status ? { status } : {}),
         ...(search.trim() ? { search: search.trim() } : {}),
         ...(attention ? { attention } : {}),
-        sortBy,
-        direction,
+        ...(sorts.length ? { sort: sorts.map(({ key, direction }) => `${key}:${direction}`).join(',') } : {}),
         page,
         size: 25,
       })
@@ -351,7 +360,7 @@ function StudentsList({ departmentId }) {
       active = false;
       window.clearTimeout(timer);
     };
-  }, [departmentId, year, semester, status, search, attention, sortBy, direction, page]);
+  }, [departmentId, year, semester, status, search, attention, sorts, page]);
 
   const semesterOptions = useMemo(
     () => (year ? SEMESTERS_BY_YEAR[year] || [] : []),
@@ -363,6 +372,10 @@ function StudentsList({ departmentId }) {
 
   const changeFilter = (setter) => (event) => {
     setter(event.target.value);
+    setPage(0);
+  };
+  const handleSort = (tableId, key) => {
+    toggleSort(tableId, key);
     setPage(0);
   };
 
@@ -438,20 +451,9 @@ function StudentsList({ departmentId }) {
             <option value="DECLINING_PERFORMANCE">Declining performance</option>
           </select>
         </div>
-        <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          <select className="form-select" aria-label="Sort students by" value={sortBy} onChange={changeFilter(setSortBy)} style={{ width: 'auto', minWidth: 180 }}>
-            {SORT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{`Sort: ${option.label}`}</option>)}
-          </select>
-          <button
-            type="button"
-            className="btn btn-secondary btn-sm"
-            aria-label={`Sort ${direction === 'asc' ? 'descending' : 'ascending'}`}
-            onClick={() => { setDirection((current) => current === 'asc' ? 'desc' : 'asc'); setPage(0); }}
-          >
-            {direction === 'asc' ? <ArrowUp size={15} /> : <ArrowDown size={15} />}
-            {direction === 'asc' ? 'Ascending' : 'Descending'}
-          </button>
-        </div>
+        <p style={{ margin: '8px 0 0', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+          Click column headings to sort; click again to reverse, and a third time to restore the default order.
+        </p>
       </section>
 
       {loading && <div className="loader"><div className="spinner" /></div>}
@@ -469,9 +471,15 @@ function StudentsList({ departmentId }) {
             <table style={{ minWidth: 1080 }}>
               <thead>
                 <tr>
-                  {['Roll number', 'Student', 'Year / Semester', 'Attendance', 'Performance', 'Assignments', 'Status', 'Attention', ''].map((label, index) => (
-                    <th key={`${label}-${index}`} style={tableHeaderStyle}>{label}</th>
-                  ))}
+                  <SortableTh tableId="student-roster" columnKey="rollNumber" label="Roll number" sorts={sorts} onSort={handleSort} style={tableHeaderStyle} />
+                  <SortableTh tableId="student-roster" columnKey="name" label="Student" sorts={sorts} onSort={handleSort} style={tableHeaderStyle} />
+                  <SortableTh tableId="student-roster" columnKey="yearSemester" label="Year / Semester" sorts={sorts} onSort={handleSort} style={tableHeaderStyle} />
+                  <SortableTh tableId="student-roster" columnKey="attendance" label="Attendance" sorts={sorts} onSort={handleSort} style={tableHeaderStyle} />
+                  <SortableTh tableId="student-roster" columnKey="performance" label="Performance" sorts={sorts} onSort={handleSort} style={tableHeaderStyle} />
+                  <SortableTh tableId="student-roster" columnKey="assignments" label="Assignments (pending)" sorts={sorts} onSort={handleSort} style={tableHeaderStyle} />
+                  <SortableTh tableId="student-roster" columnKey="status" label="Status" sorts={sorts} onSort={handleSort} style={tableHeaderStyle} />
+                  <SortableTh tableId="student-roster" columnKey="attention" label="Attention" sorts={sorts} onSort={handleSort} style={tableHeaderStyle} />
+                  <th style={tableHeaderStyle}></th>
                 </tr>
               </thead>
               <tbody>

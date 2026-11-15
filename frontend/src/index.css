@@ -1200,3 +1200,48 @@ thead .sticky-col-pct {
   .admin-faculty-section > summary { padding: 12px; }
   .admin-faculty-section-content { padding: 0 12px 12px; }
 }
+/* Sort controls are used only by ADMIN table headers. */
+.sortable-th-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: inherit;
+  gap: 5px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+}
+
+.sortable-th-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+.sortable-th-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--text-muted);
+  opacity: 0.65;
+}
+
+.sortable-th-indicator.active {
+  color: var(--accent);
+  opacity: 1;
+}
+
+.sortable-th-indicator sup {
+  font-size: 0.58rem;
+  line-height: 1;
+}
+
+.day-col-header .sortable-th-button {
+  flex-direction: column;
+}

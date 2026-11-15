@@ -84,8 +84,9 @@ public record AdminHodProfile(
             String code,
             Integer year,
             Integer semester,
-            Integer academicYear,
             int enrolledStudents,
+            Double attendancePercentage,
+            int classesConducted,
             List<String> assignedFaculty) {
     }
 

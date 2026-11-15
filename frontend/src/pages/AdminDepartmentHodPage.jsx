@@ -5,6 +5,8 @@ import {
 } from 'lucide-react';
 import DepartmentSectionNav from '../components/DepartmentSectionNav';
 import Layout from '../components/Layout';
+import SortableTh from '../components/SortableTh';
+import { useTableSorting } from '../utils/tableSorting';
 import { getAdminDepartmentHodDirectory, getAdminDepartmentHodProfile } from '../api/adminDepartmentHod';
 
 function display(value) {
@@ -83,6 +85,8 @@ function Section({ title, subtitle, children, open = false, actions }) {
 }
 
 function DistributionTable({ title, entries, year = false }) {
+  const { getSorts, getSortedRows, toggleSort } = useTableSorting();
+  const tableId = `hod-distribution-${title}`;
   return (
     <div className="admin-hod-distribution">
       <h4 className="admin-hod-subheading">{title}</h4>
@@ -91,9 +95,12 @@ function DistributionTable({ title, entries, year = false }) {
       ) : (
         <div className="table-container">
           <table>
-            <thead><tr><th>{year ? 'Academic year' : 'Semester'}</th><th>Students</th></tr></thead>
+            <thead><tr>
+              <SortableTh tableId={tableId} columnKey="value" label={year ? 'Academic year' : 'Semester'} sorts={getSorts(tableId)} onSort={toggleSort} />
+              <SortableTh tableId={tableId} columnKey="count" label="Students" sorts={getSorts(tableId)} onSort={toggleSort} />
+            </tr></thead>
             <tbody>
-              {entries.map((entry) => (
+              {getSortedRows(tableId, entries).map((entry) => (
                 <tr key={entry.value}>
                   <td>{year ? `Year ${entry.value}` : `Semester ${entry.value}`}</td>
                   <td>{entry.count}</td>
@@ -108,14 +115,23 @@ function DistributionTable({ title, entries, year = false }) {
 }
 
 function StudentAttentionTable({ students, departmentId, navigate }) {
+  const { getSorts, getSortedRows, toggleSort } = useTableSorting();
+  const tableId = 'hod-student-attention';
   return !students.length ? (
     <div className="empty-state"><p>No students meet the configured attention thresholds, or attendance/performance records are unavailable.</p></div>
   ) : (
     <div className="table-container">
       <table>
-        <thead><tr>{['Student', 'Student ID', 'Attendance', 'Performance', 'Indicators', ''].map((label) => <th key={label}>{label}</th>)}</tr></thead>
+        <thead><tr>
+          <SortableTh tableId={tableId} columnKey="name" label="Student" sorts={getSorts(tableId)} onSort={toggleSort} />
+          <SortableTh tableId={tableId} columnKey="rollNumber" label="Student ID" sorts={getSorts(tableId)} onSort={toggleSort} />
+          <SortableTh tableId={tableId} columnKey="attendancePercentage" label="Attendance" sorts={getSorts(tableId)} onSort={toggleSort} />
+          <SortableTh tableId={tableId} columnKey="averagePerformance" label="Performance" sorts={getSorts(tableId)} onSort={toggleSort} />
+          <SortableTh tableId={tableId} columnKey="reasons" label="Indicators" sorts={getSorts(tableId)} onSort={toggleSort} />
+          <th></th>
+        </tr></thead>
         <tbody>
-          {students.map((student) => (
+          {getSortedRows(tableId, students, { reasons: (student) => student.reasons.join(', ') }).map((student) => (
             <tr key={student.studentId}>
               <td>{student.name}</td>
               <td>{student.rollNumber}</td>
@@ -137,6 +153,7 @@ function StudentAttentionTable({ students, departmentId, navigate }) {
 
 function HodProfile({ departmentId, hodId }) {
   const navigate = useNavigate();
+  const { getSorts, getSortedRows, toggleSort } = useTableSorting();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -255,9 +272,20 @@ function HodProfile({ departmentId, hodId }) {
             ) : (
               <div className="table-container">
                 <table>
-                  <thead><tr>{['Faculty', 'Faculty ID', 'Designation', 'Assigned subjects', 'Years / semesters', 'Status', ''].map((label) => <th key={label}>{label}</th>)}</tr></thead>
+                  <thead><tr>
+                    <SortableTh tableId="hod-faculty" columnKey="name" label="Faculty" sorts={getSorts('hod-faculty')} onSort={toggleSort} />
+                    <SortableTh tableId="hod-faculty" columnKey="facultyId" label="Faculty ID" sorts={getSorts('hod-faculty')} onSort={toggleSort} />
+                    <SortableTh tableId="hod-faculty" columnKey="designation" label="Designation" sorts={getSorts('hod-faculty')} onSort={toggleSort} />
+                    <SortableTh tableId="hod-faculty" columnKey="assignedSubjects" label="Assigned subjects" sorts={getSorts('hod-faculty')} onSort={toggleSort} />
+                    <SortableTh tableId="hod-faculty" columnKey="assignedYears" label="Years / semesters" sorts={getSorts('hod-faculty')} onSort={toggleSort} />
+                    <SortableTh tableId="hod-faculty" columnKey="employmentStatus" label="Status" sorts={getSorts('hod-faculty')} onSort={toggleSort} />
+                    <th></th>
+                  </tr></thead>
                   <tbody>
-                    {profile.facultyMembers.map((faculty) => (
+                    {getSortedRows('hod-faculty', profile.facultyMembers, {
+                      assignedSubjects: (faculty) => faculty.assignedSubjects.join(', '),
+                      assignedYears: (faculty) => [...faculty.assignedYears, ...faculty.assignedSemesters].join(', '),
+                    }).map((faculty) => (
                       <tr key={faculty.userId}>
                         <td>{faculty.name}</td>
                         <td>{faculty.facultyId}</td>
@@ -302,15 +330,29 @@ function HodProfile({ departmentId, hodId }) {
             ) : (
               <div className="table-container">
                 <table>
-                  <thead><tr>{['Subject', 'Code', 'Assigned faculty', 'Year', 'Semester', 'Enrolled students', 'Academic year'].map((label) => <th key={label}>{label}</th>)}</tr></thead>
+                  <thead>
+                    <tr>
+                      <SortableTh tableId="hod-subjects" columnKey="name" label="Subject" sorts={getSorts('hod-subjects')} onSort={toggleSort} />
+                      <SortableTh tableId="hod-subjects" columnKey="code" label="Code" sorts={getSorts('hod-subjects')} onSort={toggleSort} style={{ textAlign: 'center' }} />
+                      <SortableTh tableId="hod-subjects" columnKey="assignedFaculty" label="Assigned faculty" sorts={getSorts('hod-subjects')} onSort={toggleSort} />
+                      <SortableTh tableId="hod-subjects" columnKey="semester" label="Semester" sorts={getSorts('hod-subjects')} onSort={toggleSort} style={{ textAlign: 'center' }} />
+                      <SortableTh tableId="hod-subjects" columnKey="enrolledStudents" label="Enrolled students" sorts={getSorts('hod-subjects')} onSort={toggleSort} style={{ textAlign: 'center' }} />
+                      <SortableTh tableId="hod-subjects" columnKey="attendancePercentage" label="Attendance" sorts={getSorts('hod-subjects')} onSort={toggleSort} style={{ textAlign: 'center' }} />
+                      <SortableTh tableId="hod-subjects" columnKey="classesConducted" label="Classes taken" sorts={getSorts('hod-subjects')} onSort={toggleSort} style={{ textAlign: 'center' }} />
+                    </tr>
+                  </thead>
                   <tbody>
-                    {profile.subjects.map((subject) => (
+                    {getSortedRows('hod-subjects', profile.subjects, {
+                      assignedFaculty: (subject) => subject.assignedFaculty.join(', '),
+                    }).map((subject) => (
                       <tr key={subject.subjectId}>
-                        <td>{subject.name}</td><td>{subject.code}</td>
+                        <td>{subject.name}</td>
+                        <td style={{ textAlign: 'center' }}>{subject.code}</td>
                         <td>{subject.assignedFaculty.join(', ') || 'N/A'}</td>
-                        <td>{subject.year == null ? 'N/A' : `Year ${subject.year}`}</td>
-                        <td>{display(subject.semester)}</td><td>{subject.enrolledStudents}</td>
-                        <td>{subject.academicYear == null ? 'N/A' : `Year ${subject.academicYear}`}</td>
+                        <td style={{ textAlign: 'center' }}>{display(subject.semester)}</td>
+                        <td style={{ textAlign: 'center' }}>{subject.enrolledStudents}</td>
+                        <td style={{ textAlign: 'center' }}>{percent(subject.attendancePercentage)}</td>
+                        <td style={{ textAlign: 'center' }}>{subject.classesConducted}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -323,25 +365,19 @@ function HodProfile({ departmentId, hodId }) {
             <div className="stats-grid" style={{ marginBottom: 12 }}>
               <Metric label="Department attendance" value={percent(attendance.departmentAttendancePercentage)} />
             </div>
-            <h4 className="admin-hod-subheading">Subject-wise Attendance</h4>
-            {!attendance.subjectStatistics.length ? (
-              <div className="empty-state"><p>No attendance records are available.</p></div>
-            ) : (
-              <div className="table-container">
-                <table>
-                  <thead><tr>{['Subject', 'Code', 'Records', 'Attendance'].map((label) => <th key={label}>{label}</th>)}</tr></thead>
-                  <tbody>{attendance.subjectStatistics.map((subject) => <tr key={subject.subjectId}><td>{subject.subjectName}</td><td>{subject.subjectCode}</td><td>{subject.attendanceRecords}</td><td>{percent(subject.attendancePercentage)}</td></tr>)}</tbody>
-                </table>
-              </div>
-            )}
             <h4 className="admin-hod-subheading">Faculty-wise Attendance</h4>
             {!attendance.facultyStatistics.length ? (
               <div className="empty-state"><p>No faculty attendance statistics are available.</p></div>
             ) : (
               <div className="table-container">
                 <table>
-                  <thead><tr>{['Faculty', 'Faculty ID', 'Records', 'Attendance'].map((label) => <th key={label}>{label}</th>)}</tr></thead>
-                  <tbody>{attendance.facultyStatistics.map((faculty) => <tr key={faculty.facultyId}><td>{faculty.facultyName}</td><td>{faculty.employeeId}</td><td>{faculty.attendanceRecords}</td><td>{percent(faculty.attendancePercentage)}</td></tr>)}</tbody>
+                  <thead><tr>
+                    <SortableTh tableId="hod-faculty-attendance" columnKey="facultyName" label="Faculty" sorts={getSorts('hod-faculty-attendance')} onSort={toggleSort} />
+                    <SortableTh tableId="hod-faculty-attendance" columnKey="employeeId" label="Faculty ID" sorts={getSorts('hod-faculty-attendance')} onSort={toggleSort} />
+                    <SortableTh tableId="hod-faculty-attendance" columnKey="attendanceRecords" label="Records" sorts={getSorts('hod-faculty-attendance')} onSort={toggleSort} />
+                    <SortableTh tableId="hod-faculty-attendance" columnKey="attendancePercentage" label="Attendance" sorts={getSorts('hod-faculty-attendance')} onSort={toggleSort} />
+                  </tr></thead>
+                  <tbody>{getSortedRows('hod-faculty-attendance', attendance.facultyStatistics).map((faculty) => <tr key={faculty.facultyId}><td>{faculty.facultyName}</td><td>{faculty.employeeId}</td><td>{faculty.attendanceRecords}</td><td>{percent(faculty.attendancePercentage)}</td></tr>)}</tbody>
                 </table>
               </div>
             )}
@@ -353,8 +389,12 @@ function HodProfile({ departmentId, hodId }) {
             ) : (
               <div className="table-container">
                 <table>
-                  <thead><tr><th>Month</th><th>Attendance records</th><th>Attendance</th></tr></thead>
-                  <tbody>{attendance.trends.map((trend) => <tr key={trend.month}><td>{trend.month}</td><td>{trend.attendanceRecords}</td><td>{percent(trend.attendancePercentage)}</td></tr>)}</tbody>
+                  <thead><tr>
+                    <SortableTh tableId="hod-attendance-trends" columnKey="month" label="Month" sorts={getSorts('hod-attendance-trends')} onSort={toggleSort} />
+                    <SortableTh tableId="hod-attendance-trends" columnKey="attendanceRecords" label="Attendance records" sorts={getSorts('hod-attendance-trends')} onSort={toggleSort} />
+                    <SortableTh tableId="hod-attendance-trends" columnKey="attendancePercentage" label="Attendance" sorts={getSorts('hod-attendance-trends')} onSort={toggleSort} />
+                  </tr></thead>
+                  <tbody>{getSortedRows('hod-attendance-trends', attendance.trends).map((trend) => <tr key={trend.month}><td>{trend.month}</td><td>{trend.attendanceRecords}</td><td>{percent(trend.attendancePercentage)}</td></tr>)}</tbody>
                 </table>
               </div>
             )}
@@ -374,8 +414,12 @@ function HodProfile({ departmentId, hodId }) {
             ) : (
               <div className="table-container">
                 <table>
-                  <thead><tr><th>Faculty</th><th>Faculty ID</th><th>Assignments</th></tr></thead>
-                  <tbody>{assignments.facultyDistribution.map((faculty) => <tr key={faculty.facultyId}><td>{faculty.facultyName}</td><td>{faculty.employeeId}</td><td>{faculty.assignmentCount}</td></tr>)}</tbody>
+                  <thead><tr>
+                    <SortableTh tableId="hod-faculty-assignments" columnKey="facultyName" label="Faculty" sorts={getSorts('hod-faculty-assignments')} onSort={toggleSort} />
+                    <SortableTh tableId="hod-faculty-assignments" columnKey="employeeId" label="Faculty ID" sorts={getSorts('hod-faculty-assignments')} onSort={toggleSort} />
+                    <SortableTh tableId="hod-faculty-assignments" columnKey="assignmentCount" label="Assignments" sorts={getSorts('hod-faculty-assignments')} onSort={toggleSort} />
+                  </tr></thead>
+                  <tbody>{getSortedRows('hod-faculty-assignments', assignments.facultyDistribution).map((faculty) => <tr key={faculty.facultyId}><td>{faculty.facultyName}</td><td>{faculty.employeeId}</td><td>{faculty.assignmentCount}</td></tr>)}</tbody>
                 </table>
               </div>
             )}
@@ -385,9 +429,18 @@ function HodProfile({ departmentId, hodId }) {
             ) : (
               <div className="table-container">
                 <table>
-                  <thead><tr>{['Assignment', 'Subject', 'Faculty', 'Created', 'Due date', 'Submissions', 'Pending', 'Grading status'].map((label) => <th key={label}>{label}</th>)}</tr></thead>
+                  <thead><tr>
+                    <SortableTh tableId="hod-assignments" columnKey="title" label="Assignment" sorts={getSorts('hod-assignments')} onSort={toggleSort} />
+                    <SortableTh tableId="hod-assignments" columnKey="subjectName" label="Subject" sorts={getSorts('hod-assignments')} onSort={toggleSort} />
+                    <SortableTh tableId="hod-assignments" columnKey="facultyName" label="Faculty" sorts={getSorts('hod-assignments')} onSort={toggleSort} />
+                    <SortableTh tableId="hod-assignments" columnKey="creationDate" label="Created" sorts={getSorts('hod-assignments')} onSort={toggleSort} />
+                    <SortableTh tableId="hod-assignments" columnKey="dueDate" label="Due date" sorts={getSorts('hod-assignments')} onSort={toggleSort} />
+                    <SortableTh tableId="hod-assignments" columnKey="totalSubmissions" label="Submissions" sorts={getSorts('hod-assignments')} onSort={toggleSort} />
+                    <SortableTh tableId="hod-assignments" columnKey="pendingSubmissions" label="Pending" sorts={getSorts('hod-assignments')} onSort={toggleSort} />
+                    <SortableTh tableId="hod-assignments" columnKey="gradingStatus" label="Grading status" sorts={getSorts('hod-assignments')} onSort={toggleSort} />
+                  </tr></thead>
                   <tbody>
-                    {assignments.assignments.map((assignment) => (
+                    {getSortedRows('hod-assignments', assignments.assignments).map((assignment) => (
                       <tr key={assignment.assignmentId}>
                         <td>{assignment.title}</td>
                         <td>{assignment.subjectName} ({assignment.subjectCode})</td>
@@ -435,6 +488,8 @@ function HodProfile({ departmentId, hodId }) {
 }
 
 function PerformanceTable({ title, values, year = false }) {
+  const { getSorts, getSortedRows, toggleSort } = useTableSorting();
+  const tableId = `hod-performance-${title}`;
   return (
     <div className="admin-hod-distribution">
       <h4 className="admin-hod-subheading">{title}</h4>
@@ -443,8 +498,12 @@ function PerformanceTable({ title, values, year = false }) {
       ) : (
         <div className="table-container">
           <table>
-            <thead><tr><th>{year ? 'Academic year' : 'Semester'}</th><th>Class Performance</th><th>Records</th></tr></thead>
-            <tbody>{values.map((entry) => <tr key={entry.value}><td>{year ? `Year ${entry.value}` : `Semester ${entry.value}`}</td><td>{marks(entry.averageMarks)}</td><td>{entry.assessedRecords}</td></tr>)}</tbody>
+            <thead><tr>
+              <SortableTh tableId={tableId} columnKey="value" label={year ? 'Academic year' : 'Semester'} sorts={getSorts(tableId)} onSort={toggleSort} />
+              <SortableTh tableId={tableId} columnKey="averageMarks" label="Class Performance" sorts={getSorts(tableId)} onSort={toggleSort} />
+              <SortableTh tableId={tableId} columnKey="assessedRecords" label="Records" sorts={getSorts(tableId)} onSort={toggleSort} />
+            </tr></thead>
+            <tbody>{getSortedRows(tableId, values).map((entry) => <tr key={entry.value}><td>{year ? `Year ${entry.value}` : `Semester ${entry.value}`}</td><td>{marks(entry.averageMarks)}</td><td>{entry.assessedRecords}</td></tr>)}</tbody>
           </table>
         </div>
       )}

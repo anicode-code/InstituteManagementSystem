@@ -19,6 +19,7 @@ import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -115,6 +116,28 @@ class AdminDepartmentHodServiceTest {
     }
 
     @Test
+    void profileSubjectsAreOrderedBySemesterThenName() {
+        Subject semesterThree = subject(41L, hod);
+        semesterThree.setName("Zeta");
+        semesterThree.setSemester(3);
+        Subject semesterOneZ = subject(42L, hod);
+        semesterOneZ.setName("Zeta");
+        Subject semesterOneA = subject(40L, hod);
+        semesterOneA.setName("Alpha");
+        when(userRepository.findByRoleAndDepartmentId(Role.STUDENT, 20L)).thenReturn(List.of());
+        when(subjectRepository.findByDepartmentIdWithFacultyMembers(20L))
+                .thenReturn(List.of(semesterThree, semesterOneZ, semesterOneA));
+        when(userRepository.findByRoleAndAssociatedDepartmentId(Role.FACULTY, 20L)).thenReturn(List.of());
+        when(attendanceRepository.findBySubjectIdIn(anyList())).thenReturn(List.of());
+        when(assignmentRepository.findBySubjectIdIn(anyList())).thenReturn(List.of());
+
+        var profile = service.getProfile(20L, 10L);
+
+        assertThat(profile.subjects()).extracting(subject -> subject.subjectId())
+                .containsExactly(40L, 42L, 41L);
+    }
+
+    @Test
     void profileCalculatesAttendanceAndPendingAssignmentsFromExistingRecords() {
         User faculty = user(30L, "FAC-030", Role.FACULTY, VerificationStatus.VERIFIED);
         User student = user(1L, "STU-001", Role.STUDENT, VerificationStatus.VERIFIED);
@@ -145,6 +168,8 @@ class AdminDepartmentHodServiceTest {
         assertThat(profile.departmentOverview().totalStudents()).isEqualTo(1);
         assertThat(profile.studentOverview().overallAttendance()).isEqualTo(50.0);
         assertThat(profile.attendanceOverview().departmentAttendancePercentage()).isEqualTo(50.0);
+        assertThat(profile.subjects().get(0).attendancePercentage()).isEqualTo(50.0);
+        assertThat(profile.subjects().get(0).classesConducted()).isEqualTo(1);
         assertThat(profile.assignmentOverview().totalAssignments()).isEqualTo(1);
         assertThat(profile.assignmentOverview().totalActiveAssignments()).isEqualTo(1);
         assertThat(profile.assignmentOverview().pendingSubmissions()).isEqualTo(1);

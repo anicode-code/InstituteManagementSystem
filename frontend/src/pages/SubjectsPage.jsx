@@ -4,6 +4,8 @@ import { useAuth } from '../context/AuthContext';
 import { getAllSubjects, getSubjectsByStudent, createSubject, updateSubject, deleteSubject } from '../api/subjects';
 import { getAllDepartments } from '../api/departments';
 import DepartmentSectionNav from '../components/DepartmentSectionNav';
+import SortableTh from '../components/SortableTh';
+import { sortRows, useTableSorting } from '../utils/tableSorting';
 import { Plus, Pencil, Trash2, BookOpen, X, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -170,6 +172,8 @@ function SubjectModal({ open, onClose, onSaved, departments, editSubject, depart
 
 export default function SubjectsPage({ departmentId }) {
   const { user, isAdmin, isAdminOrHod, isFaculty, isStudent } = useAuth();
+  const { getSorts, toggleSort } = useTableSorting();
+  const subjectSorts = getSorts('subjects');
   const [subjects, setSubjects] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -239,6 +243,11 @@ export default function SubjectsPage({ departmentId }) {
       || a.type.localeCompare(b.type)
     );
   })();
+  const sortedGroups = isAdmin
+    ? sortRows(groupedSubjects, subjectSorts.filter((sort) => sort.key === 'department'), {
+      department: (group) => group.department,
+    })
+    : groupedSubjects;
 
   const handleDelete = async (s) => {
     if (!window.confirm(`Delete subject "${s.name}"?`)) return;
@@ -324,16 +333,24 @@ export default function SubjectsPage({ departmentId }) {
             <table>
               <thead>
                 <tr>
-                  <th>Subject</th>
-                  <th>Code</th>
-                  <th>Credits</th>
-                  <th>Department</th>
-                  <th>Faculty</th>
+                  {isAdmin ? (
+                    <>
+                      <SortableTh tableId="subjects" columnKey="name" label="Subject" sorts={subjectSorts} onSort={toggleSort} />
+                      <SortableTh tableId="subjects" columnKey="code" label="Code" sorts={subjectSorts} onSort={toggleSort} />
+                      <SortableTh tableId="subjects" columnKey="credits" label="Credits" sorts={subjectSorts} onSort={toggleSort} />
+                      <SortableTh tableId="subjects" columnKey="department" label="Department" sorts={subjectSorts} onSort={toggleSort} />
+                      <SortableTh tableId="subjects" columnKey="faculty" label="Faculty" sorts={subjectSorts} onSort={toggleSort} />
+                    </>
+                  ) : (
+                    <>
+                      <th>Subject</th><th>Code</th><th>Credits</th><th>Department</th><th>Faculty</th>
+                    </>
+                  )}
                   {isAdminOrHod && <th>Actions</th>}
                 </tr>
               </thead>
               <tbody>
-                {groupedSubjects.map((group) => (
+                {sortedGroups.map((group) => (
                   <Fragment key={`${group.department}-${group.year}-${group.semester}-${group.type}`}>
                     <tr>
                       <td colSpan={isAdminOrHod ? 6 : 5} style={{ background: 'var(--bg-secondary)', fontWeight: 700, color: 'var(--text-secondary)' }}>
@@ -345,7 +362,13 @@ export default function SubjectsPage({ departmentId }) {
                         ].filter(Boolean).join(' · ')}
                       </td>
                     </tr>
-                    {group.subjects.map((s) => (
+                    {(isAdmin ? sortRows(group.subjects, subjectSorts.filter((sort) => sort.key !== 'department'), {
+                      name: (subject) => subject.name,
+                      code: (subject) => subject.code,
+                      credits: (subject) => subject.credits,
+                      faculty: (subject) => (subject.facultyMembers || (subject.faculty ? [subject.faculty] : []))
+                        .map((faculty) => faculty.name).join(', '),
+                    }) : group.subjects).map((s) => (
                       <tr key={s.id}>
                         <td style={{ fontWeight: 600 }}>
                           {s.name}

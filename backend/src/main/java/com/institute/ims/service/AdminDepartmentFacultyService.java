@@ -58,9 +58,25 @@ public class AdminDepartmentFacultyService {
             String direction,
             int page,
             int size) {
+        return getRoster(
+                departmentId, academicYear, subjectId, status, search, null, sortBy, direction, page, size);
+    }
+
+    @Transactional(readOnly = true)
+    public AdminFacultyRosterPage getRoster(
+            Long departmentId,
+            Integer academicYear,
+            Long subjectId,
+            VerificationStatus status,
+            String search,
+            String sort,
+            String sortBy,
+            String direction,
+            int page,
+            int size) {
         validatePagination(page, size);
         validateAcademicYear(academicYear);
-        validateSortOptions(sortBy, direction);
+        List<SortCriterion> sortCriteria = parseSort(sort, sortBy, direction);
         DirectoryData directory = loadDirectory(departmentId, true);
         String query = search == null ? "" : search.trim().toLowerCase(Locale.ROOT);
 
@@ -85,7 +101,7 @@ public class AdminDepartmentFacultyService {
                         || contains(row.faculty().getEmail(), query))
                 .toList();
 
-        Comparator<FacultyRow> comparator = rosterComparator(sortBy, direction, directory);
+        Comparator<FacultyRow> comparator = rosterComparator(sortCriteria, directory);
         List<FacultyRow> sortedFaculty = filteredFaculty.stream()
                 .sorted(comparator.thenComparing(row -> row.faculty().getRollNumber(),
                         String.CASE_INSENSITIVE_ORDER))
@@ -551,44 +567,68 @@ public class AdminDepartmentFacultyService {
     }
 
     private Comparator<FacultyRow> rosterComparator(
-            String sortBy,
-            String direction,
+            List<SortCriterion> sortCriteria,
             DirectoryData directory) {
-        boolean descending = "desc".equalsIgnoreCase(direction);
-        if (!descending && !"asc".equalsIgnoreCase(direction)) {
-            throw new IllegalArgumentException("Sort direction must be 'asc' or 'desc'.");
-        }
-        Comparator<FacultyRow> comparator = switch (sortBy) {
-            case "facultyId" -> Comparator.comparing(
-                    row -> row.faculty().getRollNumber(),
-                    String.CASE_INSENSITIVE_ORDER);
-            case "name" -> Comparator.comparing(
-                    row -> row.faculty().getName(),
-                    String.CASE_INSENSITIVE_ORDER);
-            case "email" -> Comparator.comparing(
-                    row -> row.faculty().getEmail(),
-                    Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
-            case "subjects" -> Comparator.comparingInt(row -> row.subjects().size());
-            case "students" -> Comparator.comparingInt(
-                    row -> enrolledStudentIds(row.subjects(), directory).size());
-            case "attendance" -> Comparator.comparing(
-                    row -> attendancePercentage(attendanceForSubjects(subjectIds(row.subjects()), directory)),
-                    nullableOrder(descending));
-            case "status" -> Comparator.comparing(
-                    row -> row.faculty().getStatus().name(),
-                    String.CASE_INSENSITIVE_ORDER);
-            default -> throw new IllegalArgumentException("Unsupported faculty sort field.");
-        };
-        if (descending && !"attendance".equals(sortBy)) {
-            comparator = comparator.reversed();
+        Comparator<FacultyRow> comparator = null;
+        for (SortCriterion criterion : sortCriteria) {
+            boolean descending = "desc".equals(criterion.direction());
+            Comparator<FacultyRow> next = switch (criterion.field()) {
+                case "facultyId" -> nullableFacultyComparator(row -> row.faculty().getRollNumber(), descending, String.CASE_INSENSITIVE_ORDER);
+                case "name" -> nullableFacultyComparator(row -> row.faculty().getName(), descending, String.CASE_INSENSITIVE_ORDER);
+                case "designation" -> nullableFacultyComparator(row -> null, descending, String.CASE_INSENSITIVE_ORDER);
+                case "email" -> nullableFacultyComparator(row -> row.faculty().getEmail(), descending, String.CASE_INSENSITIVE_ORDER);
+                case "phone" -> nullableFacultyComparator(row -> null, descending, String.CASE_INSENSITIVE_ORDER);
+                case "subjects" -> Comparator.comparingInt(row -> row.subjects().size());
+                case "students" -> Comparator.comparingInt(row -> enrolledStudentIds(row.subjects(), directory).size());
+                case "attendance" -> nullableFacultyComparator(
+                        row -> attendancePercentage(attendanceForSubjects(subjectIds(row.subjects()), directory)),
+                        descending,
+                        Comparator.<Double>naturalOrder());
+                case "status" -> nullableFacultyComparator(
+                        row -> row.faculty().getStatus() == null ? null : row.faculty().getStatus().name(),
+                        descending,
+                        String.CASE_INSENSITIVE_ORDER);
+                default -> throw new IllegalArgumentException("Unsupported faculty sort field.");
+            };
+            if (descending && Set.of("subjects", "students").contains(criterion.field())) {
+                next = next.reversed();
+            }
+            comparator = comparator == null ? next : comparator.thenComparing(next);
         }
         return comparator;
     }
 
-    private <T extends Comparable<? super T>> Comparator<T> nullableOrder(boolean descending) {
-        Comparator<T> order = descending ? Comparator.<T>reverseOrder() : Comparator.<T>naturalOrder();
-        return Comparator.nullsLast(order);
+    private List<SortCriterion> parseSort(String sort, String defaultSortBy, String defaultDirection) {
+        if (sort == null || sort.isBlank()) {
+            validateSortOptions(defaultSortBy, defaultDirection);
+            return List.of(new SortCriterion(defaultSortBy, defaultDirection.toLowerCase(Locale.ROOT)));
+        }
+        return Arrays.stream(sort.split(","))
+                .map(value -> value.split(":", -1))
+                .map(parts -> {
+                    if (parts.length != 2 || !Set.of(
+                            "facultyId", "name", "designation", "email", "phone",
+                            "subjects", "students", "attendance", "status").contains(parts[0])) {
+                        throw new IllegalArgumentException("Unsupported faculty sort field.");
+                    }
+                    String direction = parts[1].toLowerCase(Locale.ROOT);
+                    if (!Set.of("asc", "desc").contains(direction)) {
+                        throw new IllegalArgumentException("Sort direction must be 'asc' or 'desc'.");
+                    }
+                    return new SortCriterion(parts[0], direction);
+                })
+                .toList();
     }
+
+    private <T> Comparator<FacultyRow> nullableFacultyComparator(
+            Function<FacultyRow, T> extractor,
+            boolean descending,
+            Comparator<T> order) {
+        Comparator<T> selectedOrder = descending ? order.reversed() : order;
+        return Comparator.comparing(extractor, Comparator.nullsLast(selectedOrder));
+    }
+
+    private record SortCriterion(String field, String direction) {}
 
     private List<Attendance> attendanceForSubjects(Set<Long> subjectIds, DirectoryData directory) {
         return subjectIds.stream()

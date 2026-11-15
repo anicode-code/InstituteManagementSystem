@@ -1,6 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
+import SortableTh from '../components/SortableTh';
+import { useTableSorting } from '../utils/tableSorting';
 import { getAllUsers, getPendingUsers, verifyUser, verifyBulk, rejectUser, rejectUsers } from '../api/users';
 import { Search, Users, ShieldCheck, Check, X } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -46,7 +48,9 @@ function StatusBadge({ status }) {
 }
 
 // ─── Pending Verification Panel ───────────────────────────────────
-function PendingVerificationPanel({ onVerified }) {
+function PendingVerificationPanel({ onVerified, isAdmin }) {
+  const { getSorts, getSortedRows, toggleSort } = useTableSorting();
+  const sorts = getSorts('pending-users');
   const [pending, setPending] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(new Set());
@@ -224,16 +228,24 @@ function PendingVerificationPanel({ onVerified }) {
                     style={{ cursor: 'pointer', width: 16, height: 16 }}
                   />
                 </th>
-                <th>Roll Number</th>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Role</th>
-                <th>Registered</th>
+                {isAdmin ? (
+                  <>
+                    <SortableTh tableId="pending-users" columnKey="rollNumber" label="Roll Number" sorts={sorts} onSort={toggleSort} />
+                    <SortableTh tableId="pending-users" columnKey="name" label="Name" sorts={sorts} onSort={toggleSort} />
+                    <SortableTh tableId="pending-users" columnKey="email" label="Email" sorts={sorts} onSort={toggleSort} />
+                    <SortableTh tableId="pending-users" columnKey="role" label="Role" sorts={sorts} onSort={toggleSort} />
+                    <SortableTh tableId="pending-users" columnKey="createdAt" label="Registered" sorts={sorts} onSort={toggleSort} />
+                  </>
+                ) : (
+                  <>
+                    <th>Roll Number</th><th>Name</th><th>Email</th><th>Role</th><th>Registered</th>
+                  </>
+                )}
                 <th>Decision</th>
               </tr>
             </thead>
             <tbody>
-              {pending.map((u) => {
+              {(isAdmin ? getSortedRows('pending-users', pending) : pending).map((u) => {
                 const initials = u.name?.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2) || '?';
                 const isChecked = selected.has(u.id);
                 return (
@@ -295,7 +307,9 @@ function PendingVerificationPanel({ onVerified }) {
 
 // ─── Main UsersPage ───────────────────────────────────────────────
 export default function UsersPage() {
-  const { user: me, isAdminOrHod } = useAuth();
+  const { user: me, isAdmin, isAdminOrHod } = useAuth();
+  const { getSorts, getSortedRows, toggleSort } = useTableSorting();
+  const sorts = getSorts('users');
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -323,6 +337,7 @@ export default function UsersPage() {
       || u.email?.toLowerCase().includes(q);
     return matchRole && matchStatus && matchSearch;
   });
+  const sortedUsers = isAdmin ? getSortedRows('users', filtered) : filtered;
 
   return (
     <Layout pageTitle="Users">
@@ -335,7 +350,7 @@ export default function UsersPage() {
 
       {/* Pending verification panel — admin/HOD only */}
       {isAdminOrHod && (
-        <PendingVerificationPanel onVerified={load} />
+        <PendingVerificationPanel onVerified={load} isAdmin={isAdmin} />
       )}
 
       {/* All users table */}
@@ -383,15 +398,23 @@ export default function UsersPage() {
             <table>
               <thead>
                 <tr>
-                  <th>User</th>
-                  <th>Roll Number</th>
-                  <th>Email</th>
-                  <th>Role</th>
-                  <th>Status</th>
+                  {isAdmin ? (
+                    <>
+                      <SortableTh tableId="users" columnKey="name" label="User" sorts={sorts} onSort={toggleSort} />
+                      <SortableTh tableId="users" columnKey="rollNumber" label="Roll Number" sorts={sorts} onSort={toggleSort} />
+                      <SortableTh tableId="users" columnKey="email" label="Email" sorts={sorts} onSort={toggleSort} />
+                      <SortableTh tableId="users" columnKey="role" label="Role" sorts={sorts} onSort={toggleSort} />
+                      <SortableTh tableId="users" columnKey="status" label="Status" sorts={sorts} onSort={toggleSort} />
+                    </>
+                  ) : (
+                    <>
+                      <th>User</th><th>Roll Number</th><th>Email</th><th>Role</th><th>Status</th>
+                    </>
+                  )}
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((u) => {
+                {sortedUsers.map((u) => {
                   const initials = u.name?.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2) || '?';
                   return (
                     <tr key={u.id}>

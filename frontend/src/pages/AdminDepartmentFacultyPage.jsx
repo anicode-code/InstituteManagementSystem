@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowDown, ArrowLeft, ArrowUp, BookOpen, CalendarCheck, Search, Users } from 'lucide-react';
+import { ArrowLeft, BookOpen, CalendarCheck, Search, Users } from 'lucide-react';
 import DepartmentSectionNav from '../components/DepartmentSectionNav';
 import Layout from '../components/Layout';
+import SortableTh from '../components/SortableTh';
+import { useTableSorting } from '../utils/tableSorting';
 import { getAdminDepartmentFaculty, getAdminDepartmentFacultyProfile } from '../api/adminDepartmentFaculty';
 
 const HEADER_STYLE = {
@@ -95,6 +97,7 @@ function Section({ title, subtitle, children, open = false, actions }) {
 
 function FacultyProfile({ departmentId, facultyId }) {
   const navigate = useNavigate();
+  const { getSorts, getSortedRows, toggleSort } = useTableSorting();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -202,9 +205,17 @@ function FacultyProfile({ departmentId, facultyId }) {
             ) : (
               <div className="table-container">
                 <table>
-                  <thead><tr>{['Subject', 'Code', 'Year', 'Semester', 'Enrolled students', 'Classes', 'Attendance'].map((label) => <th key={label}>{label}</th>)}</tr></thead>
+                  <thead><tr>
+                    <SortableTh tableId="faculty-subjects" columnKey="subjectName" label="Subject" sorts={getSorts('faculty-subjects')} onSort={toggleSort} />
+                    <SortableTh tableId="faculty-subjects" columnKey="subjectCode" label="Code" sorts={getSorts('faculty-subjects')} onSort={toggleSort} />
+                    <SortableTh tableId="faculty-subjects" columnKey="year" label="Year" sorts={getSorts('faculty-subjects')} onSort={toggleSort} />
+                    <SortableTh tableId="faculty-subjects" columnKey="semester" label="Semester" sorts={getSorts('faculty-subjects')} onSort={toggleSort} />
+                    <SortableTh tableId="faculty-subjects" columnKey="enrolledStudents" label="Enrolled students" sorts={getSorts('faculty-subjects')} onSort={toggleSort} />
+                    <SortableTh tableId="faculty-subjects" columnKey="classesConducted" label="Classes" sorts={getSorts('faculty-subjects')} onSort={toggleSort} />
+                    <SortableTh tableId="faculty-subjects" columnKey="studentAttendancePercentage" label="Attendance" sorts={getSorts('faculty-subjects')} onSort={toggleSort} />
+                  </tr></thead>
                   <tbody>
-                    {subjectList.map((subject) => (
+                    {getSortedRows('faculty-subjects', subjectList).map((subject) => (
                       <tr key={subject.subjectId}>
                         <td>{subject.subjectName}</td>
                         <td>{subject.subjectCode}</td>
@@ -233,9 +244,16 @@ function FacultyProfile({ departmentId, facultyId }) {
             ) : (
               <div className="table-container">
                 <table>
-                  <thead><tr>{['Subject', 'Code', 'Classes', 'Enrolled students', 'Records', 'Attendance'].map((label) => <th key={label}>{label}</th>)}</tr></thead>
+                  <thead><tr>
+                    <SortableTh tableId="faculty-attendance-subjects" columnKey="subjectName" label="Subject" sorts={getSorts('faculty-attendance-subjects')} onSort={toggleSort} />
+                    <SortableTh tableId="faculty-attendance-subjects" columnKey="subjectCode" label="Code" sorts={getSorts('faculty-attendance-subjects')} onSort={toggleSort} />
+                    <SortableTh tableId="faculty-attendance-subjects" columnKey="classesConducted" label="Classes" sorts={getSorts('faculty-attendance-subjects')} onSort={toggleSort} />
+                    <SortableTh tableId="faculty-attendance-subjects" columnKey="enrolledStudents" label="Enrolled students" sorts={getSorts('faculty-attendance-subjects')} onSort={toggleSort} />
+                    <SortableTh tableId="faculty-attendance-subjects" columnKey="attendanceRecords" label="Records" sorts={getSorts('faculty-attendance-subjects')} onSort={toggleSort} />
+                    <SortableTh tableId="faculty-attendance-subjects" columnKey="attendancePercentage" label="Attendance" sorts={getSorts('faculty-attendance-subjects')} onSort={toggleSort} />
+                  </tr></thead>
                   <tbody>
-                    {attendance.subjectStatistics.map((subject) => (
+                    {getSortedRows('faculty-attendance-subjects', attendance.subjectStatistics).map((subject) => (
                       <tr key={subject.subjectId}>
                         <td>{subject.subjectName}</td><td>{subject.subjectCode}</td>
                         <td>{display(subject.classesConducted)}</td><td>{subject.enrolledStudents}</td>
@@ -252,9 +270,16 @@ function FacultyProfile({ departmentId, facultyId }) {
             ) : (
               <div className="table-container">
                 <table>
-                  <thead><tr>{['Date', 'Student', 'Student ID', 'Subject', 'Status', 'Performance marks'].map((label) => <th key={label}>{label}</th>)}</tr></thead>
+                  <thead><tr>
+                    <SortableTh tableId="faculty-attendance-history" columnKey="date" label="Date" sorts={getSorts('faculty-attendance-history')} onSort={toggleSort} />
+                    <SortableTh tableId="faculty-attendance-history" columnKey="studentName" label="Student" sorts={getSorts('faculty-attendance-history')} onSort={toggleSort} />
+                    <SortableTh tableId="faculty-attendance-history" columnKey="studentRollNumber" label="Student ID" sorts={getSorts('faculty-attendance-history')} onSort={toggleSort} />
+                    <SortableTh tableId="faculty-attendance-history" columnKey="subjectName" label="Subject" sorts={getSorts('faculty-attendance-history')} onSort={toggleSort} />
+                    <SortableTh tableId="faculty-attendance-history" columnKey="status" label="Status" sorts={getSorts('faculty-attendance-history')} onSort={toggleSort} />
+                    <SortableTh tableId="faculty-attendance-history" columnKey="performanceMarks" label="Performance marks" sorts={getSorts('faculty-attendance-history')} onSort={toggleSort} />
+                  </tr></thead>
                   <tbody>
-                    {attendance.records.map((record) => (
+                    {getSortedRows('faculty-attendance-history', attendance.records).map((record) => (
                       <tr key={record.id}>
                         <td>{formatDate(record.date)}</td>
                         <td>{record.studentName}</td>
@@ -292,9 +317,18 @@ function FacultyProfile({ departmentId, facultyId }) {
             ) : (
               <div className="table-container">
                 <table>
-                  <thead><tr>{['Assignment', 'Subject', 'Created', 'Due date', 'Submissions', 'Pending', 'Grading status', ''].map((label) => <th key={label}>{label}</th>)}</tr></thead>
+                  <thead><tr>
+                    <SortableTh tableId="faculty-assignments" columnKey="title" label="Assignment" sorts={getSorts('faculty-assignments')} onSort={toggleSort} />
+                    <SortableTh tableId="faculty-assignments" columnKey="subjectName" label="Subject" sorts={getSorts('faculty-assignments')} onSort={toggleSort} />
+                    <SortableTh tableId="faculty-assignments" columnKey="creationDate" label="Created" sorts={getSorts('faculty-assignments')} onSort={toggleSort} />
+                    <SortableTh tableId="faculty-assignments" columnKey="dueDate" label="Due date" sorts={getSorts('faculty-assignments')} onSort={toggleSort} />
+                    <SortableTh tableId="faculty-assignments" columnKey="totalSubmissions" label="Submissions" sorts={getSorts('faculty-assignments')} onSort={toggleSort} />
+                    <SortableTh tableId="faculty-assignments" columnKey="pendingSubmissions" label="Pending" sorts={getSorts('faculty-assignments')} onSort={toggleSort} />
+                    <SortableTh tableId="faculty-assignments" columnKey="gradingStatus" label="Grading status" sorts={getSorts('faculty-assignments')} onSort={toggleSort} />
+                    <th></th>
+                  </tr></thead>
                   <tbody>
-                    {assignments.map((assignment) => (
+                    {getSortedRows('faculty-assignments', assignments).map((assignment) => (
                       <tr key={assignment.id}>
                         <td>{assignment.title}</td>
                         <td>{assignment.subjectName} ({assignment.subjectCode})</td>
@@ -326,9 +360,14 @@ function FacultyProfile({ departmentId, facultyId }) {
             ) : (
               <div className="table-container">
                 <table>
-                  <thead><tr>{['Subject', 'Code', 'Average marks (/10)', 'Assessed records'].map((label) => <th key={label}>{label}</th>)}</tr></thead>
+                  <thead><tr>
+                    <SortableTh tableId="faculty-performance" columnKey="subjectName" label="Subject" sorts={getSorts('faculty-performance')} onSort={toggleSort} />
+                    <SortableTh tableId="faculty-performance" columnKey="subjectCode" label="Code" sorts={getSorts('faculty-performance')} onSort={toggleSort} />
+                    <SortableTh tableId="faculty-performance" columnKey="averageMarks" label="Average marks (/10)" sorts={getSorts('faculty-performance')} onSort={toggleSort} />
+                    <SortableTh tableId="faculty-performance" columnKey="assessedRecords" label="Assessed records" sorts={getSorts('faculty-performance')} onSort={toggleSort} />
+                  </tr></thead>
                   <tbody>
-                    {performance.subjectPerformance.map((subject) => (
+                    {getSortedRows('faculty-performance', performance.subjectPerformance).map((subject) => (
                       <tr key={subject.subjectId}>
                         <td>{subject.subjectName}</td><td>{subject.subjectCode}</td>
                         <td>{formatPerformance(subject.averageMarks)}</td><td>{subject.assessedRecords}</td>
@@ -344,9 +383,19 @@ function FacultyProfile({ departmentId, facultyId }) {
             ) : (
               <div className="table-container">
                 <table>
-                  <thead><tr>{['Student', 'ID', 'Attendance', 'Performance', 'Subjects', 'Indicators'].map((label) => <th key={label}>{label}</th>)}</tr></thead>
+                  <thead><tr>
+                    <SortableTh tableId="faculty-attention" columnKey="studentName" label="Student" sorts={getSorts('faculty-attention')} onSort={toggleSort} />
+                    <SortableTh tableId="faculty-attention" columnKey="studentRollNumber" label="ID" sorts={getSorts('faculty-attention')} onSort={toggleSort} />
+                    <SortableTh tableId="faculty-attention" columnKey="attendancePercentage" label="Attendance" sorts={getSorts('faculty-attention')} onSort={toggleSort} />
+                    <SortableTh tableId="faculty-attention" columnKey="averagePerformance" label="Performance" sorts={getSorts('faculty-attention')} onSort={toggleSort} />
+                    <SortableTh tableId="faculty-attention" columnKey="subjects" label="Subjects" sorts={getSorts('faculty-attention')} onSort={toggleSort} />
+                    <SortableTh tableId="faculty-attention" columnKey="reasons" label="Indicators" sorts={getSorts('faculty-attention')} onSort={toggleSort} />
+                  </tr></thead>
                   <tbody>
-                    {performance.studentsRequiringAttention.map((student) => (
+                    {getSortedRows('faculty-attention', performance.studentsRequiringAttention, {
+                      subjects: (student) => student.subjects.join(', '),
+                      reasons: (student) => student.reasons.join(', '),
+                    }).map((student) => (
                       <tr key={student.studentId}>
                         <td>{student.studentName}</td><td>{student.studentRollNumber}</td>
                         <td>{formatPercent(student.attendancePercentage)}</td>
@@ -376,6 +425,7 @@ function FacultyProfile({ departmentId, facultyId }) {
 
 function FacultyDirectory({ departmentId }) {
   const navigate = useNavigate();
+  const { getSorts, toggleSort } = useTableSorting();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -383,8 +433,7 @@ function FacultyDirectory({ departmentId }) {
   const [academicYear, setAcademicYear] = useState('');
   const [subjectId, setSubjectId] = useState('');
   const [status, setStatus] = useState('');
-  const [sortBy, setSortBy] = useState('facultyId');
-  const [direction, setDirection] = useState('asc');
+  const sorts = getSorts('faculty-roster');
   const [page, setPage] = useState(0);
   const size = 25;
 
@@ -398,8 +447,7 @@ function FacultyDirectory({ departmentId }) {
         subjectId: subjectId || undefined,
         status: status || undefined,
         search: search.trim() || undefined,
-        sortBy,
-        direction,
+        ...(sorts.length ? { sort: sorts.map(({ key, direction }) => `${key}:${direction}`).join(',') } : {}),
         page,
         size,
       })
@@ -417,7 +465,7 @@ function FacultyDirectory({ departmentId }) {
       active = false;
       clearTimeout(timer);
     };
-  }, [departmentId, academicYear, subjectId, status, search, sortBy, direction, page]);
+  }, [departmentId, academicYear, subjectId, status, search, sorts, page]);
 
   const filterOptions = data?.filters;
   const summary = data?.summary;
@@ -429,11 +477,10 @@ function FacultyDirectory({ departmentId }) {
   }, [data?.totalPages, page]);
 
   const openFaculty = (faculty) => navigate(`/departments/${departmentId}/faculty/${faculty.userId}`);
-  const handleSortChange = (value) => {
-    setSortBy(value);
+  const handleSort = (tableId, key) => {
+    toggleSort(tableId, key);
     setPage(0);
   };
-
   return (
     <Layout pageTitle="Faculty Management">
       <DepartmentSectionNav departmentId={departmentId} />
@@ -478,20 +525,6 @@ function FacultyDirectory({ departmentId }) {
               </select>
             </div>
           </div>
-          <div className="toolbar-right">
-            <select className="form-select" aria-label="Sort faculty by" value={sortBy} onChange={(event) => handleSortChange(event.target.value)}>
-              <option value="facultyId">Faculty ID</option>
-              <option value="name">Name</option>
-              <option value="subjects">Assigned subjects</option>
-              <option value="students">Students teaching</option>
-              <option value="attendance">Attendance</option>
-              <option value="status">Status</option>
-            </select>
-            <button className="btn btn-secondary btn-sm" type="button" aria-label={`Sort ${direction === 'asc' ? 'descending' : 'ascending'}`} onClick={() => setDirection((value) => value === 'asc' ? 'desc' : 'asc')}>
-              {direction === 'asc' ? <ArrowUp size={15} /> : <ArrowDown size={15} />}
-              {direction === 'asc' ? 'Ascending' : 'Descending'}
-            </button>
-          </div>
         </div>
 
         {loading ? (
@@ -509,7 +542,18 @@ function FacultyDirectory({ departmentId }) {
             <div className="table-container">
               <table>
                 <thead>
-                  <tr>{['Faculty ID', 'Faculty', 'Designation', 'Email', 'Phone', 'Subjects', 'Students', 'Status', 'Attendance', ''].map((label) => <th key={label} style={HEADER_STYLE}>{label}</th>)}</tr>
+                  <tr>
+                    <SortableTh tableId="faculty-roster" columnKey="facultyId" label="Faculty ID" sorts={sorts} onSort={handleSort} style={HEADER_STYLE} />
+                    <SortableTh tableId="faculty-roster" columnKey="name" label="Faculty" sorts={sorts} onSort={handleSort} style={HEADER_STYLE} />
+                    <SortableTh tableId="faculty-roster" columnKey="designation" label="Designation" sorts={sorts} onSort={handleSort} style={HEADER_STYLE} />
+                    <SortableTh tableId="faculty-roster" columnKey="email" label="Email" sorts={sorts} onSort={handleSort} style={HEADER_STYLE} />
+                    <SortableTh tableId="faculty-roster" columnKey="phone" label="Phone" sorts={sorts} onSort={handleSort} style={HEADER_STYLE} />
+                    <SortableTh tableId="faculty-roster" columnKey="subjects" label="Subjects" sorts={sorts} onSort={handleSort} style={HEADER_STYLE} />
+                    <SortableTh tableId="faculty-roster" columnKey="students" label="Students" sorts={sorts} onSort={handleSort} style={HEADER_STYLE} />
+                    <SortableTh tableId="faculty-roster" columnKey="status" label="Status" sorts={sorts} onSort={handleSort} style={HEADER_STYLE} />
+                    <SortableTh tableId="faculty-roster" columnKey="attendance" label="Attendance" sorts={sorts} onSort={handleSort} style={HEADER_STYLE} />
+                    <th style={HEADER_STYLE}></th>
+                  </tr>
                 </thead>
                 <tbody>
                   {data.items.map((faculty) => (

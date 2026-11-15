@@ -79,7 +79,10 @@ public class AdminDepartmentHodService {
                 .map(faculty -> toFacultyMember(faculty, data.subjects()))
                 .toList();
         List<AdminHodProfile.SubjectDetails> subjectDetails = data.subjects().stream()
-                .sorted(Comparator.comparing(Subject::getName, String.CASE_INSENSITIVE_ORDER))
+                .sorted(Comparator.comparing(
+                                Subject::getSemester,
+                                Comparator.nullsLast(Comparator.naturalOrder()))
+                        .thenComparing(Subject::getName, String.CASE_INSENSITIVE_ORDER))
                 .map(subject -> toSubjectDetails(subject, data))
                 .toList();
         List<AdminHodProfile.StudentAttention> studentsRequiringAttention =
@@ -291,14 +294,21 @@ public class AdminDepartmentHodService {
     }
 
     private AdminHodProfile.SubjectDetails toSubjectDetails(Subject subject, DepartmentData data) {
+        List<Attendance> records = data.attendanceBySubject()
+                .getOrDefault(subject.getId(), List.of());
         return new AdminHodProfile.SubjectDetails(
                 subject.getId(),
                 subject.getName(),
                 subject.getCode(),
                 subject.getAcademicYear(),
                 subject.getSemester(),
-                subject.getAcademicYear(),
                 data.enrolledStudentIdsBySubject().getOrDefault(subject.getId(), Set.of()).size(),
+                attendancePercentage(records),
+                (int) records.stream()
+                        .map(Attendance::getDate)
+                        .filter(Objects::nonNull)
+                        .distinct()
+                        .count(),
                 subjectFacultyMembers(subject).stream()
                         .map(User::getName)
                         .filter(Objects::nonNull)

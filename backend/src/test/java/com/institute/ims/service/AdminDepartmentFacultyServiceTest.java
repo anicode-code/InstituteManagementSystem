@@ -103,12 +103,16 @@ class AdminDepartmentFacultyServiceTest {
                 20L, null, null, null, "faculty", "name", "desc", 0, 1);
         var verifiedOnly = service.getRoster(
                 20L, null, null, VerificationStatus.VERIFIED, "alice", "facultyId", "asc", 0, 25);
+        var multiSorted = service.getRoster(
+                20L, null, null, null, null, "subjects:asc,name:desc", "facultyId", "asc", 0, 1);
 
         assertThat(firstPage.totalElements()).isEqualTo(2);
         assertThat(firstPage.totalPages()).isEqualTo(2);
         assertThat(firstPage.items()).extracting(item -> item.name()).containsExactly("Bob Faculty");
         assertThat(verifiedOnly.totalElements()).isEqualTo(1);
         assertThat(verifiedOnly.items()).extracting(item -> item.facultyId()).containsExactly("FAC-011");
+        assertThat(multiSorted.totalElements()).isEqualTo(2);
+        assertThat(multiSorted.items()).extracting(item -> item.name()).containsExactly("Bob Faculty");
     }
 
     @Test

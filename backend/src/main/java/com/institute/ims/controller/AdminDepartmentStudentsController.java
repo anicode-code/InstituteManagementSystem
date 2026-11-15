@@ -27,12 +27,13 @@ public class AdminDepartmentStudentsController {
             @RequestParam(required = false) VerificationStatus status,
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String attention,
+            @RequestParam(required = false) String sort,
             @RequestParam(defaultValue = "rollNumber") String sortBy,
             @RequestParam(defaultValue = "asc") String direction,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "25") int size) {
         return ResponseEntity.ok(service.getRoster(
-                departmentId, year, semester, status, search, attention, sortBy, direction, page, size));
+                departmentId, year, semester, status, search, attention, sort, sortBy, direction, page, size));
     }
 
     @GetMapping("/{studentId}")

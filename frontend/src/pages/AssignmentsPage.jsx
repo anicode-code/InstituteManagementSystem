@@ -2,6 +2,8 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
+import SortableTh from '../components/SortableTh';
+import { useTableSorting } from '../utils/tableSorting';
 import {
   getAllAssignments, getAssignmentsByFaculty,
   createAssignment, deleteAssignment,
@@ -237,7 +239,9 @@ function StudentSubmissionModal({ open, onClose, assignment }) {
 }
 
 // ──────── Faculty Submissions & Grading Modal ────────
-function FacultySubmissionsModal({ open, onClose, assignment }) {
+function FacultySubmissionsModal({ open, onClose, assignment, isAdmin }) {
+  const { getSorts, getSortedRows, toggleSort } = useTableSorting();
+  const sorts = getSorts('assignment-submissions');
   const [submissions, setSubmissions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState(null);
@@ -313,16 +317,24 @@ function FacultySubmissionsModal({ open, onClose, assignment }) {
               <table>
                 <thead>
                   <tr>
-                    <th>Student</th>
-                    <th>Roll Number</th>
-                    <th>Submitted At</th>
-                    <th>Status</th>
-                    <th>Marks</th>
+                    {isAdmin ? (
+                      <>
+                        <SortableTh tableId="assignment-submissions" columnKey="student.name" label="Student" sorts={sorts} onSort={toggleSort} />
+                        <SortableTh tableId="assignment-submissions" columnKey="student.rollNumber" label="Roll Number" sorts={sorts} onSort={toggleSort} />
+                        <SortableTh tableId="assignment-submissions" columnKey="submittedAt" label="Submitted At" sorts={sorts} onSort={toggleSort} />
+                        <SortableTh tableId="assignment-submissions" columnKey="status" label="Status" sorts={sorts} onSort={toggleSort} />
+                        <SortableTh tableId="assignment-submissions" columnKey="marks" label="Marks" sorts={sorts} onSort={toggleSort} />
+                      </>
+                    ) : (
+                      <>
+                        <th>Student</th><th>Roll Number</th><th>Submitted At</th><th>Status</th><th>Marks</th>
+                      </>
+                    )}
                     <th>Action</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {submissions.map((s) => (
+                  {(isAdmin ? getSortedRows('assignment-submissions', submissions) : submissions).map((s) => (
                     <tr key={s.id}>
                       <td style={{ fontWeight: 600 }}>{s.student?.name}</td>
                       <td style={{ fontFamily: 'monospace', color: 'var(--accent)' }}>{s.student?.rollNumber}</td>
@@ -644,6 +656,7 @@ export default function AssignmentsPage({ departmentId }) {
         open={Boolean(activeAssignmentForFaculty)}
         onClose={() => setActiveAssignmentForFaculty(null)}
         assignment={activeAssignmentForFaculty}
+        isAdmin={user?.role === 'ADMIN'}
       />
     </Layout>
   );

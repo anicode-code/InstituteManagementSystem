@@ -1,6 +1,8 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
+import SortableTh from '../components/SortableTh';
+import { useTableSorting } from '../utils/tableSorting';
 import {
   getAttendanceBySubject,
   getAttendanceByStudent,
@@ -19,7 +21,9 @@ import toast from 'react-hot-toast';
 import DepartmentSectionNav from '../components/DepartmentSectionNav';
 
 export default function AttendancePage({ departmentId }) {
-  const { user, isFaculty, isStudent, isAdminOrHod } = useAuth();
+  const { user, isAdmin, isFaculty, isStudent, isAdminOrHod } = useAuth();
+  const { getSorts, getSortedRows, toggleSort } = useTableSorting();
+  const attendanceSorts = getSorts('attendance-matrix');
 
   const [subjects, setSubjects] = useState([]);
   const [departments, setDepartments] = useState([]);
@@ -220,7 +224,6 @@ export default function AttendancePage({ departmentId }) {
         s.email?.toLowerCase().includes(q)
     );
   }, [eligibleStudents, search]);
-
   // Student subject-level statistics
   const studentStatsMap = useMemo(() => {
     const totalDays = distinctDays.length;
@@ -260,6 +263,19 @@ export default function AttendancePage({ departmentId }) {
 
     return stats;
   }, [students, distinctDays, cellMap]);
+
+  const sortedVisibleStudents = isAdmin
+    ? getSortedRows('attendance-matrix', visibleStudents, {
+      overallAttendance: (student) => studentStatsMap.get(student.id)?.pct,
+      ...Object.fromEntries(distinctDays.map((day) => [
+        `day-${day.date}`,
+        (student) => {
+          const status = cellMap.get(`${student.id}_${day.date}`)?.status;
+          return status === 'PRESENT' ? 2 : status === 'ABSENT' ? 1 : 0;
+        },
+      ])),
+    })
+    : visibleStudents;
 
   // Overall Class Average across all students
   const overallClassAverage = useMemo(() => {
@@ -595,18 +611,34 @@ export default function AttendancePage({ departmentId }) {
             <thead>
               <tr>
                 {/* 1. Sticky Student Identifiers */}
-                <th className="sticky-col-roll">Roll No</th>
-                <th className="sticky-col-name">Student Name</th>
-                <th className="sticky-col-pct" style={{ textAlign: 'center' }}>Overall %</th>
+                {isAdmin ? (
+                  <>
+                    <SortableTh tableId="attendance-matrix" columnKey="rollNumber" label="Roll No" sorts={attendanceSorts} onSort={toggleSort} className="sticky-col-roll" />
+                    <SortableTh tableId="attendance-matrix" columnKey="name" label="Student Name" sorts={attendanceSorts} onSort={toggleSort} className="sticky-col-name" />
+                    <SortableTh tableId="attendance-matrix" columnKey="overallAttendance" label="Overall %" sorts={attendanceSorts} onSort={toggleSort} className="sticky-col-pct" style={{ textAlign: 'center' }} />
+                  </>
+                ) : (
+                  <>
+                    <th className="sticky-col-roll">Roll No</th>
+                    <th className="sticky-col-name">Student Name</th>
+                    <th className="sticky-col-pct" style={{ textAlign: 'center' }}>Overall %</th>
+                  </>
+                )}
 
                 {/* 2, 6. Day Columns (narrow, day number + short date, hover tooltip, highlighted when class taken) */}
                 {distinctDays.map((d) => (
-                  <th key={d.date} className="day-col-header conducted-day">
-                    <div className="day-number-text">Day {d.dayNumber}</div>
-                    <div className="day-date-text">{d.shortDate}</div>
-
-                    {/* Tooltip on hover (Point 2) */}
-                    <div className="day-tooltip">
+                  isAdmin ? (
+                    <SortableTh
+                      key={d.date}
+                      tableId="attendance-matrix"
+                      columnKey={`day-${d.date}`}
+                      ariaLabel={`Day ${d.dayNumber}, ${d.fullDate}`}
+                      label={<><span className="day-number-text">Day {d.dayNumber}</span><span className="day-date-text">{d.shortDate}</span></>}
+                      sorts={attendanceSorts}
+                      onSort={toggleSort}
+                      className="day-col-header conducted-day"
+                      headerContent={(
+                        <div className="day-tooltip">
                       <div style={{ fontWeight: 800, color: 'var(--accent)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
                         <Calendar size={13} /> Day {d.dayNumber} ({d.date})
                       </div>
@@ -653,8 +685,34 @@ export default function AttendancePage({ departmentId }) {
                           <Trash2 size={11} /> Delete Day
                         </button>
                       )}
-                    </div>
-                  </th>
+                        </div>
+                      )}
+                    />
+                  ) : (
+                    <th key={d.date} className="day-col-header conducted-day">
+                      <div className="day-number-text">Day {d.dayNumber}</div>
+                      <div className="day-date-text">{d.shortDate}</div>
+                      <div className="day-tooltip">
+                        <div style={{ fontWeight: 800, color: 'var(--accent)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <Calendar size={13} /> Day {d.dayNumber} ({d.date})
+                        </div>
+                        <div style={{ color: 'var(--text-muted)', fontSize: '0.7rem', marginBottom: 6 }}>{d.fullDate}</div>
+                        <div style={{ color: 'var(--success)', fontWeight: 700 }}>✓ Present: {d.presentCount}</div>
+                        <div style={{ color: 'var(--danger)', fontWeight: 700 }}>✗ Absent: {d.absentCount}</div>
+                        <div style={{ marginTop: 4, fontWeight: 700, color: '#fff' }}>Attendance: {d.dayPct}%</div>
+                        {d.avgMarks && <div style={{ color: '#f59e0b', fontSize: '0.72rem' }}>Avg Performance: {d.avgMarks}/10</div>}
+                        {(isFaculty || isAdminOrHod) && (
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); handleDeleteDay(d.date, d.dayNumber); }}
+                            style={{ marginTop: 8, background: 'transparent', border: '1px solid var(--danger)', color: 'var(--danger)', borderRadius: 4, padding: '3px 6px', fontSize: '0.7rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, width: '100%', justifyContent: 'center' }}
+                          >
+                            <Trash2 size={11} /> Delete Day
+                          </button>
+                        )}
+                      </div>
+                    </th>
+                  )
                 ))}
 
                 {/* 3. Add Next Day column trigger */}
@@ -683,7 +741,7 @@ export default function AttendancePage({ departmentId }) {
                   </td>
                 </tr>
               ) : (
-                visibleStudents.map((stu) => {
+                sortedVisibleStudents.map((stu) => {
                   const sStats = studentStatsMap.get(stu.id) || { attended: 0, totalDays: 0, pct: 0, isLow: false };
                   return (
                     <tr key={stu.id}>
