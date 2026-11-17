@@ -42,23 +42,31 @@ public class HodStudentService {
     @Transactional(readOnly = true)
     public List<HodStudentRosterItem> getRoster(
             String hodRollNumber,
-            Integer year,
+            Integer semester,
             String sortBy,
             String direction) {
-        if (year == null || year < 1 || year > 4) {
-            throw new IllegalArgumentException("Academic year must be between 1 and 4.");
+        if (semester != null && (semester < 1 || semester > 8)) {
+            throw new IllegalArgumentException("Semester must be between 1 and 8.");
         }
 
         User hod = getHod(hodRollNumber);
         List<Department> departments = getAssignedDepartments(hod);
         Set<Long> departmentIds = departmentIds(departments);
         List<User> students = userRepository
-                .findByRoleAndYearAndDepartmentIdInOrderByRollNumberAsc(
-                        Role.STUDENT, year, new ArrayList<>(departmentIds));
+                .findByRoleAndDepartmentIdInOrderByRollNumberAsc(
+                        Role.STUDENT, new ArrayList<>(departmentIds));
 
         List<HodStudentRosterItem> roster = students.stream()
+                .filter(student -> semester == null || semester.equals(student.getSemester()))
                 .map(student -> getStudentData(student, departmentIds).rosterItem())
                 .toList();
+
+        if (sortBy == null) {
+            if (direction != null) {
+                throw new IllegalArgumentException("A sort column is required when specifying a direction.");
+            }
+            return roster;
+        }
 
         Comparator<HodStudentRosterItem> comparator = rosterComparator(sortBy, direction);
         return roster.stream()
@@ -221,10 +229,7 @@ public class HodStudentService {
         return switch (sortBy) {
             case "rollNumber" -> metricComparator(HodStudentRosterItem::rollNumber, Comparator.naturalOrder(), descending);
             case "name" -> metricComparator(HodStudentRosterItem::name, String.CASE_INSENSITIVE_ORDER, descending);
-            case "department" -> metricComparator(
-                    item -> item.department() == null ? null : item.department().name(),
-                    String.CASE_INSENSITIVE_ORDER,
-                    descending);
+            case "semester" -> metricComparator(HodStudentRosterItem::semester, Comparator.naturalOrder(), descending);
             case "attendancePercentage" -> metricComparator(HodStudentRosterItem::attendancePercentage, Comparator.naturalOrder(), descending);
             case "classPerformance" -> metricComparator(HodStudentRosterItem::classPerformance, Comparator.naturalOrder(), descending);
             case "pendingAssignments" -> metricComparator(HodStudentRosterItem::pendingAssignments, Comparator.naturalOrder(), descending);

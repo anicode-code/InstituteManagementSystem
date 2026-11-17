@@ -2,7 +2,7 @@ import { Fragment, useEffect, useState, useCallback } from 'react';
 import Layout from '../components/Layout';
 import ProfileAvatar from '../components/ProfileAvatar';
 import { useAuth } from '../context/AuthContext';
-import { getAllSubjects, getSubjectsByStudent, createSubject, updateSubject, deleteSubject } from '../api/subjects';
+import { getAllSubjects, getSubjectsByFaculty, getSubjectsByStudent, createSubject, updateSubject, deleteSubject } from '../api/subjects';
 import { getAllDepartments } from '../api/departments';
 import DepartmentSectionNav from '../components/DepartmentSectionNav';
 import SortableTh from '../components/SortableTh';
@@ -176,25 +176,27 @@ export default function SubjectsPage({ departmentId }) {
   const { getSorts, toggleSort } = useTableSorting();
   const subjectSorts = getSorts('subjects');
   const [subjects, setSubjects] = useState([]);
+  const [mySubjects, setMySubjects] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [editSubject, setEditSubject] = useState(null);
   const [departmentFilter, setDepartmentFilter] = useState('');
-  const [yearFilter, setYearFilter] = useState('');
   const [semesterFilter, setSemesterFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [subRes, depRes] = await Promise.all([
+      const [subRes, depRes, mySubjectRes] = await Promise.all([
         isStudent ? getSubjectsByStudent(user.id) : getAllSubjects(),
         getAllDepartments(),
+        user?.role === 'HOD' ? getSubjectsByFaculty(user.id) : Promise.resolve({ data: [] }),
       ]);
       setSubjects(subRes.data);
       setDepartments(depRes.data);
+      setMySubjects(mySubjectRes.data || []);
     } finally {
       setLoading(false);
     }
@@ -213,18 +215,18 @@ export default function SubjectsPage({ departmentId }) {
 
   const filtered = departmentSubjects.filter((s) => {
     const q = search.toLowerCase();
-    const year = s.academicYear || (s.semester ? Math.ceil(s.semester / 2) : null);
     return (!q || s.name?.toLowerCase().includes(q) || s.code?.toLowerCase().includes(q) || s.department?.name?.toLowerCase().includes(q))
       && (!isAdmin || !departmentFilter || String(s.department?.id) === departmentFilter)
-      && (!yearFilter || String(year) === yearFilter)
       && (!semesterFilter || String(s.semester) === semesterFilter)
       && (!typeFilter || s.type === typeFilter);
   });
 
-  const years = [...new Set(visibleSubjects.map((s) => s.academicYear || (s.semester ? Math.ceil(s.semester / 2) : null)).filter(Boolean))].sort((a, b) => a - b);
-  const semesters = yearFilter
-    ? semestersByYear[Number(yearFilter)]
-    : [1, 2, 3, 4, 5, 6, 7, 8];
+  const myFilteredSubjects = mySubjects.filter((subject) => {
+    const q = search.toLowerCase();
+    return (!q || subject.name?.toLowerCase().includes(q) || subject.code?.toLowerCase().includes(q) || subject.department?.name?.toLowerCase().includes(q))
+      && (!semesterFilter || String(subject.semester) === semesterFilter)
+      && (!typeFilter || subject.type === typeFilter);
+  });
   const groupedSubjects = (() => {
     const groups = new Map();
     filtered.forEach((subject) => {
@@ -296,19 +298,9 @@ export default function SubjectsPage({ departmentId }) {
                   {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
                 </select>
               )}
-              <select className="form-select" aria-label="Filter by year" value={yearFilter} onChange={(e) => {
-                const nextYear = e.target.value;
-                setYearFilter(nextYear);
-                if (semesterFilter && nextYear && !semestersByYear[Number(nextYear)].includes(Number(semesterFilter))) {
-                  setSemesterFilter('');
-                }
-              }}>
-                <option value="">All Years</option>
-                {years.map((year) => <option key={year} value={year}>Year {year}</option>)}
-              </select>
               <select className="form-select" aria-label="Filter by semester" value={semesterFilter} onChange={(e) => setSemesterFilter(e.target.value)}>
                 <option value="">All Semesters</option>
-                {semesters.map((semester) => <option key={semester} value={semester}>Semester {semester}</option>)}
+                {[1, 2, 3, 4, 5, 6, 7, 8].map((semester) => <option key={semester} value={semester}>Semester {semester}</option>)}
               </select>
               <select className="form-select" aria-label="Filter by subject type" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
                 <option value="">All Types</option>
@@ -319,6 +311,40 @@ export default function SubjectsPage({ departmentId }) {
           )}
         </div>
       </div>
+
+      {user?.role === 'HOD' && !loading && (
+        <section className="card" style={{ marginBottom: 24 }}>
+          <div className="card-header">
+            <div>
+              <h3 className="card-title">My Subjects</h3>
+              <p className="card-subtitle">{myFilteredSubjects.length} subjects assigned to you</p>
+            </div>
+          </div>
+          {myFilteredSubjects.length === 0 ? (
+            <div className="empty-state"><p>No assigned subjects match these filters.</p></div>
+          ) : (
+            <div className="table-container">
+              <table>
+                <thead>
+                  <tr><th>Subject</th><th>Code</th><th>Credits</th><th>Semester</th><th>Type</th><th>Department</th></tr>
+                </thead>
+                <tbody>
+                  {myFilteredSubjects.map((subject) => (
+                    <tr key={subject.id}>
+                      <td><strong>{subject.name}</strong></td>
+                      <td>{subject.code}</td>
+                      <td>{subject.credits ?? '—'}</td>
+                      <td>{subject.semester ? `Semester ${subject.semester}` : '—'}</td>
+                      <td>{subject.type === 'OPTIONAL' ? 'Optional' : 'Compulsory'}</td>
+                      <td>{subject.department?.name || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
 
       {loading ? (
         <div className="loader"><div className="spinner" /></div>

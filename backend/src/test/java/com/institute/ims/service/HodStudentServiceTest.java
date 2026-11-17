@@ -67,17 +67,17 @@ class HodStudentServiceTest {
     }
 
     @Test
-    void rosterFiltersByRequestedYearAndAssignedDepartmentAndDefaultsToRollOrder() {
+    void rosterDefaultsToAllSemestersAndRollNumberOrder() {
         stubHodScope();
         User first = student(1L, "001", assignedDepartment, 2);
-        User second = student(2L, "002", assignedDepartment, 2);
-        when(userRepository.findByRoleAndYearAndDepartmentIdInOrderByRollNumberAsc(
-                Role.STUDENT, 2, List.of(20L))).thenReturn(List.of(first, second));
+        User second = student(2L, "002", assignedDepartment, 4);
+        when(userRepository.findByRoleAndDepartmentIdInOrderByRollNumberAsc(
+                Role.STUDENT, List.of(20L))).thenReturn(List.of(first, second));
         when(subjectService.getByStudent(anyLong())).thenReturn(List.of());
         when(attendanceService.getByStudent(anyLong())).thenReturn(List.of());
         when(submissionRepository.findByStudentId(anyLong())).thenReturn(List.of());
 
-        var result = service.getRoster("HOD_TEST", 2, "rollNumber", "asc");
+        var result = service.getRoster("HOD_TEST", null, null, null);
 
         assertThat(result).extracting(item -> item.rollNumber()).containsExactly("001", "002");
         assertThat(result).allSatisfy(item -> {
@@ -86,15 +86,31 @@ class HodStudentServiceTest {
             assertThat(item.classPerformance()).isNull();
             assertThat(item.pendingAssignments()).isZero();
         });
-        verify(userRepository).findByRoleAndYearAndDepartmentIdInOrderByRollNumberAsc(
-                Role.STUDENT, 2, List.of(20L));
+        verify(userRepository).findByRoleAndDepartmentIdInOrderByRollNumberAsc(
+                Role.STUDENT, List.of(20L));
     }
 
     @Test
-    void rosterRejectsAcademicYearsOutsideFirstThroughFourth() {
-        assertThatThrownBy(() -> service.getRoster("HOD_TEST", 5, "rollNumber", "asc"))
+    void rosterFiltersBySemester() {
+        stubHodScope();
+        User first = student(1L, "001", assignedDepartment, 1);
+        User second = student(2L, "002", assignedDepartment, 2);
+        when(userRepository.findByRoleAndDepartmentIdInOrderByRollNumberAsc(
+                Role.STUDENT, List.of(20L))).thenReturn(List.of(first, second));
+        when(subjectService.getByStudent(2L)).thenReturn(List.of());
+        when(attendanceService.getByStudent(2L)).thenReturn(List.of());
+        when(submissionRepository.findByStudentId(2L)).thenReturn(List.of());
+
+        var result = service.getRoster("HOD_TEST", 2, null, null);
+
+        assertThat(result).extracting(item -> item.rollNumber()).containsExactly("002");
+    }
+
+    @Test
+    void rosterRejectsSemestersOutsideFirstThroughEighth() {
+        assertThatThrownBy(() -> service.getRoster("HOD_TEST", 9, null, null))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("between 1 and 4");
+                .hasMessageContaining("between 1 and 8");
 
         verifyNoInteractions(departmentRepository);
     }
@@ -104,8 +120,8 @@ class HodStudentServiceTest {
         stubHodScope();
         User presentStudent = student(1L, "001", assignedDepartment, 1);
         User absentStudent = student(2L, "002", assignedDepartment, 1);
-        when(userRepository.findByRoleAndYearAndDepartmentIdInOrderByRollNumberAsc(
-                Role.STUDENT, 1, List.of(20L))).thenReturn(List.of(presentStudent, absentStudent));
+        when(userRepository.findByRoleAndDepartmentIdInOrderByRollNumberAsc(
+                Role.STUDENT, List.of(20L))).thenReturn(List.of(presentStudent, absentStudent));
 
         Subject subject = new Subject();
         subject.setId(30L);
@@ -116,7 +132,7 @@ class HodStudentServiceTest {
         when(assignmentRepository.findBySubjectIdIn(List.of(30L))).thenReturn(List.of());
         when(submissionRepository.findByStudentId(anyLong())).thenReturn(List.of());
 
-        var result = service.getRoster("HOD_TEST", 1, "attendancePercentage", "desc");
+        var result = service.getRoster("HOD_TEST", null, "attendancePercentage", "desc");
 
         assertThat(result).extracting(item -> item.rollNumber()).containsExactly("001", "002");
         assertThat(result).extracting(item -> item.attendancePercentage()).containsExactly(100.0, 0.0);
@@ -137,14 +153,15 @@ class HodStudentServiceTest {
         verifyNoInteractions(subjectService, attendanceService, assignmentRepository, submissionRepository);
     }
 
-    private User student(Long id, String rollNumber, Department department, int year) {
+    private User student(Long id, String rollNumber, Department department, int semester) {
         User student = new User();
         student.setId(id);
         student.setName("Student " + rollNumber);
         student.setRollNumber(rollNumber);
         student.setRole(Role.STUDENT);
         student.setDepartment(department);
-        student.setYear(year);
+        student.setSemester(semester);
+        student.setYear((semester + 1) / 2);
         return student;
     }
 

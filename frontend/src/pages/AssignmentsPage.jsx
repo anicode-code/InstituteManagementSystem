@@ -455,7 +455,7 @@ export default function AssignmentsPage({ departmentId }) {
     try {
       const [aRes, sRes] = await Promise.all([
         isFaculty && user?.id ? getAssignmentsByFaculty(user.id) : getAllAssignments(),
-        isFaculty && user?.id
+        (isFaculty || user?.role === 'HOD') && user?.id
           ? getSubjectsByFaculty(user.id)
           : (isStudent && user?.id ? getSubjectsByStudent(user.id) : getAllSubjects()),
       ]);
@@ -492,6 +492,9 @@ export default function AssignmentsPage({ departmentId }) {
   const departmentSubjects = departmentId
     ? subjects.filter((subject) => String(subject.department?.id) === String(departmentId))
     : subjects;
+  const canCreateAssignment = isFaculty
+    || user?.role === 'ADMIN'
+    || (user?.role === 'HOD' && subjects.length > 0);
 
   const filtered = departmentAssignments.filter((a) => {
     const q = search.toLowerCase();
@@ -518,10 +521,14 @@ export default function AssignmentsPage({ departmentId }) {
         <div>
           <h2 className="page-title">Assignments</h2>
           <p className="page-subtitle">
-            {isFaculty ? 'Assignments you have posted' : (isStudent ? 'Assignments for your subjects' : 'All assignments')}
+            {isFaculty
+              ? 'Assignments you have posted'
+              : (user?.role === 'HOD'
+                ? 'Assignments across all semesters and subjects in your department'
+                : (isStudent ? 'Assignments for your subjects' : 'All assignments'))}
           </p>
         </div>
-        {(isFaculty || isAdminOrHod) && (
+        {canCreateAssignment && (
           <button className="btn btn-primary" onClick={() => setModalOpen(true)}>
             <Plus size={18} /> New Assignment
           </button>
@@ -546,7 +553,7 @@ export default function AssignmentsPage({ departmentId }) {
         <div className="empty-state">
           <ClipboardList />
           <h3>No assignments found</h3>
-          <p>{isFaculty ? 'Create your first assignment.' : 'No assignments have been posted yet.'}</p>
+          <p>{isFaculty || user?.role === 'HOD' ? 'Create an assignment for one of your assigned subjects.' : 'No assignments have been posted yet.'}</p>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -634,7 +641,7 @@ export default function AssignmentsPage({ departmentId }) {
       )}
 
       {/* Creation Modal */}
-      {(isFaculty || isAdminOrHod) && (
+      {canCreateAssignment && (
         <AssignmentModal
           open={modalOpen}
           onClose={() => setModalOpen(false)}

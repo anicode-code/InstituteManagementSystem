@@ -505,6 +505,13 @@ td { padding: 14px 16px; font-size: 0.875rem; border-top: 1px solid var(--border
 tbody tr { transition: background var(--transition); }
 tbody tr:hover { background: var(--bg-hover); }
 
+.hod-roster-table-container { border: 0; border-radius: 0; }
+.hod-roster-table { border-collapse: separate; border-spacing: 0; }
+.hod-roster-table thead th { background: var(--bg-hover); }
+.hod-roster-table tbody tr:nth-child(even) { background: var(--bg-secondary); }
+.hod-roster-table tbody tr:last-child td { border-bottom: 0; }
+.hod-roster-table tbody tr:hover { background: var(--bg-hover); }
+
 /* ─── Buttons ─── */
 .btn {
   display: inline-flex;

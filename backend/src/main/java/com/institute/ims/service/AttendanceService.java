@@ -42,9 +42,9 @@ public class AttendanceService {
                 throw new RuntimeException("You can only manage attendance for your assigned subjects.");
             }
         } else if (requestingUser.getRole() == Role.HOD) {
-            if (requestingUser.getDepartment() != null && subject.getDepartment() != null &&
-                    !subject.getDepartment().getId().equals(requestingUser.getDepartment().getId())) {
-                throw new RuntimeException("You can only manage attendance within your department.");
+            if (subject.getFacultyMembers().stream()
+                    .noneMatch(member -> member.getId().equals(requestingUser.getId()))) {
+                throw new RuntimeException("You can only manage attendance for subjects assigned to you.");
             }
         } else if (requestingUser.getRole() == Role.STUDENT) {
             throw new RuntimeException("Students are not permitted to mark or modify attendance.");

@@ -23,12 +23,12 @@ public class HodStudentController {
 
     @GetMapping
     public ResponseEntity<List<HodStudentRosterItem>> getRoster(
-            @RequestParam Integer year,
-            @RequestParam(defaultValue = "rollNumber") String sortBy,
-            @RequestParam(defaultValue = "asc") String direction,
+            @RequestParam(required = false) Integer semester,
+            @RequestParam(required = false) String sortBy,
+            @RequestParam(required = false) String direction,
             Authentication authentication) {
         return ResponseEntity.ok(service.getRoster(
-                authentication.getName(), year, sortBy, direction));
+                authentication.getName(), semester, sortBy, direction));
     }
 
     @GetMapping("/{studentId}")

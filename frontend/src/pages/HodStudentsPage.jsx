@@ -1,18 +1,21 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Layout from '../components/Layout';
+import SortableTh from '../components/SortableTh';
 import { getHodStudentDetails, getHodStudentRoster } from '../api/users';
-import { ArrowDown, ArrowUp, GraduationCap, X } from 'lucide-react';
+import { sortRows } from '../utils/tableSorting';
+import { GraduationCap, X } from 'lucide-react';
 
-const SORT_OPTIONS = [
-  { value: 'rollNumber', label: 'Roll number' },
-  { value: 'name', label: 'Name' },
-  { value: 'department', label: 'Department' },
-  { value: 'attendancePercentage', label: 'Attendance percentage' },
-  { value: 'classPerformance', label: 'Class performance' },
-  { value: 'pendingAssignments', label: 'Pending assignments' },
+const SORT_COLUMNS = [
+  { key: 'rollNumber', label: 'Roll number' },
+  { key: 'name', label: 'Student' },
+  { key: 'semester', label: 'Semester' },
+  { key: 'attendancePercentage', label: 'Attendance' },
+  { key: 'classPerformance', label: 'Class performance' },
+  { key: 'pendingAssignments', label: 'Pending assignments' },
 ];
 
 const YEAR_LABELS = { 1: '1st', 2: '2nd', 3: '3rd', 4: '4th' };
+const SEMESTERS = [1, 2, 3, 4, 5, 6, 7, 8];
 
 function Metric({ label, value }) {
   return (
@@ -153,10 +156,34 @@ const tableCellStyle = {
   verticalAlign: 'top',
 };
 
+const rosterHeaderStyle = {
+  ...tableHeaderStyle,
+  padding: '14px 16px',
+  letterSpacing: '0.04em',
+};
+
+const rosterCellStyle = {
+  ...tableCellStyle,
+  padding: '13px 16px',
+  verticalAlign: 'middle',
+};
+
+const rosterCenteredCellStyle = {
+  ...rosterCellStyle,
+  textAlign: 'center',
+  fontVariantNumeric: 'tabular-nums',
+};
+
+const centeredSortColumns = new Set([
+  'semester',
+  'attendancePercentage',
+  'classPerformance',
+  'pendingAssignments',
+]);
+
 export default function HodStudentsPage() {
-  const [year, setYear] = useState('');
-  const [sortBy, setSortBy] = useState('rollNumber');
-  const [direction, setDirection] = useState('asc');
+  const [semester, setSemester] = useState('');
+  const [sorts, setSorts] = useState([]);
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -167,16 +194,10 @@ export default function HodStudentsPage() {
   const detailsRequest = useRef(0);
 
   useEffect(() => {
-    if (!year) {
-      setStudents([]);
-      setError('');
-      return undefined;
-    }
-
     let active = true;
     setLoading(true);
     setError('');
-    getHodStudentRoster(Number(year), sortBy, direction)
+    getHodStudentRoster(semester)
       .then((response) => {
         if (active) setStudents(response.data || []);
       })
@@ -191,7 +212,19 @@ export default function HodStudentsPage() {
       });
 
     return () => { active = false; };
-  }, [year, sortBy, direction]);
+  }, [semester]);
+
+  const toggleSort = (_, key) => {
+    setSorts((current) => {
+      const selectedSort = current.find((sort) => sort.key === key);
+      if (!selectedSort) return [...current, { key, direction: 'asc' }];
+      if (selectedSort.direction === 'asc') {
+        return current.map((sort) => sort.key === key ? { ...sort, direction: 'desc' } : sort);
+      }
+      return current.filter((sort) => sort.key !== key);
+    });
+  };
+  const sortedStudents = useMemo(() => sortRows(students, sorts), [students, sorts]);
 
   const openStudent = async (student) => {
     const requestId = ++detailsRequest.current;
@@ -218,95 +251,83 @@ export default function HodStudentsPage() {
     setDetailsError('');
   };
 
-  const sortLabel = SORT_OPTIONS.find((option) => option.value === sortBy)?.label;
-
   return (
     <Layout pageTitle="Student Roster">
       <div style={{ marginBottom: 20 }}>
         <h2 style={{ fontSize: '1.45rem', fontWeight: 800, marginBottom: 4 }}>Department students</h2>
         <p style={{ color: 'var(--text-secondary)' }}>
-          Choose an academic year to view students in your assigned department(s). Metrics are shown only when recorded data is available.
+          View students in your assigned department(s). Metrics are shown only when recorded data is available.
         </p>
       </div>
 
       <div className="card" style={{ marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'end', gap: 16, flexWrap: 'wrap' }}>
           <div className="form-group" style={{ marginBottom: 0, minWidth: 180 }}>
-            <label className="form-label" htmlFor="roster-year">Academic year</label>
-            <select id="roster-year" className="form-input" value={year} onChange={(event) => setYear(event.target.value)}>
-              <option value="">Select a year</option>
-              {[1, 2, 3, 4].map((value) => (
-                <option key={value} value={value}>{YEAR_LABELS[value]} year</option>
+            <label className="form-label" htmlFor="roster-semester">Semester</label>
+            <select id="roster-semester" className="form-input" value={semester} onChange={(event) => setSemester(event.target.value)}>
+              <option value="">All Semesters</option>
+              {SEMESTERS.map((value) => (
+                <option key={value} value={value}>Semester {value}</option>
               ))}
             </select>
           </div>
-          <div className="form-group" style={{ marginBottom: 0, minWidth: 220 }}>
-            <label className="form-label" htmlFor="roster-sort">Sort students by</label>
-            <select id="roster-sort" className="form-input" value={sortBy} onChange={(event) => setSortBy(event.target.value)}>
-              {SORT_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>{option.label}</option>
-              ))}
-            </select>
-          </div>
-          <button
-            className="btn btn-secondary"
-            type="button"
-            aria-label={`Sort ${sortLabel} ${direction === 'asc' ? 'descending' : 'ascending'}`}
-            onClick={() => setDirection((current) => current === 'asc' ? 'desc' : 'asc')}
-          >
-            {direction === 'asc' ? <ArrowUp size={16} /> : <ArrowDown size={16} />}
-            {direction === 'asc' ? 'Ascending' : 'Descending'}
-          </button>
         </div>
       </div>
 
-      {!year && (
-        <div className="card text-center" style={{ padding: 44, color: 'var(--text-secondary)' }}>
-          <GraduationCap size={32} style={{ color: 'var(--accent)', marginBottom: 10 }} />
-          <p>Select an academic year to load the student roster.</p>
-        </div>
-      )}
-      {year && loading && <div className="loader"><div className="spinner" /></div>}
-      {year && !loading && error && <div className="alert alert-error" role="alert">{error}</div>}
-      {year && !loading && !error && students.length === 0 && (
+      {loading && <div className="loader"><div className="spinner" /></div>}
+      {!loading && error && <div className="alert alert-error" role="alert">{error}</div>}
+      {!loading && !error && students.length === 0 && (
         <div className="card text-center" style={{ padding: 36, color: 'var(--text-secondary)' }}>
-          No students found for the {YEAR_LABELS[year]} year in your assigned department(s).
+          No students found{semester ? ` for Semester ${semester}` : ''} in your assigned department(s).
         </div>
       )}
-      {year && !loading && !error && students.length > 0 && (
-        <div className="card" style={{ overflowX: 'auto', padding: 0 }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 760 }}>
-            <thead>
-              <tr>
-                {['Roll number', 'Student', 'Department', 'Attendance', 'Class performance', 'Pending assignments'].map((label) => (
-                  <th key={label} style={tableHeaderStyle}>{label}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {students.map((student) => (
-                <tr key={student.id}>
-                  <td style={tableCellStyle}>{student.rollNumber}</td>
-                  <td style={tableCellStyle}>
-                    <button
-                      type="button"
-                      className="btn btn-ghost"
-                      style={{ padding: 0, color: 'var(--accent)', fontWeight: 600 }}
-                      onClick={() => openStudent(student)}
-                    >
-                      {student.name}
-                    </button>
-                  </td>
-                  <td style={tableCellStyle}>{student.department?.code || student.department?.name || '—'}</td>
-                  <td style={tableCellStyle}>{student.attendancePercentage == null ? '—' : `${student.attendancePercentage}%`}</td>
-                  <td style={tableCellStyle}>{student.classPerformance == null ? '—' : `${student.classPerformance}/10`}</td>
-                  <td style={tableCellStyle}>{student.pendingAssignments}</td>
+      {!loading && !error && students.length > 0 && (
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          <div className="table-container hod-roster-table-container" style={{ border: 0, borderRadius: 0 }}>
+            <table className="hod-roster-table" style={{ minWidth: 820 }}>
+              <thead>
+                <tr>
+                  {SORT_COLUMNS.map(({ key, label }) => (
+                    <SortableTh
+                      key={key}
+                      tableId="hod-students"
+                      columnKey={key}
+                      label={label}
+                      sorts={sorts}
+                      onSort={toggleSort}
+                      style={{
+                        ...rosterHeaderStyle,
+                        textAlign: centeredSortColumns.has(key) ? 'center' : 'left',
+                      }}
+                    />
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {sortedStudents.map((student) => (
+                  <tr key={student.id}>
+                    <td style={rosterCellStyle}>{student.rollNumber}</td>
+                    <td style={rosterCellStyle}>
+                      <button
+                        type="button"
+                        className="btn btn-ghost"
+                        style={{ padding: 0, color: 'var(--accent)', fontWeight: 600 }}
+                        onClick={() => openStudent(student)}
+                      >
+                        {student.name}
+                      </button>
+                    </td>
+                    <td style={rosterCenteredCellStyle}>{student.semester ? `Semester ${student.semester}` : '—'}</td>
+                    <td style={rosterCenteredCellStyle}>{student.attendancePercentage == null ? '—' : `${student.attendancePercentage}%`}</td>
+                    <td style={rosterCenteredCellStyle}>{student.classPerformance == null ? '—' : `${student.classPerformance}/10`}</td>
+                    <td style={rosterCenteredCellStyle}>{student.pendingAssignments}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
           <div style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-            {students.length} student{students.length === 1 ? '' : 's'} · sorted by {sortLabel.toLowerCase()} ({direction})
+            {students.length} student{students.length === 1 ? '' : 's'}
           </div>
         </div>
       )}

@@ -10,7 +10,7 @@ import {
   recordDayBatch,
   deleteDayAttendance,
 } from '../api/attendance';
-import { getAllSubjects, getSubjectsByFaculty, getSubjectsByStudent } from '../api/subjects';
+import { getAllSubjects, getAllSubjectsForAttendance, getSubjectsByFaculty, getSubjectsByStudent } from '../api/subjects';
 import { getAllDepartments } from '../api/departments';
 import { getAllUsers } from '../api/users';
 import {
@@ -60,6 +60,7 @@ export default function AttendancePage({ departmentId }) {
   const attendanceSorts = getSorts('attendance-matrix');
 
   const [subjects, setSubjects] = useState([]);
+  const [editableSubjectIds, setEditableSubjectIds] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [selectedDepartmentId, setSelectedDepartmentId] = useState(departmentId || '');
   const [selectedSemester, setSelectedSemester] = useState('');
@@ -90,16 +91,20 @@ export default function AttendancePage({ departmentId }) {
     const init = async () => {
       setLoading(true);
       try {
-        const [subRes, userRes, departmentRes] = await Promise.all([
+        const [subRes, userRes, departmentRes, assignedSubjectRes] = await Promise.all([
           isFaculty
             ? getSubjectsByFaculty(user.id)
-            : (isStudent ? getSubjectsByStudent(user.id) : getAllSubjects()),
+            : (isStudent
+              ? getSubjectsByStudent(user.id)
+              : (user?.role === 'HOD' ? getAllSubjectsForAttendance() : getAllSubjects())),
           isStudent ? Promise.resolve({ data: [] }) : getAllUsers(),
           user?.role === 'ADMIN' ? getAllDepartments() : Promise.resolve({ data: [] }),
+          user?.role === 'HOD' ? getSubjectsByFaculty(user.id) : Promise.resolve({ data: [] }),
         ]);
 
         const loadedSubjects = subRes.data || [];
         setSubjects(loadedSubjects);
+        setEditableSubjectIds((assignedSubjectRes.data || []).map((subject) => Number(subject.id)));
         setDepartments(departmentRes.data || []);
         if (departmentId) setSelectedDepartmentId(String(departmentId));
 
@@ -142,6 +147,8 @@ export default function AttendancePage({ departmentId }) {
     },
     [availableSubjects, isAdminOrHod, selectedSubjectId, selectedSemester, selectedDepartmentId, user]
   );
+  const canEditAttendance = isFaculty || isAdmin
+    || (user?.role === 'HOD' && editableSubjectIds.includes(Number(selectedSubject?.id)));
 
   // Load attendance records whenever selectedSubjectId changes
   const loadSubjectAttendance = useCallback(async () => {
@@ -344,7 +351,7 @@ export default function AttendancePage({ departmentId }) {
 
   // Toggle cell attendance (cycles: P <-> A)
   const handleToggleStatus = async (studentId, date) => {
-    if (isStudent) return; // Students cannot toggle
+    if (!canEditAttendance) return;
 
     const key = `${studentId}_${date}`;
     const current = cellMap.get(key);
@@ -394,7 +401,7 @@ export default function AttendancePage({ departmentId }) {
 
   // Update cell performance marks
   const handlePerformanceMarksChange = async (studentId, date, value) => {
-    if (isStudent) return;
+    if (!canEditAttendance) return;
     const key = `${studentId}_${date}`;
     const current = cellMap.get(key);
     const marksNum = value.trim() === '' ? null : Number(value);
@@ -424,6 +431,7 @@ export default function AttendancePage({ departmentId }) {
   // Add Day / Session handler
   const handleAddDay = async (e) => {
     e.preventDefault();
+    if (!canEditAttendance) return;
     if (!newDayDate) {
       toast.error('Please select a valid date');
       return;
@@ -456,6 +464,7 @@ export default function AttendancePage({ departmentId }) {
 
   // Delete a day column
   const handleDeleteDay = async (dateStr, dayNum) => {
+    if (!canEditAttendance) return;
     if (!window.confirm(`Delete all attendance for Day ${dayNum} (${dateStr})?`)) return;
     try {
       await deleteDayAttendance(selectedSubjectId, dateStr);
@@ -478,7 +487,7 @@ export default function AttendancePage({ departmentId }) {
               : (isStudent ? 'Your subject-wise attendance history' : 'Institute attendance matrix')}
           </p>
         </div>
-        {(isFaculty || isAdminOrHod) && selectedSubject && (
+        {canEditAttendance && selectedSubject && (
           <button className="btn btn-primary" onClick={() => setAddDayModalOpen(true)}>
             <Plus size={18} /> Add Day / Class
           </button>
@@ -815,7 +824,7 @@ export default function AttendancePage({ departmentId }) {
                           Avg Performance: {d.avgMarks}/10
                         </div>
                       )}
-                      {(isFaculty || isAdminOrHod) && (
+                      {canEditAttendance && (
                         <button
                           type="button"
                           onClick={(e) => {
@@ -857,7 +866,7 @@ export default function AttendancePage({ departmentId }) {
                         <div style={{ color: 'var(--danger)', fontWeight: 700 }}>✗ Absent: {d.absentCount}</div>
                         <div style={{ marginTop: 4, fontWeight: 700, color: '#fff' }}>Attendance: {d.dayPct}%</div>
                         {d.avgMarks && <div style={{ color: '#f59e0b', fontSize: '0.72rem' }}>Avg Performance: {d.avgMarks}/10</div>}
-                        {(isFaculty || isAdminOrHod) && (
+                        {canEditAttendance && (
                           <button
                             type="button"
                             onClick={(e) => { e.stopPropagation(); handleDeleteDay(d.date, d.dayNumber); }}
@@ -872,7 +881,7 @@ export default function AttendancePage({ departmentId }) {
                 ))}
 
                 {/* 3. Add Next Day column trigger */}
-                {(isFaculty || isAdminOrHod) && (
+                {canEditAttendance && (
                   <th
                     style={{ width: 80, minWidth: 80, textAlign: 'center', verticalAlign: 'middle', cursor: 'pointer', background: 'var(--bg-secondary)' }}
                     onClick={() => setAddDayModalOpen(true)}
@@ -957,7 +966,7 @@ export default function AttendancePage({ departmentId }) {
                             </button>
 
                             {/* Optional class performance mark */}
-                            {(isFaculty || isAdminOrHod) ? (
+                            {canEditAttendance ? (
                               <div>
                                 <input
                                   type="number"
@@ -986,7 +995,7 @@ export default function AttendancePage({ departmentId }) {
                         );
                       })}
 
-                      {(isFaculty || isAdminOrHod) && <td style={{ background: 'var(--bg-secondary)' }} />}
+                      {canEditAttendance && <td style={{ background: 'var(--bg-secondary)' }} />}
                     </tr>
                   );
                 })
@@ -1027,7 +1036,7 @@ export default function AttendancePage({ departmentId }) {
                   </td>
                 ))}
 
-                {(isFaculty || isAdminOrHod) && <td style={{ background: 'var(--bg-hover)' }} />}
+                {canEditAttendance && <td style={{ background: 'var(--bg-hover)' }} />}
               </tr>
             </tfoot>
           </table>
@@ -1035,7 +1044,7 @@ export default function AttendancePage({ departmentId }) {
       )}
 
       {/* 3. Add Day Modal */}
-      {addDayModalOpen && (
+      {addDayModalOpen && canEditAttendance && (
         <div className="modal-overlay" onClick={() => setAddDayModalOpen(false)}>
           <div className="modal" style={{ maxWidth: 420 }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">

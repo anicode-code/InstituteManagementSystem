@@ -3,6 +3,7 @@ package com.institute.ims.service;
 import com.institute.ims.model.*;
 import com.institute.ims.repository.AssignmentRepository;
 import com.institute.ims.repository.AssignmentSubmissionRepository;
+import com.institute.ims.repository.DepartmentRepository;
 import com.institute.ims.repository.SubjectRepository;
 import com.institute.ims.repository.UserRepository;
 import org.springframework.stereotype.Service;
@@ -20,17 +21,20 @@ public class AssignmentService {
     private final AssignmentSubmissionRepository submissionRepository;
     private final SubjectRepository subjectRepository;
     private final UserRepository userRepository;
+    private final DepartmentRepository departmentRepository;
 
     public AssignmentService(
             AssignmentRepository assignmentRepository,
             AssignmentSubmissionRepository submissionRepository,
             SubjectRepository subjectRepository,
-            UserRepository userRepository) {
+            UserRepository userRepository,
+            DepartmentRepository departmentRepository) {
 
         this.assignmentRepository = assignmentRepository;
         this.submissionRepository = submissionRepository;
         this.subjectRepository = subjectRepository;
         this.userRepository = userRepository;
+        this.departmentRepository = departmentRepository;
     }
 
     public List<Assignment> getAll() {
@@ -40,8 +44,16 @@ public class AssignmentService {
     public List<Assignment> getScopedAssignments(User user) {
         if (user.getRole() == Role.FACULTY) {
             return assignmentRepository.findBySubjectFacultyId(user.getId());
-        } else if (user.getRole() == Role.HOD && user.getDepartment() != null) {
-            return assignmentRepository.findBySubjectDepartmentId(user.getDepartment().getId());
+        } else if (user.getRole() == Role.HOD) {
+            Department department = user.getDepartment();
+            if (department == null) {
+                department = departmentRepository.findByHodId(user.getId()).stream()
+                        .findFirst()
+                        .orElse(null);
+            }
+            return department == null
+                    ? List.of()
+                    : assignmentRepository.findBySubjectDepartmentId(department.getId());
         }
         return assignmentRepository.findAll();
     }
@@ -80,6 +92,8 @@ public class AssignmentService {
             if (!isFacultyAssignedToSubject(subject, requestingUser)) {
                 throw new RuntimeException("You can only create assignments for your assigned subjects.");
             }
+        } else if (requestingUser.getRole() == Role.HOD && !isFacultyAssignedToSubject(subject, requestingUser)) {
+            throw new RuntimeException("You can only create assignments for subjects assigned to you.");
         } else if (requestingUser.getRole() == Role.STUDENT) {
             throw new RuntimeException("Students cannot create assignments.");
         }

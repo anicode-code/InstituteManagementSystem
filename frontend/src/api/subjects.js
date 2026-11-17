@@ -1,6 +1,7 @@
 import api from './axios';
 
 export const getAllSubjects = () => api.get('/api/subjects');
+export const getAllSubjectsForAttendance = () => api.get('/api/subjects/attendance');
 export const getSubjectById = (id) => api.get(`/api/subjects/${id}`);
 export const getSubjectsByFaculty = (facultyId) =>
   api.get(`/api/subjects/faculty/${facultyId}`);

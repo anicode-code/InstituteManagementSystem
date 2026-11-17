@@ -60,6 +60,22 @@ public class SubjectController {
         return ResponseEntity.ok(service.getAll());
     }
 
+    @GetMapping("/attendance")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN', 'HOD')")
+    public ResponseEntity<List<Subject>> getAllForAttendance(Authentication authentication) {
+        User currentUser = userService.getUserByRollNumber(authentication.getName());
+        if (currentUser.getRole() == Role.HOD) {
+            Department department = currentUser.getDepartment();
+            if (department == null) {
+                department = departmentRepository.findByHodId(currentUser.getId()).stream()
+                        .findFirst()
+                        .orElseThrow(() -> new AccessDeniedException("No department is assigned to this HOD account."));
+            }
+            return ResponseEntity.ok(service.getByDepartment(department.getId()));
+        }
+        return ResponseEntity.ok(service.getAll());
+    }
+
     @GetMapping("/department/{deptId}")
     public ResponseEntity<List<Subject>> getByDepartment(@PathVariable Long deptId) {
         return ResponseEntity.ok(service.getByDepartment(deptId));
