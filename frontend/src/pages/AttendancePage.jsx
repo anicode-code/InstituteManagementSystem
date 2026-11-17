@@ -20,6 +20,23 @@ import {
 import toast from 'react-hot-toast';
 import DepartmentSectionNav from '../components/DepartmentSectionNav';
 
+function SummaryCard({ label, value, icon, detail }) {
+  return (
+    <article className="card" style={{ padding: 14, minWidth: 0 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            {label}
+          </div>
+          <div style={{ marginTop: 6, fontSize: '1.35rem', fontWeight: 800 }}>{value}</div>
+          {detail && <div style={{ marginTop: 3, color: 'var(--text-muted)', fontSize: '0.72rem' }}>{detail}</div>}
+        </div>
+        <div className="stat-icon" style={{ width: 36, height: 36, flexShrink: 0 }}>{icon}</div>
+      </div>
+    </article>
+  );
+}
+
 export default function AttendancePage({ departmentId }) {
   const { user, isAdmin, isFaculty, isStudent, isAdminOrHod } = useAuth();
   const { getSorts, getSortedRows, toggleSort } = useTableSorting();
@@ -60,7 +77,7 @@ export default function AttendancePage({ departmentId }) {
           isFaculty
             ? getSubjectsByFaculty(user.id)
             : (isStudent ? getSubjectsByStudent(user.id) : getAllSubjects()),
-          getAllUsers(),
+          isStudent ? Promise.resolve({ data: [] }) : getAllUsers(),
           user?.role === 'ADMIN' ? getAllDepartments() : Promise.resolve({ data: [] }),
         ]);
 
@@ -186,6 +203,24 @@ export default function AttendancePage({ departmentId }) {
       };
     });
   }, [records]);
+
+  const personalRecordsByDate = useMemo(
+    () => new Map(records.map((record) => [record.date, record])),
+    [records],
+  );
+
+  const personalAttendanceStats = useMemo(() => {
+    const statuses = distinctDays.map((day) => personalRecordsByDate.get(day.date)?.status);
+    const attended = statuses.filter((status) => status === 'PRESENT').length;
+    const missed = statuses.filter((status) => status === 'ABSENT').length;
+    const totalClasses = distinctDays.length;
+    return {
+      totalClasses,
+      attended,
+      missed,
+      percentage: totalClasses ? Math.round((attended / totalClasses) * 100) : 0,
+    };
+  }, [distinctDays, personalRecordsByDate]);
 
   // Fast cell record lookup: `${studentId}_${date}`
   const cellMap = useMemo(() => {
@@ -488,6 +523,28 @@ export default function AttendancePage({ departmentId }) {
                   </select>
                 </label>
               </>
+            ) : isStudent ? (
+              <label className="attendance-filter">
+                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <BookOpen size={17} color="var(--accent)" /> Select Subject:
+                </span>
+                <select
+                  className="form-select"
+                  value={selectedSubjectId || ''}
+                  disabled={loading || subjects.length === 0}
+                  onChange={(e) => {
+                    setSelectedSubjectId(e.target.value ? Number(e.target.value) : null);
+                    setRecords([]);
+                  }}
+                >
+                  <option value="">Select subject</option>
+                  {subjects.map((subject) => (
+                    <option key={subject.id} value={subject.id}>
+                      {subject.name} ({subject.code}) · {subject.type === 'OPTIONAL' ? 'Optional' : 'Compulsory'}
+                    </option>
+                  ))}
+                </select>
+              </label>
             ) : isFaculty ? (
               <label className="attendance-filter">
                 <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -510,40 +567,13 @@ export default function AttendancePage({ departmentId }) {
                 </select>
               </label>
             ) : (
-              <>
-                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <BookOpen size={17} color="var(--accent)" /> Select Subject:
-                </span>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  {subjects.map((s) => {
-                    const isSelected = Number(selectedSubjectId) === s.id;
-                    return (
-                      <button
-                        key={s.id}
-                        onClick={() => setSelectedSubjectId(s.id)}
-                        style={{
-                          padding: '7px 14px',
-                          borderRadius: 20,
-                          fontSize: '0.82rem',
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                          transition: 'all 0.2s ease',
-                          background: isSelected ? 'var(--accent)' : 'var(--bg-secondary)',
-                          color: isSelected ? '#fff' : 'var(--text-secondary)',
-                          border: `1px solid ${isSelected ? 'var(--accent)' : 'var(--border)'}`,
-                          boxShadow: isSelected ? '0 0 14px var(--accent-glow)' : 'none',
-                        }}
-                      >
-                        {s.name} ({s.code}) · {s.type === 'OPTIONAL' ? 'Optional' : 'Compulsory'}
-                      </button>
-                    );
-                  })}
-                </div>
-              </>
+              <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                Select a subject to view your attendance history.
+              </div>
             )}
           </div>
 
-          {selectedSubject && (
+          {selectedSubject && !isStudent && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: '0.82rem', color: 'var(--text-muted)' }}>
               <span>Faculty: <strong>{
                 selectedSubject.facultyMembers?.length
@@ -558,30 +588,23 @@ export default function AttendancePage({ departmentId }) {
       </div>
 
       {/* Student Low Attendance Alert */}
-      {isStudent && user && (
-        (() => {
-          const s = studentStatsMap.get(user.id);
-          if (s && s.totalDays > 0 && s.pct < 75) {
-            return (
-              <div className="alert" style={{
-                background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)',
-                border: '1px solid var(--danger)', marginBottom: 20,
-                display: 'flex', alignItems: 'center', gap: 12,
-              }}>
-                <AlertTriangle size={20} />
-                <div>
-                  <strong>Low Attendance Alert:</strong> Your attendance in {selectedSubject?.name} is {s.pct}% ({s.attended}/{s.totalDays} classes).
-                  The minimum requirement is 75%.
-                </div>
-              </div>
-            );
-          }
-          return null;
-        })()
+      {isStudent && selectedSubject && personalAttendanceStats.totalClasses > 0
+        && personalAttendanceStats.percentage < 75 && (
+        <div className="alert" style={{
+          background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)',
+          border: '1px solid var(--danger)', marginBottom: 20,
+          display: 'flex', alignItems: 'center', gap: 12,
+        }}>
+          <AlertTriangle size={20} />
+          <div>
+            <strong>Low Attendance Alert:</strong> Your attendance in {selectedSubject.name} is {personalAttendanceStats.percentage}% ({personalAttendanceStats.attended}/{personalAttendanceStats.totalClasses} classes).
+            The minimum requirement is 75%.
+          </div>
+        </div>
       )}
 
       {/* Toolbar: Search and Quick Legend */}
-      <div className="toolbar" style={{ marginBottom: 14 }}>
+      {!isStudent && <div className="toolbar" style={{ marginBottom: 14 }}>
         <div className="toolbar-left">
           <div className="search-bar" style={{ maxWidth: 320 }}>
             <Search size={16} />
@@ -608,7 +631,7 @@ export default function AttendancePage({ departmentId }) {
             {visibleStudents.length} Students · {distinctDays.length} Days Conducted
           </span>
         </div>
-      </div>
+      </div>}
 
       {/* ──────── 1-7, 9. The Attendance Matrix Grid ──────── */}
       {loading || gridLoading ? (
@@ -619,12 +642,104 @@ export default function AttendancePage({ departmentId }) {
       ) : !selectedSubject ? (
         <div className="empty-state">
           <BookOpen />
-          <h3>{isAdminOrHod && ((user?.role === 'ADMIN' && !selectedDepartmentId) || !selectedSemester) ? 'Select attendance filters' : 'No subjects available'}</h3>
+          <h3>
+            {isAdminOrHod && ((user?.role === 'ADMIN' && !selectedDepartmentId) || !selectedSemester)
+              ? 'Select attendance filters'
+              : (isStudent && subjects.length ? 'Select a subject' : 'No subjects available')}
+          </h3>
           <p>
             {isAdminOrHod && ((user?.role === 'ADMIN' && !selectedDepartmentId) || !selectedSemester)
               ? 'Choose the required department and semester, then select a subject to view attendance.'
-              : (isAdminOrHod ? 'There are no subjects for the selected department and semester.' : 'You have not been assigned to any subjects yet.')}
+              : (isAdminOrHod
+                ? 'There are no subjects for the selected department and semester.'
+                : (isStudent && subjects.length
+                  ? 'Choose a subject from the dropdown above to view your attendance.'
+                  : 'You have not been assigned to any subjects yet.'))}
           </p>
+        </div>
+      ) : isStudent ? (
+        <div>
+          <div className="stats-grid" style={{ marginBottom: 16 }}>
+            <SummaryCard
+              label="Total classes conducted"
+              value={personalAttendanceStats.totalClasses}
+              icon={<CalendarCheck size={18} />}
+              detail={`For ${selectedSubject.name}`}
+            />
+            <SummaryCard
+              label="Classes attended"
+              value={personalAttendanceStats.attended}
+              icon={<Check size={18} />}
+              detail="Marked present"
+            />
+            <SummaryCard
+              label="Classes missed"
+              value={personalAttendanceStats.missed}
+              icon={<X size={18} />}
+              detail="Marked absent"
+            />
+            <SummaryCard
+              label="Attendance percentage"
+              value={`${personalAttendanceStats.percentage}%`}
+              icon={<TrendingUp size={18} />}
+              detail={personalAttendanceStats.totalClasses ? 'Your attendance' : 'No classes recorded'}
+            />
+          </div>
+
+          <section className="card" style={{ marginBottom: 16 }}>
+            <div className="card-header">
+              <div>
+                <h3 className="card-title">Day-wise Attendance</h3>
+                <p className="card-subtitle">
+                  Your attendance history for {selectedSubject.name} ({selectedSubject.code}).
+                </p>
+              </div>
+            </div>
+            {!distinctDays.length ? (
+              <div className="empty-state">
+                <CalendarCheck />
+                <p>No attendance records have been recorded for this subject yet.</p>
+              </div>
+            ) : (
+              <div className="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Class</th>
+                      <th>Date</th>
+                      <th>Attendance</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {distinctDays.map((day) => {
+                      const status = personalRecordsByDate.get(day.date)?.status;
+                      const isPresent = status === 'PRESENT';
+                      const isAbsent = status === 'ABSENT';
+                      const label = isPresent ? 'Present' : isAbsent ? 'Absent' : 'Not recorded';
+                      return (
+                        <tr key={day.date}>
+                          <td style={{ fontWeight: 700 }}>Day {day.dayNumber}</td>
+                          <td>{day.fullDate}</td>
+                          <td>
+                            <span className="badge" style={{
+                              background: isPresent
+                                ? 'var(--success-light)'
+                                : isAbsent ? 'var(--danger-light)' : 'var(--bg-secondary)',
+                              color: isPresent
+                                ? 'var(--success)'
+                                : isAbsent ? 'var(--danger)' : 'var(--text-muted)',
+                            }}>
+                              {label}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
         </div>
       ) : (
         <div className="attendance-matrix-wrapper">
