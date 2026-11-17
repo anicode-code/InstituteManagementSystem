@@ -37,6 +37,23 @@ function SummaryCard({ label, value, icon, detail }) {
   );
 }
 
+function isStudentEnrolledInSubject(student, subject) {
+  const explicitlySelected = student.selectedSubjects?.some(
+    (selected) => Number(selected.id) === Number(subject.id)
+  ) ?? false;
+  const hasMatchingDepartment = student.department?.id != null
+    && subject.department?.id != null
+    && Number(student.department.id) === Number(subject.department.id);
+  const hasMatchingSemester = student.semester != null
+    && subject.semester != null
+    && Number(student.semester) === Number(subject.semester);
+  const isCompulsoryForStudent = subject.type === 'COMPULSORY'
+    && hasMatchingDepartment
+    && hasMatchingSemester;
+
+  return explicitlySelected || isCompulsoryForStudent;
+}
+
 export default function AttendancePage({ departmentId }) {
   const { user, isAdmin, isFaculty, isStudent, isAdminOrHod } = useAuth();
   const { getSorts, getSortedRows, toggleSort } = useTableSorting();
@@ -238,14 +255,17 @@ export default function AttendancePage({ departmentId }) {
     if (isStudent) {
       list = list.filter((s) => s.id === user.id);
     }
-    if (isAdminOrHod && selectedSubject) {
+    if (user?.role === 'ADMIN' && selectedSubject) {
       list = list.filter((student) =>
         String(student.department?.id) === String(selectedSubject.department?.id)
         && Number(student.semester) === Number(selectedSubject.semester)
       );
     }
+    if ((isFaculty || user?.role === 'HOD') && selectedSubject) {
+      list = list.filter((student) => isStudentEnrolledInSubject(student, selectedSubject));
+    }
     return list;
-  }, [students, isStudent, isAdminOrHod, selectedSubject, user]);
+  }, [students, isStudent, isFaculty, selectedSubject, user]);
 
   // Filter the selected subject's roster by search
   const visibleStudents = useMemo(() => {
