@@ -165,9 +165,26 @@ public class UserService {
         boolean hasAcademicFields = request.getYear() != null
                 || request.getSemester() != null
                 || request.getOptionalSubjectCodes() != null;
+        boolean hasFacultyFields = request.getPhone() != null
+                || request.isDateOfBirthProvided()
+                || request.getGender() != null
+                || request.getResidentialAddress() != null
+                || request.isJoiningDateProvided()
+                || request.getEmploymentStatus() != null
+                || request.getDesignation() != null
+                || request.getQualification() != null
+                || request.getSpecialization() != null
+                || request.isYearsOfExperienceProvided()
+                || request.getEmploymentType() != null;
+        if (user.getRole() != Role.FACULTY && hasFacultyFields) {
+            throw new AccessDeniedException("Only faculty can update faculty profile details.");
+        }
         if (user.getRole() != Role.STUDENT) {
             if (hasAcademicFields) {
                 throw new AccessDeniedException("Only students can update academic details.");
+            }
+            if (user.getRole() == Role.FACULTY) {
+                updateFacultyProfileFields(user, request);
             }
             return userRepository.save(user);
         }
@@ -221,6 +238,47 @@ public class UserService {
         user.setSemester(request.getSemester());
         user.setSelectedSubjects(selectedSubjects);
         return userRepository.save(user);
+    }
+
+    private void updateFacultyProfileFields(User user, UpdateProfileRequest request) {
+        if (request.getPhone() != null) {
+            user.setPhone(normalizeOptionalText(request.getPhone()));
+        }
+        if (request.isDateOfBirthProvided()) {
+            user.setDateOfBirth(request.getDateOfBirth());
+        }
+        if (request.getGender() != null) {
+            user.setGender(normalizeOptionalText(request.getGender()));
+        }
+        if (request.getResidentialAddress() != null) {
+            user.setResidentialAddress(normalizeOptionalText(request.getResidentialAddress()));
+        }
+        if (request.isJoiningDateProvided()) {
+            user.setJoiningDate(request.getJoiningDate());
+        }
+        if (request.getEmploymentStatus() != null) {
+            user.setEmploymentStatus(normalizeOptionalText(request.getEmploymentStatus()));
+        }
+        if (request.getDesignation() != null) {
+            user.setDesignation(normalizeOptionalText(request.getDesignation()));
+        }
+        if (request.getQualification() != null) {
+            user.setQualification(normalizeOptionalText(request.getQualification()));
+        }
+        if (request.getSpecialization() != null) {
+            user.setSpecialization(normalizeOptionalText(request.getSpecialization()));
+        }
+        if (request.isYearsOfExperienceProvided()) {
+            user.setYearsOfExperience(request.getYearsOfExperience());
+        }
+        if (request.getEmploymentType() != null) {
+            user.setEmploymentType(normalizeOptionalText(request.getEmploymentType()));
+        }
+    }
+
+    private String normalizeOptionalText(String value) {
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     /**

@@ -53,6 +53,8 @@ class AdminDepartmentFacultyServiceTest {
         department = new Department("Computer Science", "CSE");
         department.setId(20L);
         faculty = user(10L, "FAC-010", Role.FACULTY, VerificationStatus.VERIFIED);
+        faculty.setPhone("555-0100");
+        faculty.setDesignation("Professor");
         when(departmentRepository.findById(20L)).thenReturn(Optional.of(department));
         ReflectionTestUtils.setField(service, "attendanceThreshold", 75.0);
         ReflectionTestUtils.setField(service, "performanceThreshold", 5.0);
@@ -83,6 +85,8 @@ class AdminDepartmentFacultyServiceTest {
         assertThat(result.summary().totalSubjectsAssigned()).isEqualTo(1);
         assertThat(result.summary().averageStudentAttendance()).isEqualTo(50.0);
         assertThat(result.items().get(0).facultyId()).isEqualTo("FAC-010");
+        assertThat(result.items().get(0).designation()).isEqualTo("Professor");
+        assertThat(result.items().get(0).phone()).isEqualTo("555-0100");
         assertThat(result.items().get(0).assignedSubjects()).isEqualTo(1);
         assertThat(result.items().get(0).studentsTeaching()).isEqualTo(2);
         assertThat(result.items().get(0).averageStudentAttendance()).isEqualTo(50.0);
@@ -137,6 +141,17 @@ class AdminDepartmentFacultyServiceTest {
 
     @Test
     void profileAggregatesSubjectsAttendanceAssignmentsAndAttentionStudents() {
+        faculty.setPhone("555-0100");
+        faculty.setDateOfBirth(LocalDate.of(1980, 4, 12));
+        faculty.setGender("Other");
+        faculty.setResidentialAddress("12 Campus Road");
+        faculty.setJoiningDate(LocalDate.of(2010, 8, 1));
+        faculty.setEmploymentStatus("Active");
+        faculty.setDesignation("Professor");
+        faculty.setQualification("PhD");
+        faculty.setSpecialization("Computer Science");
+        faculty.setYearsOfExperience(15.5);
+        faculty.setEmploymentType("Full-time");
         Subject subject = subject(30L, faculty);
         User firstStudent = user(1L, "STU-001", Role.STUDENT, VerificationStatus.VERIFIED);
         User secondStudent = user(2L, "STU-002", Role.STUDENT, VerificationStatus.VERIFIED);
@@ -168,7 +183,17 @@ class AdminDepartmentFacultyServiceTest {
         var profile = service.getProfile(20L, 10L);
 
         assertThat(profile.personalInformation().facultyId()).isEqualTo("FAC-010");
-        assertThat(profile.personalInformation().phone()).isNull();
+        assertThat(profile.personalInformation().phone()).isEqualTo("555-0100");
+        assertThat(profile.personalInformation().dateOfBirth()).isEqualTo(LocalDate.of(1980, 4, 12));
+        assertThat(profile.personalInformation().gender()).isEqualTo("Other");
+        assertThat(profile.personalInformation().residentialAddress()).isEqualTo("12 Campus Road");
+        assertThat(profile.personalInformation().joiningDate()).isEqualTo(LocalDate.of(2010, 8, 1));
+        assertThat(profile.personalInformation().employmentStatus()).isEqualTo("Active");
+        assertThat(profile.professionalInformation().designation()).isEqualTo("Professor");
+        assertThat(profile.professionalInformation().qualification()).isEqualTo("PhD");
+        assertThat(profile.professionalInformation().specialization()).isEqualTo("Computer Science");
+        assertThat(profile.professionalInformation().yearsOfExperience()).isEqualTo(15.5);
+        assertThat(profile.professionalInformation().employmentType()).isEqualTo("Full-time");
         assertThat(profile.teachingOverview().totalSubjectsAssigned()).isEqualTo(1);
         assertThat(profile.teachingOverview().totalClassesConducted()).isEqualTo(2L);
         assertThat(profile.teachingOverview().totalStudentsTeaching()).isEqualTo(2);

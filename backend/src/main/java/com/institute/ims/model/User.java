@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
@@ -28,6 +29,34 @@ public class User {
 
     @Column(unique = true)
     private String email;
+
+    private String phone;
+
+    @Column(name = "date_of_birth")
+    private LocalDate dateOfBirth;
+
+    private String gender;
+
+    @Column(name = "residential_address")
+    private String residentialAddress;
+
+    @Column(name = "joining_date")
+    private LocalDate joiningDate;
+
+    @Column(name = "employment_status")
+    private String employmentStatus;
+
+    private String designation;
+
+    private String qualification;
+
+    private String specialization;
+
+    @Column(name = "years_of_experience")
+    private Double yearsOfExperience;
+
+    @Column(name = "employment_type")
+    private String employmentType;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -120,6 +149,50 @@ public class User {
         return email;
     }
 
+    public String getPhone() {
+        return phone;
+    }
+
+    public LocalDate getDateOfBirth() {
+        return dateOfBirth;
+    }
+
+    public String getGender() {
+        return gender;
+    }
+
+    public String getResidentialAddress() {
+        return residentialAddress;
+    }
+
+    public LocalDate getJoiningDate() {
+        return joiningDate;
+    }
+
+    public String getEmploymentStatus() {
+        return employmentStatus;
+    }
+
+    public String getDesignation() {
+        return designation;
+    }
+
+    public String getQualification() {
+        return qualification;
+    }
+
+    public String getSpecialization() {
+        return specialization;
+    }
+
+    public Double getYearsOfExperience() {
+        return yearsOfExperience;
+    }
+
+    public String getEmploymentType() {
+        return employmentType;
+    }
+
     public Role getRole() {
         return role;
     }
@@ -170,6 +243,50 @@ public class User {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
+    }
+
+    public void setDateOfBirth(LocalDate dateOfBirth) {
+        this.dateOfBirth = dateOfBirth;
+    }
+
+    public void setGender(String gender) {
+        this.gender = gender;
+    }
+
+    public void setResidentialAddress(String residentialAddress) {
+        this.residentialAddress = residentialAddress;
+    }
+
+    public void setJoiningDate(LocalDate joiningDate) {
+        this.joiningDate = joiningDate;
+    }
+
+    public void setEmploymentStatus(String employmentStatus) {
+        this.employmentStatus = employmentStatus;
+    }
+
+    public void setDesignation(String designation) {
+        this.designation = designation;
+    }
+
+    public void setQualification(String qualification) {
+        this.qualification = qualification;
+    }
+
+    public void setSpecialization(String specialization) {
+        this.specialization = specialization;
+    }
+
+    public void setYearsOfExperience(Double yearsOfExperience) {
+        this.yearsOfExperience = yearsOfExperience;
+    }
+
+    public void setEmploymentType(String employmentType) {
+        this.employmentType = employmentType;
     }
 
     public void setRole(Role role) {

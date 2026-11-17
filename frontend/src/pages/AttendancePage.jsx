@@ -488,6 +488,27 @@ export default function AttendancePage({ departmentId }) {
                   </select>
                 </label>
               </>
+            ) : isFaculty ? (
+              <label className="attendance-filter">
+                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <BookOpen size={17} color="var(--accent)" /> Select Subject:
+                </span>
+                <select
+                  className="form-select"
+                  value={selectedSubjectId || ''}
+                  onChange={(e) => {
+                    setSelectedSubjectId(e.target.value ? Number(e.target.value) : null);
+                    setRecords([]);
+                  }}
+                >
+                  <option value="">Select subject</option>
+                  {subjects.map((subject) => (
+                    <option key={subject.id} value={subject.id}>
+                      {subject.name} ({subject.code}) · {subject.type === 'OPTIONAL' ? 'Optional' : 'Compulsory'}
+                    </option>
+                  ))}
+                </select>
+              </label>
             ) : (
               <>
                 <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6 }}>

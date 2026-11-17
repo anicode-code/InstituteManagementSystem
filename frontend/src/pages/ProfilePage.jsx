@@ -30,6 +30,17 @@ const SEMESTERS_BY_YEAR = {
 const profileForm = (user) => ({
   name: user?.name || '',
   email: user?.email || '',
+  phone: user?.phone || '',
+  dateOfBirth: user?.dateOfBirth || '',
+  gender: user?.gender || '',
+  residentialAddress: user?.residentialAddress || '',
+  joiningDate: user?.joiningDate || '',
+  employmentStatus: user?.employmentStatus || '',
+  designation: user?.designation || '',
+  qualification: user?.qualification || '',
+  specialization: user?.specialization || '',
+  yearsOfExperience: user?.yearsOfExperience == null ? '' : String(user.yearsOfExperience),
+  employmentType: user?.employmentType || '',
   year: user?.year ? String(user.year) : '',
   semester: user?.semester ? String(user.semester) : '',
   optionalSubjectCodes: user?.selectedSubjects
@@ -130,6 +141,21 @@ export default function ProfilePage() {
         request.optionalSubjectCodes = form.optionalSubjectCodes;
       }
     }
+    if (profile?.role === 'FACULTY') {
+      request.phone = form.phone.trim();
+      request.dateOfBirth = form.dateOfBirth || null;
+      request.gender = form.gender.trim();
+      request.residentialAddress = form.residentialAddress.trim();
+      request.joiningDate = form.joiningDate || null;
+      request.employmentStatus = form.employmentStatus.trim();
+      request.designation = form.designation.trim();
+      request.qualification = form.qualification.trim();
+      request.specialization = form.specialization.trim();
+      request.yearsOfExperience = form.yearsOfExperience === ''
+        ? null
+        : Number(form.yearsOfExperience);
+      request.employmentType = form.employmentType.trim();
+    }
 
     setSaving(true);
     try {
@@ -229,6 +255,60 @@ export default function ProfilePage() {
                 placeholder="your@email.com"
               />
             </div>
+            {p?.role === 'FACULTY' && (
+              <>
+                <h4 style={{ fontWeight: 700, margin: '20px 0 12px' }}>Personal Information</h4>
+                <div className="grid-2">
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="profile-phone">Phone</label>
+                    <input id="profile-phone" className="form-input" value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="profile-date-of-birth">Date of birth</label>
+                    <input id="profile-date-of-birth" className="form-input" type="date" value={form.dateOfBirth} onChange={(e) => setForm((f) => ({ ...f, dateOfBirth: e.target.value }))} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="profile-gender">Gender</label>
+                    <input id="profile-gender" className="form-input" value={form.gender} onChange={(e) => setForm((f) => ({ ...f, gender: e.target.value }))} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="profile-joining-date">Joining date</label>
+                    <input id="profile-joining-date" className="form-input" type="date" value={form.joiningDate} onChange={(e) => setForm((f) => ({ ...f, joiningDate: e.target.value }))} />
+                  </div>
+                  <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                    <label className="form-label" htmlFor="profile-residential-address">Residential address</label>
+                    <textarea id="profile-residential-address" className="form-input" rows={2} value={form.residentialAddress} onChange={(e) => setForm((f) => ({ ...f, residentialAddress: e.target.value }))} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="profile-employment-status">Employment status</label>
+                    <input id="profile-employment-status" className="form-input" value={form.employmentStatus} onChange={(e) => setForm((f) => ({ ...f, employmentStatus: e.target.value }))} />
+                  </div>
+                </div>
+                <h4 style={{ fontWeight: 700, margin: '8px 0 12px' }}>Professional Information</h4>
+                <div className="grid-2">
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="profile-designation">Designation</label>
+                    <input id="profile-designation" className="form-input" value={form.designation} onChange={(e) => setForm((f) => ({ ...f, designation: e.target.value }))} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="profile-qualification">Qualification</label>
+                    <input id="profile-qualification" className="form-input" value={form.qualification} onChange={(e) => setForm((f) => ({ ...f, qualification: e.target.value }))} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="profile-specialization">Specialization</label>
+                    <input id="profile-specialization" className="form-input" value={form.specialization} onChange={(e) => setForm((f) => ({ ...f, specialization: e.target.value }))} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="profile-years-of-experience">Years of experience</label>
+                    <input id="profile-years-of-experience" className="form-input" type="number" min="0" step="0.1" value={form.yearsOfExperience} onChange={(e) => setForm((f) => ({ ...f, yearsOfExperience: e.target.value }))} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="profile-employment-type">Employment type</label>
+                    <input id="profile-employment-type" className="form-input" value={form.employmentType} onChange={(e) => setForm((f) => ({ ...f, employmentType: e.target.value }))} />
+                  </div>
+                </div>
+              </>
+            )}
             {p?.role === 'STUDENT' && (
               <>
                 <div className="grid-2">
@@ -348,6 +428,21 @@ export default function ProfilePage() {
           <InfoRow icon={<Mail size={18} />}      label="Email"       value={p?.email} />
           <InfoRow icon={<Shield size={18} />}    label="Role"        value={p?.role} />
           <InfoRow icon={<Building2 size={18} />} label="Department"  value={p?.department?.name} />
+          {p?.role === 'FACULTY' && (
+            <>
+              <InfoRow icon={<Mail size={18} />} label="Phone" value={p?.phone} />
+              <InfoRow icon={<User size={18} />} label="Date of birth" value={p?.dateOfBirth} />
+              <InfoRow icon={<User size={18} />} label="Gender" value={p?.gender} />
+              <InfoRow icon={<Building2 size={18} />} label="Residential address" value={p?.residentialAddress} />
+              <InfoRow icon={<Building2 size={18} />} label="Joining date" value={p?.joiningDate} />
+              <InfoRow icon={<Building2 size={18} />} label="Employment status" value={p?.employmentStatus} />
+              <InfoRow icon={<Shield size={18} />} label="Designation" value={p?.designation} />
+              <InfoRow icon={<Shield size={18} />} label="Qualification" value={p?.qualification} />
+              <InfoRow icon={<Shield size={18} />} label="Specialization" value={p?.specialization} />
+              <InfoRow icon={<Shield size={18} />} label="Years of experience" value={p?.yearsOfExperience == null ? null : `${p.yearsOfExperience} years`} />
+              <InfoRow icon={<Shield size={18} />} label="Employment type" value={p?.employmentType} />
+            </>
+          )}
           {p?.role === 'STUDENT' && (
             <>
               <InfoRow icon={<BookOpen size={18} />} label="Academic Year" value={p?.year ? `Year ${p.year}` : null} />
