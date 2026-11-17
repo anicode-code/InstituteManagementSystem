@@ -58,6 +58,7 @@ const isValidDate = (value) => {
 const profileForm = (user) => ({
   name: user?.name || '',
   email: user?.email || '',
+  registrationNumber: user?.registrationNumber || '',
   phone: user?.phone || '',
   dateOfBirth: user?.dateOfBirth || '',
   gender: user?.gender || '',
@@ -75,6 +76,9 @@ const profileForm = (user) => ({
     : (user?.department?.id ? [String(user.department.id)] : []),
   year: user?.year ? String(user.year) : '',
   semester: user?.semester ? String(user.semester) : '',
+  semesterSgpas: Object.fromEntries(
+    Object.entries(user?.semesterSgpas || {}).map(([semester, sgpa]) => [semester, String(sgpa)]),
+  ),
   optionalSubjectCodes: user?.selectedSubjects
     ?.filter((subject) => subject.type === 'OPTIONAL')
     .map((subject) => subject.code) || [],
@@ -176,6 +180,14 @@ export default function ProfilePage() {
     setFieldErrors((current) => ({ ...current, [field]: '' }));
   };
 
+  const updateSemesterSgpa = (semester, value) => {
+    setForm((current) => ({
+      ...current,
+      semesterSgpas: { ...current.semesterSgpas, [semester]: value },
+    }));
+    setFieldErrors((current) => ({ ...current, [`sgpa-${semester}`]: '' }));
+  };
+
   const validateFacultyForm = () => {
     const errors = {};
     if (!/^[6-9]\d{9}$/.test(form.phone.trim())) {
@@ -224,6 +236,38 @@ export default function ProfilePage() {
     return Object.keys(errors).length === 0;
   };
 
+  const validateStudentForm = () => {
+    const errors = {};
+    if (form.phone && !/^[6-9]\d{9}$/.test(form.phone)) {
+      errors.phone = 'Enter a valid 10-digit Indian mobile number.';
+    }
+    if (form.dateOfBirth && !isValidDate(form.dateOfBirth)) {
+      errors.dateOfBirth = 'Enter a valid date of birth.';
+    } else if (form.dateOfBirth && form.dateOfBirth > todayDate()) {
+      errors.dateOfBirth = 'Date of birth cannot be in the future.';
+    }
+    if (form.registrationNumber.length > 50) {
+      errors.registrationNumber = 'Registration number cannot exceed 50 characters.';
+    }
+    if (form.semester) {
+      const currentSemester = Number(form.semester);
+      if (Object.entries(form.semesterSgpas).some(([semester, sgpa]) => (
+        sgpa !== '' && Number(semester) >= currentSemester
+      ))) {
+        errors.semester = 'Current semester must be after every semester with an entered SGPA.';
+      }
+      for (const [semester, sgpa] of Object.entries(form.semesterSgpas)) {
+        if (sgpa === '' || Number(semester) >= currentSemester) continue;
+        const value = Number(sgpa);
+        if (!Number.isFinite(value) || value < 0 || value > 10) {
+          errors[`sgpa-${semester}`] = 'SGPA must be between 0 and 10.';
+        }
+      }
+    }
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleSave = async () => {
     setError('');
     if (!form.name.trim()) {
@@ -235,6 +279,7 @@ export default function ProfilePage() {
       return;
     }
     if (profile?.role === 'FACULTY' && !validateFacultyForm()) return;
+    if (profile?.role === 'STUDENT' && !validateStudentForm()) return;
     setFieldErrors({});
 
     const request = { name: form.name.trim(), email: form.email.trim() };
@@ -253,7 +298,16 @@ export default function ProfilePage() {
         request.year = Number(form.year);
         request.semester = Number(form.semester);
         request.optionalSubjectCodes = form.optionalSubjectCodes;
+        request.semesterSgpas = Object.fromEntries(
+          Object.entries(form.semesterSgpas)
+            .filter(([semester, sgpa]) => sgpa !== '' && Number(semester) < Number(form.semester))
+            .map(([semester, sgpa]) => [semester, Number(sgpa)]),
+        );
       }
+      request.registrationNumber = form.registrationNumber.trim();
+      request.phone = form.phone.trim();
+      request.dateOfBirth = form.dateOfBirth || null;
+      request.residentialAddress = form.residentialAddress.trim();
     }
     if (profile?.role === 'FACULTY') {
       request.phone = form.phone.trim();
@@ -288,6 +342,12 @@ export default function ProfilePage() {
         departments: res.data.departments,
         year: res.data.year,
         semester: res.data.semester,
+        registrationNumber: res.data.registrationNumber,
+        phone: res.data.phone,
+        dateOfBirth: res.data.dateOfBirth,
+        residentialAddress: res.data.residentialAddress,
+        semesterSgpas: res.data.semesterSgpas,
+        yearlyGpas: res.data.yearlyGpas,
       });
       toast.success('Profile updated');
       setEditing(false);
@@ -297,8 +357,15 @@ export default function ProfilePage() {
         setFieldErrors((current) => ({ ...current, ...responseErrors }));
       }
       const message = err?.response?.data?.message;
-      if (message?.toLowerCase().includes('email')) {
+      const lowerMessage = message?.toLowerCase() || '';
+      if (lowerMessage.includes('email')) {
         setFieldErrors((current) => ({ ...current, email: message }));
+      } else if (lowerMessage.includes('registration number')) {
+        setFieldErrors((current) => ({ ...current, registrationNumber: message }));
+      } else if (lowerMessage.includes('phone')) {
+        setFieldErrors((current) => ({ ...current, phone: message }));
+      } else if (lowerMessage.includes('date of birth')) {
+        setFieldErrors((current) => ({ ...current, dateOfBirth: message }));
       }
       setError(message || 'Update failed');
     } finally {
@@ -514,7 +581,61 @@ export default function ProfilePage() {
             )}
             {p?.role === 'STUDENT' && (
               <>
+                <h4 style={{ fontWeight: 700, margin: '20px 0 12px' }}>Personal Information</h4>
                 <div className="grid-2">
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="student-phone">Phone</label>
+                    <input
+                      id="student-phone"
+                      className="form-input"
+                      type="tel"
+                      inputMode="numeric"
+                      maxLength={10}
+                      value={form.phone}
+                      onChange={(e) => updateFormField('phone', e.target.value.replace(/\D/g, '').slice(0, 10))}
+                      aria-invalid={Boolean(fieldErrors.phone)}
+                    />
+                    <FieldError message={fieldErrors.phone} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="student-date-of-birth">Date of birth</label>
+                    <input
+                      id="student-date-of-birth"
+                      className="form-input"
+                      type="date"
+                      max={todayDate()}
+                      value={form.dateOfBirth}
+                      onChange={(e) => updateFormField('dateOfBirth', e.target.value)}
+                      aria-invalid={Boolean(fieldErrors.dateOfBirth)}
+                    />
+                    <FieldError message={fieldErrors.dateOfBirth} />
+                  </div>
+                  <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                    <label className="form-label" htmlFor="student-address">Address</label>
+                    <textarea
+                      id="student-address"
+                      className="form-input"
+                      rows={2}
+                      maxLength={1000}
+                      value={form.residentialAddress}
+                      onChange={(e) => updateFormField('residentialAddress', e.target.value)}
+                    />
+                  </div>
+                </div>
+                <h4 style={{ fontWeight: 700, margin: '20px 0 12px' }}>Academic Information</h4>
+                <div className="grid-2">
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="student-registration-number">Registration Number</label>
+                    <input
+                      id="student-registration-number"
+                      className="form-input"
+                      maxLength={50}
+                      value={form.registrationNumber}
+                      onChange={(e) => updateFormField('registrationNumber', e.target.value)}
+                      aria-invalid={Boolean(fieldErrors.registrationNumber)}
+                    />
+                    <FieldError message={fieldErrors.registrationNumber} />
+                  </div>
                   <div className="form-group">
                     <label className="form-label" htmlFor="profile-year">Academic Year</label>
                     <select
@@ -538,14 +659,40 @@ export default function ProfilePage() {
                       value={form.semester}
                       onChange={handleSemesterChange}
                       disabled={saving || !form.year}
+                      aria-invalid={Boolean(fieldErrors.semester)}
                     >
                       <option value="">Select semester</option>
                       {form.year && SEMESTERS_BY_YEAR[form.year]?.map((semester) => (
                         <option key={semester.value} value={semester.value}>{semester.label}</option>
                       ))}
                     </select>
+                    <FieldError message={fieldErrors.semester} />
                   </div>
                 </div>
+                {form.semester && Number(form.semester) > 1 && (
+                  <div style={{ margin: '8px 0 16px' }}>
+                    <div className="form-label" style={{ marginBottom: 8 }}>Previous Semester SGPA (0–10)</div>
+                    <div className="grid-2">
+                      {Array.from({ length: Number(form.semester) - 1 }, (_, index) => index + 1).map((semester) => (
+                        <div className="form-group" key={semester}>
+                          <label className="form-label" htmlFor={`student-sgpa-${semester}`}>Semester {semester} SGPA</label>
+                          <input
+                            id={`student-sgpa-${semester}`}
+                            className="form-input"
+                            type="number"
+                            min="0"
+                            max="10"
+                            step="0.01"
+                            value={form.semesterSgpas[semester] || ''}
+                            onChange={(e) => updateSemesterSgpa(semester, e.target.value)}
+                            aria-invalid={Boolean(fieldErrors[`sgpa-${semester}`])}
+                          />
+                          <FieldError message={fieldErrors[`sgpa-${semester}`]} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {curriculum && (
                   <div style={{ marginBottom: 16 }}>
                     {curriculum.compulsory?.length > 0 && (
@@ -657,12 +804,28 @@ export default function ProfilePage() {
           )}
           {p?.role === 'STUDENT' && (
             <>
+              <InfoRow icon={<Hash size={18} />} label="Registration Number" value={p?.registrationNumber} />
+              <InfoRow icon={<Mail size={18} />} label="Phone" value={p?.phone} />
+              <InfoRow icon={<User size={18} />} label="Date of birth" value={p?.dateOfBirth} />
+              <InfoRow icon={<Building2 size={18} />} label="Address" value={p?.residentialAddress} />
               <InfoRow icon={<BookOpen size={18} />} label="Academic Year" value={p?.year ? `Year ${p.year}` : null} />
               <InfoRow icon={<BookOpen size={18} />} label="Semester" value={p?.semester ? `Semester ${p.semester}` : null} />
               <InfoRow
                 icon={<BookOpen size={18} />}
                 label="Enrolled Subjects"
                 value={p?.selectedSubjects?.map((subject) => subject.name).join(', ')}
+              />
+              <InfoRow
+                icon={<BookOpen size={18} />}
+                label="Semester SGPAs"
+                value={Object.entries(p?.semesterSgpas || {}).sort(([a], [b]) => Number(a) - Number(b))
+                  .map(([semester, sgpa]) => `Semester ${semester}: ${sgpa}`).join(', ')}
+              />
+              <InfoRow
+                icon={<BookOpen size={18} />}
+                label="Yearly YGPAs"
+                value={Object.entries(p?.yearlyGpas || {}).sort(([a], [b]) => Number(a) - Number(b))
+                  .map(([year, ygpa]) => `Year ${year}: ${ygpa}`).join(', ')}
               />
             </>
           )}

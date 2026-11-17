@@ -4,9 +4,13 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Set;
 
 @Entity
@@ -22,6 +26,9 @@ public class User {
 
     @Column(name = "roll_number", nullable = false, unique = true)
     private String rollNumber;
+
+    @Column(name = "registration_number", unique = true, length = 50)
+    private String registrationNumber;
 
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     @Column(nullable = false)
@@ -95,6 +102,12 @@ public class User {
     @Column(name = "semester")
     private Integer semester;
 
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "student_semester_sgpas", joinColumns = @JoinColumn(name = "user_id"))
+    @MapKeyColumn(name = "semester_number")
+    @Column(name = "sgpa", nullable = false)
+    private Map<Integer, Double> semesterSgpas = new LinkedHashMap<>();
+
     // Optional subjects selected by a student
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
@@ -142,6 +155,10 @@ public class User {
 
     public String getRollNumber() {
         return rollNumber;
+    }
+
+    public String getRegistrationNumber() {
+        return registrationNumber;
     }
 
     public String getPassword() {
@@ -228,6 +245,27 @@ public class User {
         return semester;
     }
 
+    public Map<Integer, Double> getSemesterSgpas() {
+        return semesterSgpas;
+    }
+
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    public Map<Integer, Double> getYearlyGpas() {
+        Map<Integer, Double> yearlyGpas = new LinkedHashMap<>();
+        for (int academicYear = 1; academicYear <= 4; academicYear++) {
+            Double firstSemesterSgpa = semesterSgpas.get(academicYear * 2 - 1);
+            Double secondSemesterSgpa = semesterSgpas.get(academicYear * 2);
+            if (firstSemesterSgpa != null && secondSemesterSgpa != null) {
+                double average = BigDecimal.valueOf(firstSemesterSgpa)
+                        .add(BigDecimal.valueOf(secondSemesterSgpa))
+                        .divide(BigDecimal.valueOf(2), 2, RoundingMode.HALF_UP)
+                        .doubleValue();
+                yearlyGpas.put(academicYear, average);
+            }
+        }
+        return yearlyGpas;
+    }
+
     public Set<Subject> getSelectedSubjects() {
         return selectedSubjects;
     }
@@ -242,6 +280,10 @@ public class User {
 
     public void setRollNumber(String rollNumber) {
         this.rollNumber = rollNumber;
+    }
+
+    public void setRegistrationNumber(String registrationNumber) {
+        this.registrationNumber = registrationNumber;
     }
 
     public void setPassword(String password) {
@@ -326,6 +368,13 @@ public class User {
 
     public void setSemester(Integer semester) {
         this.semester = semester;
+    }
+
+    public void setSemesterSgpas(Map<Integer, Double> semesterSgpas) {
+        this.semesterSgpas.clear();
+        if (semesterSgpas != null) {
+            this.semesterSgpas.putAll(semesterSgpas);
+        }
     }
 
     public void setSelectedSubjects(Set<Subject> selectedSubjects) {

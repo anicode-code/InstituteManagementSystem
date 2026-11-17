@@ -122,6 +122,16 @@ function StudentProfile({ departmentId, studentId }) {
   const personal = profile?.personalInformation;
   const academic = profile?.academicInformation;
   const summary = profile?.academicSummary;
+  const semesterSgpaByNumber = new Map(
+    (profile?.semesterGpas || []).map((result) => [result.semester, result.sgpa]),
+  );
+  const yearlyGpaByYear = new Map(
+    (profile?.yearlyGpas || []).map((result) => [result.year, result.ygpa]),
+  );
+  const gpaYears = [...new Set([
+    ...[...semesterSgpaByNumber.keys()].map((semester) => Math.ceil(semester / 2)),
+    ...yearlyGpaByYear.keys(),
+  ])].sort((a, b) => a - b);
 
   return (
     <Layout pageTitle="Student Profile">
@@ -178,15 +188,61 @@ function StudentProfile({ departmentId, studentId }) {
             <h3 className="card-title" style={{ marginBottom: 12 }}>Academic Information</h3>
             <div className="grid-3">
               <Metric label="Roll number" value={academic.rollNumber} />
-              <Metric label="Enrollment number" value={academic.enrollmentNumber} />
+              <Metric label="Registration number" value={academic.registrationNumber} />
               <Metric label="Department" value={academic.departmentName} />
               <Metric label="Department code" value={academic.departmentCode} />
               <Metric label="Admission year" value={academic.admissionYear} />
               <Metric label="Current year" value={academic.year ? `Year ${academic.year}` : null} />
               <Metric label="Semester" value={academic.semester ? `Semester ${academic.semester}` : null} />
-              <Metric label="Academic status" value={academic.academicStatus} />
               <Metric label="Account status" value={academic.accountStatus} />
             </div>
+          </section>
+
+          <section className="card" style={{ marginBottom: 16 }}>
+            <h3 className="card-title" style={{ marginBottom: 12 }}>Semester and Yearly GPA</h3>
+            {!gpaYears.length ? (
+              <div className="empty-state"><p>No semester SGPA values have been entered.</p></div>
+            ) : (
+              <div style={{ display: 'grid', gap: 12 }}>
+                {gpaYears.map((year) => {
+                  const oddSemester = year * 2 - 1;
+                  const evenSemester = year * 2;
+                  return (
+                    <div
+                      key={year}
+                      style={{
+                        padding: 14,
+                        border: '1px solid var(--border)',
+                        borderRadius: 10,
+                        background: 'var(--bg-primary)',
+                      }}
+                    >
+                      <h4 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: 10 }}>Year {year}</h4>
+                      <div className="student-year-gpa-row">
+                        <div className="student-semester-pair">
+                          <Metric label={`Semester ${oddSemester} SGPA`} value={semesterSgpaByNumber.get(oddSemester)} />
+                          <Metric label={`Semester ${evenSemester} SGPA`} value={semesterSgpaByNumber.get(evenSemester)} />
+                        </div>
+                        <div style={{
+                          padding: 12,
+                          border: '1px solid var(--accent)',
+                          borderRadius: 8,
+                          background: 'var(--accent-light)',
+                          minWidth: 0,
+                        }}>
+                          <div style={{ color: 'var(--accent)', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>
+                            Yearly GPA (YGPA)
+                          </div>
+                          <div style={{ fontSize: '1.2rem', fontWeight: 800, overflowWrap: 'anywhere' }}>
+                            {display(yearlyGpaByYear.get(year))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </section>
 
           <section className="card" style={{ marginBottom: 16 }}>
@@ -199,8 +255,6 @@ function StudentProfile({ departmentId, studentId }) {
               <Metric label="Academic performance" value={formatPerformance(summary.academicPerformance)} />
               <Metric label="Assignments submitted" value={`${summary.submittedAssignments} / ${summary.totalAssignments}`} />
               <Metric label="Pending assignments" value={summary.pendingAssignments} />
-              <Metric label="SGPA" value={summary.sgpa} />
-              <Metric label="CGPA" value={summary.cgpa} />
             </div>
           </section>
 

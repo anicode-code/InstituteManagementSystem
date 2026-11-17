@@ -769,6 +769,8 @@ tbody tr:hover { background: var(--bg-hover); }
 /* ─── Grid ─── */
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.student-year-gpa-row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(140px, 1fr); gap: 12px; }
+.student-semester-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 
 /* ─── Responsive ─── */
 @media (max-width: 768px) {
@@ -777,6 +779,7 @@ tbody tr:hover { background: var(--bg-hover); }
   .main-content { margin-left: 0; }
   .grid-2 { grid-template-columns: 1fr; }
   .grid-3 { grid-template-columns: 1fr 1fr; }
+  .student-year-gpa-row { grid-template-columns: 1fr; }
   .stats-grid { grid-template-columns: 1fr 1fr; }
   .admin-hod-distribution-grid { grid-template-columns: 1fr; }
   .admin-hod-directory-hero { align-items: flex-start; flex-direction: column; }
@@ -786,6 +789,7 @@ tbody tr:hover { background: var(--bg-hover); }
 }
 @media (max-width: 480px) {
   .grid-3 { grid-template-columns: 1fr; }
+  .student-semester-pair { grid-template-columns: 1fr; }
   .stats-grid { grid-template-columns: 1fr; }
   .admin-hod-hero { align-items: flex-start; flex-wrap: wrap; }
   .admin-hod-directory-hero { padding: 18px; }

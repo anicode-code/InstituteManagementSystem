@@ -14,6 +14,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -203,6 +204,34 @@ class AdminDepartmentStudentsServiceTest {
                 .hasMessageContaining("this department");
 
         verify(userRepository, never()).findWithSelectedSubjectsByIdIn(List.of(9L));
+    }
+
+    @Test
+    void adminStudentProfileShowsEditableRegistrationDetailsAndGpaHistory() {
+        User student = student(1L, "001");
+        student.setRegistrationNumber("REG-001");
+        student.setYear(2);
+        student.setSemester(3);
+        student.setPhone("9876543210");
+        student.setDateOfBirth(LocalDate.of(2002, 4, 12));
+        student.setResidentialAddress("12 Campus Road");
+        student.setSemesterSgpas(Map.of(1, 8.0, 2, 9.0));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(student));
+        when(userRepository.findWithSelectedSubjectsByIdIn(List.of(1L))).thenReturn(List.of(student));
+        when(subjectRepository.findByDepartmentIdAndSemesterIn(20L, List.of(3))).thenReturn(List.of());
+        when(attendanceRepository.findByStudentIdIn(List.of(1L))).thenReturn(List.of());
+
+        var profile = service.getStudentProfile(20L, 1L);
+
+        assertThat(profile.personalInformation().phone()).isEqualTo("9876543210");
+        assertThat(profile.personalInformation().dateOfBirth()).isEqualTo(LocalDate.of(2002, 4, 12));
+        assertThat(profile.personalInformation().address()).isEqualTo("12 Campus Road");
+        assertThat(profile.academicInformation().registrationNumber()).isEqualTo("REG-001");
+        assertThat(profile.semesterGpas()).containsExactly(
+                new com.institute.ims.dto.AdminStudentProfile.SemesterGpa(1, 8.0),
+                new com.institute.ims.dto.AdminStudentProfile.SemesterGpa(2, 9.0));
+        assertThat(profile.yearlyGpas()).containsExactly(
+                new com.institute.ims.dto.AdminStudentProfile.YearlyGpa(1, 8.5));
     }
 
     private User student(Long id, String rollNumber) {

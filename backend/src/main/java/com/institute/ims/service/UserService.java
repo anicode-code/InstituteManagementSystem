@@ -182,10 +182,7 @@ public class UserService {
     @Transactional
     public User updateOwnProfile(String rollNumber, UpdateProfileRequest request) {
         User user = getUserByRollNumber(rollNumber);
-        boolean hasFacultyFields = request.getPhone() != null
-                || request.isDateOfBirthProvided()
-                || request.getGender() != null
-                || request.getResidentialAddress() != null
+        boolean hasFacultyFields = request.getGender() != null
                 || request.isJoiningDateProvided()
                 || request.getEmploymentStatus() != null
                 || request.getDesignation() != null
@@ -195,8 +192,19 @@ public class UserService {
                 || request.isYearsOfExperienceProvided()
                 || request.getEmploymentType() != null
                 || request.getDepartmentIds() != null;
+        boolean hasStudentFields = request.getRegistrationNumber() != null
+                || request.getSemesterSgpas() != null;
+        boolean hasSharedPersonalFields = request.getPhone() != null
+                || request.isDateOfBirthProvided()
+                || request.getResidentialAddress() != null;
         if (user.getRole() != Role.FACULTY && hasFacultyFields) {
             throw new AccessDeniedException("Only faculty can update faculty profile details.");
+        }
+        if (user.getRole() != Role.STUDENT && hasStudentFields) {
+            throw new AccessDeniedException("Only students can update student academic details.");
+        }
+        if (user.getRole() != Role.FACULTY && user.getRole() != Role.STUDENT && hasSharedPersonalFields) {
+            throw new AccessDeniedException("Only faculty and students can update personal details.");
         }
 
         Map<Long, Department> facultyDepartments = null;
@@ -222,7 +230,8 @@ public class UserService {
 
         boolean hasAcademicFields = request.getYear() != null
                 || request.getSemester() != null
-                || request.getOptionalSubjectCodes() != null;
+                || request.getOptionalSubjectCodes() != null
+                || hasStudentFields;
         if (user.getRole() != Role.STUDENT) {
             if (hasAcademicFields) {
                 throw new AccessDeniedException("Only students can update academic details.");
@@ -241,55 +250,120 @@ public class UserService {
             return savedUser;
         }
 
-        if (request.getYear() == null && request.getSemester() == null) {
-            if (request.getOptionalSubjectCodes() != null
-                    && !request.getOptionalSubjectCodes().isEmpty()) {
-                throw new RuntimeException("Select an academic year and semester before choosing subjects.");
+        updateStudentPersonalFields(user, request);
+        if (request.getRegistrationNumber() != null) {
+            String registrationNumber = normalizeOptionalText(request.getRegistrationNumber());
+            if (registrationNumber != null
+                    && userRepository.existsByRegistrationNumberIgnoreCaseAndIdNot(
+                            registrationNumber, user.getId())) {
+                throw new RuntimeException("Registration number already exists.");
             }
-            return userRepository.save(user);
+            user.setRegistrationNumber(registrationNumber);
         }
 
-        if (request.getYear() == null || request.getSemester() == null) {
+        boolean academicSelectionProvided = request.getYear() != null || request.getSemester() != null;
+        if (academicSelectionProvided && (request.getYear() == null || request.getSemester() == null)) {
             throw new RuntimeException("Academic year and semester must both be provided.");
         }
-        if (request.getYear() < 1 || request.getYear() > 4
-                || request.getSemester() < 1 || request.getSemester() > 8
-                || request.getYear() != (request.getSemester() + 1) / 2) {
-            throw new RuntimeException("Select a valid academic year and matching semester.");
-        }
-        if (user.getDepartment() == null) {
-            throw new RuntimeException("A department is required before selecting subjects.");
-        }
-
-        List<String> optionalSubjectCodes = request.getOptionalSubjectCodes() == null
-                ? List.of()
-                : request.getOptionalSubjectCodes();
-        Set<String> requestedCodes = new HashSet<>(optionalSubjectCodes);
-        if (requestedCodes.size() != optionalSubjectCodes.size()) {
-            throw new RuntimeException("Duplicate subject choices are not allowed.");
-        }
-
-        List<Subject> semesterSubjects = subjectRepository.findByDepartmentIdAndSemester(
-                user.getDepartment().getId(), request.getSemester());
-        Set<String> availableOptionalCodes = semesterSubjects.stream()
-                .filter(subject -> subject.getType() == SubjectType.OPTIONAL)
-                .map(Subject::getCode)
-                .collect(Collectors.toSet());
-        if (!availableOptionalCodes.containsAll(requestedCodes)) {
-            throw new RuntimeException("Choose only optional subjects for your department and semester.");
-        }
-
-        Set<Subject> selectedSubjects = new HashSet<>();
-        for (Subject subject : semesterSubjects) {
-            if (subject.getType() == SubjectType.COMPULSORY
-                    || requestedCodes.contains(subject.getCode())) {
-                selectedSubjects.add(subject);
+        if (academicSelectionProvided) {
+            if (request.getYear() < 1 || request.getYear() > 4
+                    || request.getSemester() < 1 || request.getSemester() > 8
+                    || request.getYear() != (request.getSemester() + 1) / 2) {
+                throw new RuntimeException("Select a valid academic year and matching semester.");
             }
+            if (user.getDepartment() == null) {
+                throw new RuntimeException("A department is required before selecting subjects.");
+            }
+
+            List<String> optionalSubjectCodes = request.getOptionalSubjectCodes() == null
+                    ? List.of()
+                    : request.getOptionalSubjectCodes();
+            Set<String> requestedCodes = new HashSet<>(optionalSubjectCodes);
+            if (requestedCodes.size() != optionalSubjectCodes.size()) {
+                throw new RuntimeException("Duplicate subject choices are not allowed.");
+            }
+
+            List<Subject> semesterSubjects = subjectRepository.findByDepartmentIdAndSemester(
+                    user.getDepartment().getId(), request.getSemester());
+            Set<String> availableOptionalCodes = semesterSubjects.stream()
+                    .filter(subject -> subject.getType() == SubjectType.OPTIONAL)
+                    .map(Subject::getCode)
+                    .collect(Collectors.toSet());
+            if (!availableOptionalCodes.containsAll(requestedCodes)) {
+                throw new RuntimeException("Choose only optional subjects for your department and semester.");
+            }
+
+            Set<Subject> selectedSubjects = new HashSet<>();
+            for (Subject subject : semesterSubjects) {
+                if (subject.getType() == SubjectType.COMPULSORY
+                        || requestedCodes.contains(subject.getCode())) {
+                    selectedSubjects.add(subject);
+                }
+            }
+            user.setYear(request.getYear());
+            user.setSemester(request.getSemester());
+            user.setSelectedSubjects(selectedSubjects);
+        } else if (request.getOptionalSubjectCodes() != null
+                && !request.getOptionalSubjectCodes().isEmpty()) {
+            throw new RuntimeException("Select an academic year and semester before choosing subjects.");
         }
-        user.setYear(request.getYear());
-        user.setSemester(request.getSemester());
-        user.setSelectedSubjects(selectedSubjects);
+
+        Integer effectiveSemester = user.getSemester();
+        if (request.getSemesterSgpas() != null) {
+            if (effectiveSemester == null) {
+                throw new RuntimeException("Select your current semester before entering previous semester SGPAs.");
+            }
+            user.setSemesterSgpas(validateSemesterSgpas(request.getSemesterSgpas(), effectiveSemester));
+        } else {
+            validateSemesterSgpas(user.getSemesterSgpas(), effectiveSemester);
+        }
         return userRepository.save(user);
+    }
+
+    private void updateStudentPersonalFields(User user, UpdateProfileRequest request) {
+        if (request.getPhone() != null) {
+            String phone = normalizeOptionalText(request.getPhone());
+            if (phone != null && !phone.matches("^[6-9][0-9]{9}$")) {
+                throw new RuntimeException("Phone must be a valid 10-digit Indian mobile number.");
+            }
+            user.setPhone(phone);
+        }
+        if (request.isDateOfBirthProvided()) {
+            LocalDate dateOfBirth = request.getDateOfBirth();
+            if (dateOfBirth != null && dateOfBirth.isAfter(LocalDate.now())) {
+                throw new RuntimeException("Date of birth cannot be in the future.");
+            }
+            user.setDateOfBirth(dateOfBirth);
+        }
+        if (request.getResidentialAddress() != null) {
+            user.setResidentialAddress(normalizeOptionalText(request.getResidentialAddress()));
+        }
+    }
+
+    private Map<Integer, Double> validateSemesterSgpas(
+            Map<Integer, Double> semesterSgpas,
+            Integer currentSemester) {
+        if (semesterSgpas.isEmpty()) {
+            return new LinkedHashMap<>();
+        }
+        if (currentSemester == null) {
+            throw new RuntimeException("Select your current semester before entering previous semester SGPAs.");
+        }
+
+        Map<Integer, Double> validatedSgpas = new LinkedHashMap<>();
+        for (Map.Entry<Integer, Double> entry : semesterSgpas.entrySet()) {
+            Integer semesterNumber = entry.getKey();
+            Double sgpa = entry.getValue();
+            if (semesterNumber == null || semesterNumber < 1 || semesterNumber >= currentSemester
+                    || semesterNumber > 8) {
+                throw new RuntimeException("SGPA can only be entered for a previous semester.");
+            }
+            if (sgpa == null || !Double.isFinite(sgpa) || sgpa < 0 || sgpa > 10) {
+                throw new RuntimeException("SGPA must be a number from 0 to 10.");
+            }
+            validatedSgpas.put(semesterNumber, sgpa);
+        }
+        return validatedSgpas;
     }
 
     private void updateFacultyProfileFields(

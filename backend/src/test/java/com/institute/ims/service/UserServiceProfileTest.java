@@ -22,6 +22,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -71,13 +72,25 @@ class UserServiceProfileTest {
         request.setYear(2);
         request.setSemester(3);
         request.setOptionalSubjectCodes(List.of("CS305"));
+        request.setRegistrationNumber("REG-1001");
+        request.setPhone("9876543210");
+        request.setDateOfBirth(LocalDate.of(2002, 4, 12));
+        request.setResidentialAddress("12 Campus Road");
+        request.setSemesterSgpas(Map.of(1, 8.0, 2, 9.0));
 
+        when(userRepository.existsByRegistrationNumberIgnoreCaseAndIdNot("REG-1001", 1L)).thenReturn(false);
         User updated = service.updateOwnProfile("STUDENT", request);
 
         assertThat(updated.getYear()).isEqualTo(2);
         assertThat(updated.getSemester()).isEqualTo(3);
         assertThat(updated.getSelectedSubjects()).containsExactlyInAnyOrder(compulsory, elective);
         assertThat(updated.getName()).isEqualTo("Updated Student");
+        assertThat(updated.getRegistrationNumber()).isEqualTo("REG-1001");
+        assertThat(updated.getPhone()).isEqualTo("9876543210");
+        assertThat(updated.getDateOfBirth()).isEqualTo(LocalDate.of(2002, 4, 12));
+        assertThat(updated.getResidentialAddress()).isEqualTo("12 Campus Road");
+        assertThat(updated.getSemesterSgpas()).containsExactlyInAnyOrderEntriesOf(Map.of(1, 8.0, 2, 9.0));
+        assertThat(updated.getYearlyGpas()).containsEntry(1, 8.5);
     }
 
     @Test
@@ -114,6 +127,57 @@ class UserServiceProfileTest {
                 .hasMessageContaining("matching semester");
 
         verify(subjectRepository, never()).findByDepartmentIdAndSemester(10L, 3);
+    }
+
+    @Test
+    void studentCannotEnterAnInvalidOrCurrentSemesterSgpa() {
+        when(userRepository.findByRollNumber("STUDENT")).thenReturn(Optional.of(student()));
+
+        UpdateProfileRequest request = new UpdateProfileRequest();
+        request.setName("Student");
+        request.setSemesterSgpas(Map.of(3, 8.5));
+
+        assertThatThrownBy(() -> service.updateOwnProfile("STUDENT", request))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("previous semester");
+
+        request.setSemesterSgpas(Map.of(1, 10.1));
+        assertThatThrownBy(() -> service.updateOwnProfile("STUDENT", request))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("0 to 10");
+
+        verify(userRepository, never()).save(org.mockito.ArgumentMatchers.any(User.class));
+    }
+
+    @Test
+    void studentCannotSetAFutureDateOfBirthOrDuplicateRegistrationNumber() {
+        User student = student();
+        when(userRepository.findByRollNumber("STUDENT")).thenReturn(Optional.of(student));
+
+        UpdateProfileRequest invalidPhone = new UpdateProfileRequest();
+        invalidPhone.setName("Student");
+        invalidPhone.setPhone("98ABC54321");
+        assertThatThrownBy(() -> service.updateOwnProfile("STUDENT", invalidPhone))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("10-digit Indian mobile number");
+
+        UpdateProfileRequest futureBirthDate = new UpdateProfileRequest();
+        futureBirthDate.setName("Student");
+        futureBirthDate.setDateOfBirth(LocalDate.now().plusDays(1));
+        assertThatThrownBy(() -> service.updateOwnProfile("STUDENT", futureBirthDate))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("cannot be in the future");
+
+        UpdateProfileRequest duplicateRegistration = new UpdateProfileRequest();
+        duplicateRegistration.setName("Student");
+        duplicateRegistration.setRegistrationNumber("REG-1001");
+        when(userRepository.existsByRegistrationNumberIgnoreCaseAndIdNot("REG-1001", 1L))
+                .thenReturn(true);
+        assertThatThrownBy(() -> service.updateOwnProfile("STUDENT", duplicateRegistration))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Registration number already exists");
+
+        verify(userRepository, never()).save(org.mockito.ArgumentMatchers.any(User.class));
     }
 
     @Test
@@ -241,7 +305,7 @@ class UserServiceProfileTest {
 
         UpdateProfileRequest request = new UpdateProfileRequest();
         request.setName("Student");
-        request.setPhone("9876543210");
+        request.setGender("Other");
 
         assertThatThrownBy(() -> service.updateOwnProfile("STUDENT", request))
                 .isInstanceOf(org.springframework.security.access.AccessDeniedException.class)
@@ -257,6 +321,8 @@ class UserServiceProfileTest {
         student.setRollNumber("STUDENT");
         student.setRole(Role.STUDENT);
         student.setDepartment(department());
+        student.setYear(2);
+        student.setSemester(3);
         return student;
     }
 

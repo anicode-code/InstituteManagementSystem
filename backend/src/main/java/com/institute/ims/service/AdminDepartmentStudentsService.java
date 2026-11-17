@@ -166,16 +166,20 @@ public class AdminDepartmentStudentsService {
 
         return new AdminStudentProfile(
                 new AdminStudentProfile.PersonalInformation(
-                        student.getName(), null, student.getEmail(), null, null, null),
+                        student.getName(),
+                        null,
+                        student.getEmail(),
+                        student.getPhone(),
+                        student.getDateOfBirth(),
+                        student.getResidentialAddress()),
                 new AdminStudentProfile.AcademicInformation(
                         student.getRollNumber(),
-                        null,
+                        student.getRegistrationNumber(),
                         department.getName(),
                         department.getCode(),
                         null,
                         student.getYear(),
                         student.getSemester(),
-                        null,
                         student.getStatus(),
                         student.getCreatedAt()),
                 new AdminStudentProfile.AcademicSummary(
@@ -186,13 +190,19 @@ public class AdminDepartmentStudentsService {
                         averagePerformance,
                         submittedAssignments,
                         data.assignments().size(),
-                        pendingAssignments,
-                        null,
-                        null),
+                        pendingAssignments),
                 subjectPerformance,
                 attendanceDetails,
                 assignmentHistory,
-                List.of());
+                List.of(),
+                student.getSemesterSgpas().entrySet().stream()
+                        .sorted(Map.Entry.comparingByKey())
+                        .map(entry -> new AdminStudentProfile.SemesterGpa(entry.getKey(), entry.getValue()))
+                        .toList(),
+                student.getYearlyGpas().entrySet().stream()
+                        .sorted(Map.Entry.comparingByKey())
+                        .map(entry -> new AdminStudentProfile.YearlyGpa(entry.getKey(), entry.getValue()))
+                        .toList());
     }
 
     private Map<Long, StudentData> loadStudentData(List<User> students, Long departmentId) {

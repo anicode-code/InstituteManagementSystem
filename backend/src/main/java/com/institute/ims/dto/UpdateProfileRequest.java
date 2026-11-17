@@ -8,6 +8,7 @@ import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 public class UpdateProfileRequest {
 
@@ -22,7 +23,10 @@ public class UpdateProfileRequest {
     private Integer year;
     private Integer semester;
     private List<String> optionalSubjectCodes;
-    @Pattern(regexp = "^[6-9][0-9]{9}$", message = "Phone must be a valid 10-digit Indian mobile number")
+    @Size(max = 50, message = "Registration number cannot exceed 50 characters")
+    private String registrationNumber;
+    private Map<Integer, Double> semesterSgpas;
+    @Pattern(regexp = "^$|^[6-9][0-9]{9}$", message = "Phone must be a valid 10-digit Indian mobile number")
     private String phone;
     private LocalDate dateOfBirth;
     private boolean dateOfBirthProvided;
@@ -67,6 +71,14 @@ public class UpdateProfileRequest {
 
     public List<String> getOptionalSubjectCodes() {
         return optionalSubjectCodes;
+    }
+
+    public String getRegistrationNumber() {
+        return registrationNumber;
+    }
+
+    public Map<Integer, Double> getSemesterSgpas() {
+        return semesterSgpas;
     }
 
     public String getPhone() {
@@ -151,6 +163,14 @@ public class UpdateProfileRequest {
 
     public void setOptionalSubjectCodes(List<String> optionalSubjectCodes) {
         this.optionalSubjectCodes = optionalSubjectCodes;
+    }
+
+    public void setRegistrationNumber(String registrationNumber) {
+        this.registrationNumber = registrationNumber;
+    }
+
+    public void setSemesterSgpas(Map<Integer, Double> semesterSgpas) {
+        this.semesterSgpas = semesterSgpas;
     }
 
     public void setPhone(String phone) {

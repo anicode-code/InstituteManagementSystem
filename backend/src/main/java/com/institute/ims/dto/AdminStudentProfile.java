@@ -14,7 +14,9 @@ public record AdminStudentProfile(
         List<SubjectPerformance> subjectPerformance,
         List<AttendanceEntry> attendanceDetails,
         List<AssignmentEntry> assignmentHistory,
-        List<ExaminationResult> examinationResults) {
+        List<ExaminationResult> examinationResults,
+        List<SemesterGpa> semesterGpas,
+        List<YearlyGpa> yearlyGpas) {
 
     public record PersonalInformation(
             String name,
@@ -27,15 +29,20 @@ public record AdminStudentProfile(
 
     public record AcademicInformation(
             String rollNumber,
-            String enrollmentNumber,
+            String registrationNumber,
             String departmentName,
             String departmentCode,
             Integer admissionYear,
             Integer year,
             Integer semester,
-            String academicStatus,
             VerificationStatus accountStatus,
             LocalDateTime registeredAt) {
+    }
+
+    public record SemesterGpa(Integer semester, Double sgpa) {
+    }
+
+    public record YearlyGpa(Integer year, Double ygpa) {
     }
 
     public record AcademicSummary(
@@ -46,9 +53,7 @@ public record AdminStudentProfile(
             Double academicPerformance,
             long submittedAssignments,
             long totalAssignments,
-            long pendingAssignments,
-            Double sgpa,
-            Double cgpa) {
+            long pendingAssignments) {
     }
 
     public record SubjectPerformance(
