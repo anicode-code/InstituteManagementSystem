@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useState, useCallback } from 'react';
 import Layout from '../components/Layout';
+import ProfileAvatar from '../components/ProfileAvatar';
 import { useAuth } from '../context/AuthContext';
 import { getAllSubjects, getSubjectsByStudent, createSubject, updateSubject, deleteSubject } from '../api/subjects';
 import { getAllDepartments } from '../api/departments';
@@ -388,9 +389,11 @@ export default function SubjectsPage({ departmentId }) {
                         <td>
                           {(s.facultyMembers?.length || s.faculty) ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <div className="avatar sm" style={{ background: 'var(--warning-light)', color: 'var(--warning)', fontSize: '0.65rem' }}>
-                                {(s.facultyMembers?.[0] || s.faculty).name?.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)}
-                              </div>
+                              <ProfileAvatar
+                                src={(s.facultyMembers?.[0] || s.faculty).profileImageUrl}
+                                name={(s.facultyMembers?.[0] || s.faculty).name}
+                                size="sm"
+                              />
                               <span style={{ fontSize: '0.875rem' }}>
                                 {(s.facultyMembers || [s.faculty]).filter(Boolean).map((faculty) => faculty.name).join(', ')}
                               </span>

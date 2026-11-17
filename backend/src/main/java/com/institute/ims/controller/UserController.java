@@ -9,9 +9,13 @@ import com.institute.ims.model.User;
 import com.institute.ims.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.CacheControl;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -63,6 +67,30 @@ public class UserController {
         return ResponseEntity.ok(
                 userService.updateOwnProfile(authentication.getName(), request)
         );
+    }
+
+    @PutMapping(value = "/me/profile-picture", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<User> updateProfilePicture(
+            @RequestParam("file") MultipartFile file,
+            Authentication authentication) {
+        return ResponseEntity.ok(
+                userService.updateProfilePicture(authentication.getName(), file)
+        );
+    }
+
+    @GetMapping("/{id}/profile-picture")
+    public ResponseEntity<byte[]> getProfilePicture(
+            @PathVariable Long id,
+            Authentication authentication) {
+        User user = userService.getUserById(id, authentication.getName());
+        if (user.getProfilePicture() == null || user.getProfilePictureContentType() == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(user.getProfilePictureContentType()))
+                .header("X-Content-Type-Options", "nosniff")
+                .cacheControl(CacheControl.noStore())
+                .body(user.getProfilePicture());
     }
 
     @DeleteMapping("/{id}")

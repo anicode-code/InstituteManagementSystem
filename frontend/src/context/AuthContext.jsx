@@ -34,6 +34,7 @@ export function AuthProvider({ children }) {
             departments: u.departments,
             year: u.year,
             semester: u.semester,
+            profileImageUrl: u.profileImageUrl,
           };
           setUser(freshUser);
           localStorage.setItem('ims_user', JSON.stringify(freshUser));
@@ -44,8 +45,8 @@ export function AuthProvider({ children }) {
 
   const login = useCallback(async (rollNumber, password) => {
     const res = await apiLogin({ rollNumber, password });
-    const { token, id, name, role, status, department } = res.data;
-    const userData = { id, name, rollNumber: res.data.rollNumber, role, status, department };
+    const { token, id, name, role, status, department, profileImageUrl } = res.data;
+    const userData = { id, name, rollNumber: res.data.rollNumber, role, status, department, profileImageUrl };
     localStorage.setItem('ims_token', token);
     localStorage.setItem('ims_user', JSON.stringify(userData));
     setUser(userData);

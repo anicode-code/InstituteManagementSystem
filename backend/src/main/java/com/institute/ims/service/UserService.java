@@ -18,15 +18,29 @@ import com.institute.ims.repository.FacultyProfileAuditRepository;
 import com.institute.ims.repository.FacultyProfileOptionRepository;
 import com.institute.ims.repository.SubjectRepository;
 import com.institute.ims.repository.UserRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
+import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -39,6 +53,10 @@ import java.util.stream.Collectors;
 
 @Service
 public class UserService {
+
+    private static final long MAX_PROFILE_PICTURE_SIZE = 5L * 1024 * 1024;
+    private static final long MAX_PROFILE_PICTURE_PIXELS = 16_000_000L;
+    private static final int MAX_PROFILE_PICTURE_DIMENSION = 8_192;
 
     private final UserRepository userRepository;
     private final DepartmentRepository departmentRepository;
@@ -70,6 +88,98 @@ public class UserService {
     public User getUserByRollNumber(String rollNumber) {
         return userRepository.findByRollNumber(rollNumber)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+    }
+
+    @Transactional
+    public User updateProfilePicture(String rollNumber, MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Choose a profile picture to upload.");
+        }
+        if (file.getSize() > MAX_PROFILE_PICTURE_SIZE) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Profile pictures must be 5 MB or smaller.");
+        }
+
+        byte[] image;
+        try {
+            image = file.getBytes();
+        } catch (IOException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Could not read the uploaded profile picture.", exception);
+        }
+
+        byte[] normalizedImage = normalizeProfilePicture(image, file.getContentType());
+        User user = getUserByRollNumber(rollNumber);
+        long previousVersion = user.getProfilePictureVersion() == null
+                ? 0
+                : user.getProfilePictureVersion();
+        user.setProfilePicture(normalizedImage);
+        user.setProfilePictureContentType("image/jpeg");
+        user.setProfilePictureVersion(Math.max(System.currentTimeMillis(), previousVersion + 1));
+        return userRepository.save(user);
+    }
+
+    private byte[] normalizeProfilePicture(byte[] image, String contentType) {
+        String normalizedContentType = contentType == null
+                ? ""
+                : contentType.split(";", 2)[0].trim().toLowerCase(Locale.ROOT);
+        String expectedFormat = switch (normalizedContentType) {
+            case "image/jpeg" -> "jpeg";
+            case "image/png" -> "png";
+            case "image/gif" -> "gif";
+            default -> throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Profile pictures must be JPEG, PNG, or GIF images.");
+        };
+
+        try (ImageInputStream input = ImageIO.createImageInputStream(new ByteArrayInputStream(image))) {
+            if (input == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The uploaded file is not a valid image.");
+            }
+            Iterator<ImageReader> readers = ImageIO.getImageReaders(input);
+            if (!readers.hasNext()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The uploaded file is not a valid image.");
+            }
+            ImageReader reader = readers.next();
+            try {
+                reader.setInput(input, true, true);
+                if (!expectedFormat.equalsIgnoreCase(reader.getFormatName())) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The image content does not match its file type.");
+                }
+                int width = reader.getWidth(0);
+                int height = reader.getHeight(0);
+                if (width <= 0
+                        || height <= 0
+                        || width > MAX_PROFILE_PICTURE_DIMENSION
+                        || height > MAX_PROFILE_PICTURE_DIMENSION
+                        || (long) width * height > MAX_PROFILE_PICTURE_PIXELS) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Image dimensions must not exceed 16 megapixels.");
+                }
+                BufferedImage decoded = reader.read(0);
+                if (decoded == null) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The uploaded file is not a valid image.");
+                }
+                double scale = Math.min(1.0, 512.0 / Math.max(width, height));
+                int normalizedWidth = Math.max(1, (int) Math.round(width * scale));
+                int normalizedHeight = Math.max(1, (int) Math.round(height * scale));
+                BufferedImage normalized = new BufferedImage(
+                        normalizedWidth, normalizedHeight, BufferedImage.TYPE_INT_RGB);
+                Graphics2D graphics = normalized.createGraphics();
+                graphics.setColor(Color.WHITE);
+                graphics.fillRect(0, 0, normalizedWidth, normalizedHeight);
+                graphics.setRenderingHint(
+                        RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+                graphics.drawImage(decoded, 0, 0, normalizedWidth, normalizedHeight, null);
+                graphics.dispose();
+
+                ByteArrayOutputStream output = new ByteArrayOutputStream();
+                if (!ImageIO.write(normalized, "jpeg", output)) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Could not process the uploaded image.");
+                }
+                return output.toByteArray();
+            } finally {
+                reader.dispose();
+            }
+        } catch (IOException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The uploaded file is not a valid image.", exception);
+        }
     }
 
     public List<User> getUsersByRole(Role role) {

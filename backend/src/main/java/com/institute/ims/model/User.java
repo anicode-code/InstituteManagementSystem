@@ -1,6 +1,7 @@
 package com.institute.ims.model;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 
@@ -67,6 +68,17 @@ public class User {
 
     @Column(name = "employment_type")
     private String employmentType;
+
+    @JsonIgnore
+    @Column(name = "profile_picture", columnDefinition = "bytea")
+    private byte[] profilePicture;
+
+    @JsonIgnore
+    @Column(name = "profile_picture_content_type", length = 32)
+    private String profilePictureContentType;
+
+    @Column(name = "profile_picture_version")
+    private Long profilePictureVersion;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -217,6 +229,31 @@ public class User {
         return employmentType;
     }
 
+    @JsonIgnore
+    public byte[] getProfilePicture() {
+        return profilePicture;
+    }
+
+    @JsonIgnore
+    public String getProfilePictureContentType() {
+        return profilePictureContentType;
+    }
+
+    @JsonIgnore
+    public Long getProfilePictureVersion() {
+        return profilePictureVersion;
+    }
+
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    @Transient
+    public String getProfileImageUrl() {
+        if (profilePicture == null || id == null) {
+            return null;
+        }
+        long version = profilePictureVersion == null ? 0 : profilePictureVersion;
+        return "/api/users/" + id + "/profile-picture?v=" + version;
+    }
+
     public Role getRole() {
         return role;
     }
@@ -340,6 +377,18 @@ public class User {
 
     public void setEmploymentType(String employmentType) {
         this.employmentType = employmentType;
+    }
+
+    public void setProfilePicture(byte[] profilePicture) {
+        this.profilePicture = profilePicture;
+    }
+
+    public void setProfilePictureContentType(String profilePictureContentType) {
+        this.profilePictureContentType = profilePictureContentType;
+    }
+
+    public void setProfilePictureVersion(Long profilePictureVersion) {
+        this.profilePictureVersion = profilePictureVersion;
     }
 
     public void setRole(Role role) {

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import ProfileAvatar from './ProfileAvatar';
 import {
   LayoutDashboard, Users, Building2, BookOpen,
   ClipboardList, CalendarCheck, User, LogOut, GraduationCap, Menu, X, ClipboardCheck
@@ -46,10 +47,6 @@ export default function Layout({ children, pageTitle }) {
     },
   ];
 
-
-  const initials = user?.name
-    ? user.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
-    : '?';
 
   return (
     <div className="app-shell">
@@ -100,7 +97,7 @@ export default function Layout({ children, pageTitle }) {
 
         <div className="sidebar-footer">
           <div className="sidebar-user" onClick={handleLogout} title="Logout">
-            <div className="avatar">{initials}</div>
+            <ProfileAvatar src={user?.profileImageUrl} name={user?.name} />
             <div className="sidebar-user-info">
               <div className="sidebar-user-name truncate">{user?.name}</div>
               <div className="sidebar-user-role">{user?.role}</div>
@@ -125,7 +122,7 @@ export default function Layout({ children, pageTitle }) {
           <span className={`topbar-badge ${ROLE_BADGE[user?.role] || ''}`}>
             {user?.role}
           </span>
-          <div className="avatar sm">{initials}</div>
+          <ProfileAvatar src={user?.profileImageUrl} name={user?.name} size="sm" />
         </header>
 
         <main className="page-content fade-in-up">{children}</main>

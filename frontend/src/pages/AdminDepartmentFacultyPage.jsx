@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, BookOpen, CalendarCheck, Search, Users } from 'lucide-react';
 import DepartmentSectionNav from '../components/DepartmentSectionNav';
 import Layout from '../components/Layout';
+import ProfileAvatar from '../components/ProfileAvatar';
 import SortableTh from '../components/SortableTh';
 import { useTableSorting } from '../utils/tableSorting';
 import { getAdminDepartmentFaculty, getAdminDepartmentFacultyProfile } from '../api/adminDepartmentFaculty';
@@ -34,10 +35,6 @@ function formatPerformance(value) {
 
 function formatDate(value) {
   return value ? new Date(value).toLocaleDateString() : 'N/A';
-}
-
-function initials(name) {
-  return name?.split(/\s+/).filter(Boolean).map((part) => part[0]).join('').toUpperCase().slice(0, 2) || '?';
 }
 
 function errorMessage(error) {
@@ -145,11 +142,7 @@ function FacultyProfile({ departmentId, facultyId }) {
       {!loading && profile && (
         <>
           <section className="card admin-faculty-hero">
-            {personal.profileImageUrl ? (
-              <img src={personal.profileImageUrl} alt="" className="avatar lg" style={{ objectFit: 'cover' }} />
-            ) : (
-              <div className="avatar lg" aria-hidden="true">{initials(personal.fullName)}</div>
-            )}
+            <ProfileAvatar src={personal.profileImageUrl} name={personal.fullName} size="lg" />
             <div style={{ flex: 1, minWidth: 180 }}>
               <h2 style={{ fontSize: '1.3rem', fontWeight: 800, marginBottom: 3 }}>{display(personal.fullName)}</h2>
               <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
@@ -573,11 +566,7 @@ function FacultyDirectory({ departmentId }) {
                       <td style={CELL_STYLE}>{faculty.facultyId}</td>
                       <td style={CELL_STYLE}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 9, minWidth: 150 }}>
-                          {faculty.profileImageUrl ? (
-                            <img src={faculty.profileImageUrl} alt="" className="avatar sm" style={{ objectFit: 'cover' }} />
-                          ) : (
-                            <div className="avatar sm" aria-hidden="true">{initials(faculty.name)}</div>
-                          )}
+                          <ProfileAvatar src={faculty.profileImageUrl} name={faculty.name} size="sm" />
                           <span style={{ fontWeight: 700 }}>{faculty.name}</span>
                         </div>
                       </td>

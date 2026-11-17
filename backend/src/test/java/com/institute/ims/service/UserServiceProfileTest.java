@@ -18,8 +18,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -300,6 +306,50 @@ class UserServiceProfileTest {
     }
 
     @Test
+    void everyRoleCanUploadAValidProfilePicture() throws IOException {
+        byte[] image = validPng();
+
+        for (Role role : Role.values()) {
+            User user = new User();
+            user.setId((long) role.ordinal() + 1);
+            user.setName(role.name());
+            user.setRollNumber(role.name());
+            user.setRole(role);
+            when(userRepository.findByRollNumber(role.name())).thenReturn(Optional.of(user));
+            when(userRepository.save(user)).thenReturn(user);
+
+            User updated = service.updateProfilePicture(
+                    role.name(),
+                    new MockMultipartFile("file", "portrait.png", "image/png", image));
+
+            assertThat(updated.getProfilePicture()).isNotEmpty().isNotEqualTo(image);
+            assertThat(updated.getProfilePictureContentType()).isEqualTo("image/jpeg");
+            assertThat(updated.getProfileImageUrl()).contains("/api/users/" + user.getId() + "/profile-picture?v=");
+            assertThat(ImageIO.read(new ByteArrayInputStream(updated.getProfilePicture()))).isNotNull();
+        }
+    }
+
+    @Test
+    void profilePictureUploadRejectsInvalidImagesAndOversizedFiles() {
+        MockMultipartFile invalidImage =
+                new MockMultipartFile("file", "portrait.png", "image/png", "not an image".getBytes());
+        assertThatThrownBy(() -> service.updateProfilePicture("STUDENT", invalidImage))
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
+                .hasMessageContaining("not a valid image");
+
+        MockMultipartFile oversizedImage = new MockMultipartFile(
+                "file",
+                "portrait.png",
+                "image/png",
+                new byte[5 * 1024 * 1024 + 1]);
+        assertThatThrownBy(() -> service.updateProfilePicture("STUDENT", oversizedImage))
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
+                .hasMessageContaining("5 MB or smaller");
+
+        verify(userRepository, never()).save(org.mockito.ArgumentMatchers.any(User.class));
+    }
+
+    @Test
     void nonFacultyCannotUpdateFacultyProfileDetails() {
         when(userRepository.findByRollNumber("STUDENT")).thenReturn(Optional.of(student()));
 
@@ -353,5 +403,12 @@ class UserServiceProfileTest {
         subject.setCode(code);
         subject.setType(type);
         return subject;
+    }
+
+    private byte[] validPng() throws IOException {
+        BufferedImage image = new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB);
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        ImageIO.write(image, "png", output);
+        return output.toByteArray();
     }
 }

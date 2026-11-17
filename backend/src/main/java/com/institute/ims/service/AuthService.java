@@ -207,7 +207,8 @@ public class AuthService {
                 user.getRollNumber(),
                 user.getRole().name(),
                 user.getStatus().name(),
-                dept
+                dept,
+                user.getProfileImageUrl()
         );
     }
 }

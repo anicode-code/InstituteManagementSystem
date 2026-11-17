@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DepartmentSectionNav from '../components/DepartmentSectionNav';
 import Layout from '../components/Layout';
+import ProfileAvatar from '../components/ProfileAvatar';
 import SortableTh from '../components/SortableTh';
 import { useTableSorting } from '../utils/tableSorting';
 import {
@@ -58,10 +59,6 @@ function formatPerformance(value) {
 
 function display(value) {
   return value == null || value === '' ? 'N/A' : value;
-}
-
-function initials(name) {
-  return name?.split(/\s+/).filter(Boolean).map((part) => part[0]).join('').toUpperCase().slice(0, 2) || '?';
 }
 
 function errorMessage(error) {
@@ -147,16 +144,7 @@ function StudentProfile({ departmentId, studentId }) {
         <>
           <section className="card" style={{ marginBottom: 16, padding: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-              {personal.photoUrl ? (
-                <img
-                  src={personal.photoUrl}
-                  alt=""
-                  className="avatar lg"
-                  style={{ objectFit: 'cover' }}
-                />
-              ) : (
-                <div className="avatar lg" aria-hidden="true">{initials(personal.name)}</div>
-              )}
+              <ProfileAvatar src={personal.photoUrl} name={personal.name} size="lg" />
               <div style={{ flex: 1, minWidth: 180 }}>
                 <h2 style={{ fontSize: '1.35rem', fontWeight: 800, marginBottom: 3 }}>{display(personal.name)}</h2>
                 <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
@@ -556,7 +544,7 @@ function StudentsList({ departmentId }) {
                     <td style={tableCellStyle}>{student.rollNumber}</td>
                     <td style={tableCellStyle}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-                        <div className="avatar sm" aria-hidden="true">{initials(student.name)}</div>
+                        <ProfileAvatar src={student.photoUrl} name={student.name} size="sm" />
                         <span style={{ fontWeight: 600 }}>{student.name}</span>
                       </div>
                     </td>

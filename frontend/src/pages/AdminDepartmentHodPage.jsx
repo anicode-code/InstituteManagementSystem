@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import DepartmentSectionNav from '../components/DepartmentSectionNav';
 import Layout from '../components/Layout';
+import ProfileAvatar from '../components/ProfileAvatar';
 import SortableTh from '../components/SortableTh';
 import { useTableSorting } from '../utils/tableSorting';
 import { getAdminDepartmentHodDirectory, getAdminDepartmentHodProfile } from '../api/adminDepartmentHod';
@@ -23,10 +24,6 @@ function marks(value) {
 
 function date(value) {
   return value ? new Date(value).toLocaleDateString() : 'N/A';
-}
-
-function initials(name) {
-  return name?.split(/\s+/).filter(Boolean).map((part) => part[0]).join('').toUpperCase().slice(0, 2) || '?';
 }
 
 function errorMessage(error) {
@@ -198,11 +195,7 @@ function HodProfile({ departmentId, hodId }) {
       {!loading && !error && profile && (
         <>
           <section className="card admin-hod-hero">
-            {personal.profileImageUrl ? (
-              <img src={personal.profileImageUrl} alt="" className="avatar lg" style={{ objectFit: 'cover' }} />
-            ) : (
-              <div className="avatar lg" aria-hidden="true">{initials(personal.fullName)}</div>
-            )}
+            <ProfileAvatar src={personal.profileImageUrl} name={personal.fullName} size="lg" />
             <div style={{ flex: 1, minWidth: 180 }}>
               <h2 style={{ fontSize: '1.3rem', fontWeight: 800, marginBottom: 3 }}>{display(personal.fullName)}</h2>
               <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
@@ -555,11 +548,7 @@ function HodDirectory({ departmentId }) {
           <>
             <section className="card admin-hod-directory-hero">
               <div className="admin-hod-directory-identity">
-                {hod.profileImageUrl ? (
-                  <img src={hod.profileImageUrl} alt="" className="avatar admin-hod-directory-avatar" />
-                ) : (
-                  <div className="avatar admin-hod-directory-avatar" aria-hidden="true">{initials(hod.name)}</div>
-                )}
+                <ProfileAvatar src={hod.profileImageUrl} name={hod.name} className="admin-hod-directory-avatar" />
                 <div className="admin-hod-directory-details">
                   <div className="admin-hod-current-label"><span /> Current HOD</div>
                   <h3>{hod.name}</h3>

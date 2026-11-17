@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Layout from '../components/Layout';
+import ProfileAvatar from '../components/ProfileAvatar';
 import { useAuth } from '../context/AuthContext';
-import { getCurrentUser, updateMyProfile } from '../api/users';
+import { getCurrentUser, updateMyProfile, uploadProfilePicture } from '../api/users';
 import { getAllDepartments } from '../api/departments';
 import { getCurriculumByDeptAndSemester } from '../data/curriculumSubjects';
-import { User, Mail, Hash, Building2, Shield, Pencil, X, Save, BookOpen, CheckSquare, Square } from 'lucide-react';
+import { User, Mail, Hash, Building2, Shield, Pencil, X, Save, BookOpen, CheckSquare, Square, Camera } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const ROLE_COLORS = {
@@ -116,6 +117,9 @@ export default function ProfilePage() {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState(profileForm(null));
   const [saving, setSaving] = useState(false);
+  const [uploadingPicture, setUploadingPicture] = useState(false);
+  const [pictureError, setPictureError] = useState('');
+  const profilePictureInput = useRef(null);
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
 
@@ -125,6 +129,7 @@ export default function ProfilePage() {
         const res = await getCurrentUser();
         setProfile(res.data);
         setForm(profileForm(res.data));
+        syncUser({ ...authUser, profileImageUrl: res.data.profileImageUrl });
         if (res.data.role === 'FACULTY') {
           try {
             const departmentResponse = await getAllDepartments();
@@ -178,6 +183,27 @@ export default function ProfilePage() {
   const updateFormField = (field, value) => {
     setForm((current) => ({ ...current, [field]: value }));
     setFieldErrors((current) => ({ ...current, [field]: '' }));
+  };
+
+  const handleProfilePictureUpload = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    setPictureError('');
+    const formData = new FormData();
+    formData.append('file', file);
+    setUploadingPicture(true);
+    try {
+      const res = await uploadProfilePicture(formData);
+      setProfile(res.data);
+      syncUser({ ...authUser, profileImageUrl: res.data.profileImageUrl });
+      toast.success('Profile picture updated');
+    } catch (err) {
+      setPictureError(err?.response?.data?.message || 'Could not upload your profile picture.');
+    } finally {
+      setUploadingPicture(false);
+    }
   };
 
   const updateSemesterSgpa = (semester, value) => {
@@ -346,6 +372,7 @@ export default function ProfilePage() {
         phone: res.data.phone,
         dateOfBirth: res.data.dateOfBirth,
         residentialAddress: res.data.residentialAddress,
+        profileImageUrl: res.data.profileImageUrl,
         semesterSgpas: res.data.semesterSgpas,
         yearlyGpas: res.data.yearlyGpas,
       });
@@ -382,7 +409,6 @@ export default function ProfilePage() {
   }
 
   const p = profile || authUser;
-  const initials = p?.name?.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2) || '?';
   const roleStyle = ROLE_COLORS[p?.role] || {};
   const curriculum = p?.role === 'STUDENT'
     ? getCurriculumByDeptAndSemester(p?.department?.code, form.semester)
@@ -394,9 +420,7 @@ export default function ProfilePage() {
         {/* Profile Card */}
         <div className="card" style={{ marginBottom: 20 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
-            <div className="avatar lg" style={{ background: roleStyle.color || 'var(--accent)', boxShadow: `0 0 24px ${roleStyle.color || 'var(--accent)'}33` }}>
-              {initials}
-            </div>
+            <ProfileAvatar src={p?.profileImageUrl || p?.photoUrl} name={p?.name} size="lg" />
             <div style={{ flex: 1 }}>
               <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: 4 }}>{p?.name}</h2>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
@@ -419,6 +443,31 @@ export default function ProfilePage() {
             >
               {editing ? <><X size={16} /> Cancel</> : <><Pencil size={16} /> Edit</>}
             </button>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 5 }}>
+              <button
+                className="btn btn-secondary btn-sm"
+                type="button"
+                onClick={() => profilePictureInput.current?.click()}
+                disabled={uploadingPicture}
+                aria-label={p?.profileImageUrl ? 'Change profile picture' : 'Upload profile picture'}
+              >
+                {uploadingPicture
+                  ? <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />
+                  : <Camera size={15} />}
+                {uploadingPicture ? 'Uploading...' : p?.profileImageUrl ? 'Change picture' : 'Upload picture'}
+              </button>
+              <input
+                ref={profilePictureInput}
+                type="file"
+                accept="image/jpeg,image/png,image/gif"
+                onChange={handleProfilePictureUpload}
+                disabled={uploadingPicture}
+                style={{ display: 'none' }}
+                tabIndex={-1}
+              />
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.68rem' }}>JPG, PNG, or GIF · max 5 MB</span>
+              {pictureError && <FieldError message={pictureError} />}
+            </div>
           </div>
         </div>
 

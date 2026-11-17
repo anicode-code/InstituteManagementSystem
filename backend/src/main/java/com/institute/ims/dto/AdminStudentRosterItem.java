@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 public record AdminStudentRosterItem(
         Long id,
         String name,
+        String photoUrl,
         String rollNumber,
         String email,
         Integer year,

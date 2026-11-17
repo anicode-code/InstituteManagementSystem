@@ -189,7 +189,7 @@ public class AdminDepartmentFacultyService {
         AdminFacultyProfile.PersonalInformation personalInformation =
                 new AdminFacultyProfile.PersonalInformation(
                         faculty.getName(),
-                        null,
+                        faculty.getProfileImageUrl(),
                         faculty.getRollNumber(),
                         faculty.getEmail(),
                         faculty.getPhone(),
@@ -396,7 +396,7 @@ public class AdminDepartmentFacultyService {
                 row.faculty().getId(),
                 row.faculty().getRollNumber(),
                 row.faculty().getName(),
-                null,
+                row.faculty().getProfileImageUrl(),
                 row.faculty().getDesignation(),
                 row.faculty().getEmail(),
                 row.faculty().getPhone(),

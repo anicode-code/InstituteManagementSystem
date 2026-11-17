@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import SortableTh from '../components/SortableTh';
+import ProfileAvatar from '../components/ProfileAvatar';
 import { useTableSorting } from '../utils/tableSorting';
 import { getAllUsers, getPendingUsers, verifyUser, verifyBulk, rejectUser, rejectUsers } from '../api/users';
 import { Search, Users, ShieldCheck, Check, X } from 'lucide-react';
@@ -246,7 +247,6 @@ function PendingVerificationPanel({ onVerified, isAdmin }) {
             </thead>
             <tbody>
               {(isAdmin ? getSortedRows('pending-users', pending) : pending).map((u) => {
-                const initials = u.name?.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2) || '?';
                 const isChecked = selected.has(u.id);
                 return (
                   <tr key={u.id} style={{ background: isChecked ? 'rgba(var(--accent-rgb, 99,102,241),0.06)' : undefined }}>
@@ -263,7 +263,7 @@ function PendingVerificationPanel({ onVerified, isAdmin }) {
                     </td>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div className="avatar sm" style={{ background: ROLE_COLORS[u.role]?.color || 'var(--accent)', flexShrink: 0 }}>{initials}</div>
+                        <ProfileAvatar src={u.profileImageUrl || u.photoUrl} name={u.name} size="sm" />
                         <span style={{ fontWeight: 600 }}>{u.name}</span>
                       </div>
                     </td>
@@ -415,12 +415,11 @@ export default function UsersPage() {
               </thead>
               <tbody>
                 {sortedUsers.map((u) => {
-                  const initials = u.name?.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2) || '?';
                   return (
                     <tr key={u.id}>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <div className="avatar sm" style={{ background: ROLE_COLORS[u.role]?.color || 'var(--accent)' }}>{initials}</div>
+                          <ProfileAvatar src={u.profileImageUrl || u.photoUrl} name={u.name} size="sm" />
                           <span style={{ fontWeight: 600 }}>{u.name}</span>
                           {u.id === me.id && <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>(you)</span>}
                         </div>

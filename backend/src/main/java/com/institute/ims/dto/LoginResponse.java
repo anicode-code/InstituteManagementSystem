@@ -11,6 +11,7 @@ public class LoginResponse {
     private String role;
     private String status;
     private Department department;
+    private String profileImageUrl;
 
     public LoginResponse(
             String token,
@@ -31,6 +32,18 @@ public class LoginResponse {
             String role,
             String status,
             Department department) {
+        this(token, id, name, rollNumber, role, status, department, null);
+    }
+
+    public LoginResponse(
+            String token,
+            Long id,
+            String name,
+            String rollNumber,
+            String role,
+            String status,
+            Department department,
+            String profileImageUrl) {
 
         this.token = token;
         this.id = id;
@@ -39,6 +52,7 @@ public class LoginResponse {
         this.role = role;
         this.status = status;
         this.department = department;
+        this.profileImageUrl = profileImageUrl;
     }
 
     public String getToken() {
@@ -67,5 +81,9 @@ public class LoginResponse {
 
     public Department getDepartment() {
         return department;
+    }
+
+    public String getProfileImageUrl() {
+        return profileImageUrl;
     }
 }

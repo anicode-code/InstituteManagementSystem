@@ -15,6 +15,11 @@ export const getCurrentUser = () => api.get('/api/users/me');
 
 export const updateMyProfile = (data) => api.put('/api/users/me', data);
 
+export const uploadProfilePicture = (formData) =>
+  api.put('/api/users/me/profile-picture', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+
 export const updateUser = (id, data) => api.put(`/api/users/${id}`, data);
 
 export const deleteUser = (id) => api.delete(`/api/users/${id}`);

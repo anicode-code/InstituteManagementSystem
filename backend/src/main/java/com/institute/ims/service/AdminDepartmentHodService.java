@@ -239,7 +239,7 @@ public class AdminDepartmentHodService {
     private AdminHodProfile.PersonalInformation personalInformation(User hod) {
         return new AdminHodProfile.PersonalInformation(
                 hod.getName(),
-                null,
+                hod.getProfileImageUrl(),
                 hod.getRollNumber(),
                 hod.getEmail(),
                 null,
@@ -567,7 +567,7 @@ public class AdminDepartmentHodService {
                 hod.getId(),
                 hod.getRollNumber(),
                 hod.getName(),
-                null,
+                hod.getProfileImageUrl(),
                 null,
                 hod.getEmail(),
                 null,

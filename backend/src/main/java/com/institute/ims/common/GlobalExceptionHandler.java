@@ -9,6 +9,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -52,6 +53,14 @@ public class GlobalExceptionHandler {
             BadCredentialsException exception) {
 
         return errorResponse(HttpStatus.UNAUTHORIZED, "Invalid roll number or password.");
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<Map<String, Object>> handleResponseStatus(
+            ResponseStatusException exception) {
+        return errorResponse(
+                HttpStatus.valueOf(exception.getStatusCode().value()),
+                exception.getReason());
     }
 
     @ExceptionHandler(RuntimeException.class)

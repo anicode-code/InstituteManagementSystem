@@ -167,7 +167,7 @@ public class AdminDepartmentStudentsService {
         return new AdminStudentProfile(
                 new AdminStudentProfile.PersonalInformation(
                         student.getName(),
-                        null,
+                        student.getProfileImageUrl(),
                         student.getEmail(),
                         student.getPhone(),
                         student.getDateOfBirth(),
@@ -333,6 +333,7 @@ public class AdminDepartmentStudentsService {
         return new AdminStudentRosterItem(
                 student.getId(),
                 student.getName(),
+                student.getProfileImageUrl(),
                 student.getRollNumber(),
                 student.getEmail(),
                 student.getYear(),
