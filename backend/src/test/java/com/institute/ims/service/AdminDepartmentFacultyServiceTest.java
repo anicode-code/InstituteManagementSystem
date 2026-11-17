@@ -148,6 +148,7 @@ class AdminDepartmentFacultyServiceTest {
         faculty.setJoiningDate(LocalDate.of(2010, 8, 1));
         faculty.setEmploymentStatus("Active");
         faculty.setDesignation("Professor");
+        faculty.setAdministrativeRole("Department Coordinator");
         faculty.setQualification("PhD");
         faculty.setSpecialization("Computer Science");
         faculty.setYearsOfExperience(15.5);
@@ -190,6 +191,7 @@ class AdminDepartmentFacultyServiceTest {
         assertThat(profile.personalInformation().joiningDate()).isEqualTo(LocalDate.of(2010, 8, 1));
         assertThat(profile.personalInformation().employmentStatus()).isEqualTo("Active");
         assertThat(profile.professionalInformation().designation()).isEqualTo("Professor");
+        assertThat(profile.professionalInformation().administrativeRole()).isEqualTo("Department Coordinator");
         assertThat(profile.professionalInformation().qualification()).isEqualTo("PhD");
         assertThat(profile.professionalInformation().specialization()).isEqualTo("Computer Science");
         assertThat(profile.professionalInformation().yearsOfExperience()).isEqualTo(15.5);

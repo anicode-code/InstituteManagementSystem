@@ -36,6 +36,7 @@ public record AdminFacultyProfile(
             String departmentName,
             String departmentCode,
             String designation,
+            String administrativeRole,
             String qualification,
             String specialization,
             Double yearsOfExperience,

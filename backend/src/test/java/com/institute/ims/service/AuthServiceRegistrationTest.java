@@ -51,7 +51,7 @@ class AuthServiceRegistrationTest {
         Department department = new Department();
         department.setId(10L);
         when(userRepository.existsByRollNumber("STUDENT")).thenReturn(false);
-        when(userRepository.existsByEmail("student@example.edu")).thenReturn(false);
+        when(userRepository.existsByEmailIgnoreCase("student@example.edu")).thenReturn(false);
         when(departmentRepository.findById(10L)).thenReturn(Optional.of(department));
         when(passwordEncoder.encode("password")).thenReturn("encoded");
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));

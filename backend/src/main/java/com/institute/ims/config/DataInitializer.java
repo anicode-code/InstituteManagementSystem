@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.institute.ims.model.*;
 import com.institute.ims.repository.DepartmentRepository;
+import com.institute.ims.repository.FacultyProfileOptionRepository;
 import com.institute.ims.repository.SubjectRepository;
 import com.institute.ims.repository.UserRepository;
 import org.springframework.boot.CommandLineRunner;
@@ -16,6 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.InputStream;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Configuration
@@ -26,6 +29,7 @@ public class DataInitializer {
     CommandLineRunner initializeData(
             UserRepository userRepository,
             DepartmentRepository departmentRepository,
+            FacultyProfileOptionRepository facultyProfileOptionRepository,
             SubjectRepository subjectRepository,
             PasswordEncoder passwordEncoder,
             JdbcTemplate jdbcTemplate) {
@@ -39,6 +43,8 @@ public class DataInitializer {
             Department ece   = createDeptIfNotExists(departmentRepository, "Electronics & Communication", "ECE");
             Department me    = createDeptIfNotExists(departmentRepository, "Mechanical Engineering", "ME");
             Department civil = createDeptIfNotExists(departmentRepository, "Civil Engineering", "CIVIL");
+
+            seedFacultyProfileOptions(facultyProfileOptionRepository);
 
             // ─── 2. Seed Subjects from curriculum_subjects.json ────────────
             seedSubjectsFromJson(departmentRepository, subjectRepository);
@@ -143,6 +149,7 @@ public class DataInitializer {
                         for (JsonNode subNode : compulsory) {
                             createSubjectIfNotExists(subjectRepository, dept, subNode, semNumber, yearNumber, SubjectType.COMPULSORY);
                         }
+
                     }
 
                     // Process optional subjects
@@ -158,6 +165,27 @@ public class DataInitializer {
         } catch (Exception e) {
             System.err.println("[DataInitializer] Warning: Could not seed subjects from JSON: " + e.getMessage());
         }
+    }
+
+    private void seedFacultyProfileOptions(FacultyProfileOptionRepository repository) {
+        Map<FacultyProfileOption.Category, List<String>> options = Map.of(
+                FacultyProfileOption.Category.GENDER,
+                List.of("Male", "Female", "Other", "Prefer not to say"),
+                FacultyProfileOption.Category.ACADEMIC_DESIGNATION,
+                List.of("FACULTY", "ASSISTANT PROFESSOR", "ASSOCIATE PROFESSOR", "PROFESSOR",
+                        "LECTURER", "SENIOR LECTURER", "VISITING PROFESSOR"),
+                FacultyProfileOption.Category.ADMINISTRATIVE_ROLE,
+                List.of("Head of Department (HOD)", "None"),
+                FacultyProfileOption.Category.EMPLOYMENT_STATUS,
+                List.of("Employed", "On Leave", "Resigned", "Retired", "Terminated"),
+                FacultyProfileOption.Category.EMPLOYMENT_TYPE,
+                List.of("Permanent", "Contractual", "Temporary", "Visiting Faculty", "Guest Faculty"));
+
+        options.forEach((category, values) -> values.forEach(value -> {
+            if (!repository.existsByCategoryAndValueIgnoreCase(category, value)) {
+                repository.save(new FacultyProfileOption(category, value));
+            }
+        }));
     }
 
     private void createSubjectIfNotExists(

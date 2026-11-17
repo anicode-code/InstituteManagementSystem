@@ -37,7 +37,7 @@ public class User {
 
     private String gender;
 
-    @Column(name = "residential_address")
+    @Column(name = "residential_address", length = 1000)
     private String residentialAddress;
 
     @Column(name = "joining_date")
@@ -47,6 +47,9 @@ public class User {
     private String employmentStatus;
 
     private String designation;
+
+    @Column(name = "administrative_role")
+    private String administrativeRole;
 
     private String qualification;
 
@@ -177,6 +180,10 @@ public class User {
         return designation;
     }
 
+    public String getAdministrativeRole() {
+        return administrativeRole;
+    }
+
     public String getQualification() {
         return qualification;
     }
@@ -271,6 +278,10 @@ public class User {
 
     public void setDesignation(String designation) {
         this.designation = designation;
+    }
+
+    public void setAdministrativeRole(String administrativeRole) {
+        this.administrativeRole = administrativeRole;
     }
 
     public void setQualification(String qualification) {

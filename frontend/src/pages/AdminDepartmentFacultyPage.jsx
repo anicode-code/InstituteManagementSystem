@@ -179,7 +179,8 @@ function FacultyProfile({ departmentId, facultyId }) {
             <div className="grid-3">
               <Metric label="Department" value={professional.departmentName} />
               <Metric label="Department code" value={professional.departmentCode} />
-              <Metric label="Designation" value={professional.designation} />
+              <Metric label="Academic Designation" value={professional.designation} />
+              <Metric label="Administrative Role" value={professional.administrativeRole} />
               <Metric label="Qualification" value={professional.qualification} />
               <Metric label="Specialization" value={professional.specialization} />
               <Metric label="Experience" value={professional.yearsOfExperience == null ? null : `${professional.yearsOfExperience} years`} />
@@ -545,7 +546,7 @@ function FacultyDirectory({ departmentId }) {
                   <tr>
                     <SortableTh tableId="faculty-roster" columnKey="facultyId" label="Faculty ID" sorts={sorts} onSort={handleSort} style={HEADER_STYLE} />
                     <SortableTh tableId="faculty-roster" columnKey="name" label="Faculty" sorts={sorts} onSort={handleSort} style={HEADER_STYLE} />
-                    <SortableTh tableId="faculty-roster" columnKey="designation" label="Designation" sorts={sorts} onSort={handleSort} style={HEADER_STYLE} />
+                    <SortableTh tableId="faculty-roster" columnKey="designation" label="Academic Designation" sorts={sorts} onSort={handleSort} style={HEADER_STYLE} />
                     <SortableTh tableId="faculty-roster" columnKey="email" label="Email" sorts={sorts} onSort={handleSort} style={HEADER_STYLE} />
                     <SortableTh tableId="faculty-roster" columnKey="phone" label="Phone" sorts={sorts} onSort={handleSort} style={HEADER_STYLE} />
                     <SortableTh tableId="faculty-roster" columnKey="subjects" label="Subjects" sorts={sorts} onSort={handleSort} style={HEADER_STYLE} />

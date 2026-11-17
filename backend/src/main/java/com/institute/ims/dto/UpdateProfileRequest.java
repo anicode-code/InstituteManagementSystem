@@ -3,6 +3,8 @@ package com.institute.ims.dto;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -10,29 +12,42 @@ import java.util.List;
 public class UpdateProfileRequest {
 
     @NotBlank(message = "Name is required")
+    @Size(max = 255, message = "Name cannot exceed 255 characters")
     private String name;
 
     @Email(message = "Invalid email")
+    @Size(max = 254, message = "Email cannot exceed 254 characters")
     private String email;
 
     private Integer year;
     private Integer semester;
     private List<String> optionalSubjectCodes;
+    @Pattern(regexp = "^[6-9][0-9]{9}$", message = "Phone must be a valid 10-digit Indian mobile number")
     private String phone;
     private LocalDate dateOfBirth;
     private boolean dateOfBirthProvided;
+    @Size(max = 30, message = "Gender value is too long")
     private String gender;
+    @Size(max = 1000, message = "Residential address cannot exceed 1000 characters")
     private String residentialAddress;
     private LocalDate joiningDate;
     private boolean joiningDateProvided;
+    @Size(max = 30, message = "Employment status is too long")
     private String employmentStatus;
+    @Size(max = 80, message = "Academic designation cannot exceed 80 characters")
     private String designation;
+    @Size(max = 100, message = "Administrative role cannot exceed 100 characters")
+    private String administrativeRole;
+    @Size(max = 255, message = "Qualification cannot exceed 255 characters")
     private String qualification;
+    @Size(max = 255, message = "Specialization cannot exceed 255 characters")
     private String specialization;
     @DecimalMin(value = "0.0", message = "Years of experience cannot be negative")
     private Double yearsOfExperience;
     private boolean yearsOfExperienceProvided;
+    @Size(max = 100, message = "Employment type cannot exceed 100 characters")
     private String employmentType;
+    private List<Long> departmentIds;
 
     public String getName() {
         return name;
@@ -90,6 +105,10 @@ public class UpdateProfileRequest {
         return designation;
     }
 
+    public String getAdministrativeRole() {
+        return administrativeRole;
+    }
+
     public String getQualification() {
         return qualification;
     }
@@ -108,6 +127,10 @@ public class UpdateProfileRequest {
 
     public String getEmploymentType() {
         return employmentType;
+    }
+
+    public List<Long> getDepartmentIds() {
+        return departmentIds;
     }
 
     public void setName(String name) {
@@ -160,6 +183,10 @@ public class UpdateProfileRequest {
         this.designation = designation;
     }
 
+    public void setAdministrativeRole(String administrativeRole) {
+        this.administrativeRole = administrativeRole;
+    }
+
     public void setQualification(String qualification) {
         this.qualification = qualification;
     }
@@ -175,5 +202,9 @@ public class UpdateProfileRequest {
 
     public void setEmploymentType(String employmentType) {
         this.employmentType = employmentType;
+    }
+
+    public void setDepartmentIds(List<Long> departmentIds) {
+        this.departmentIds = departmentIds;
     }
 }

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import { getCurrentUser, updateMyProfile } from '../api/users';
+import { getAllDepartments } from '../api/departments';
 import { getCurriculumByDeptAndSemester } from '../data/curriculumSubjects';
 import { User, Mail, Hash, Building2, Shield, Pencil, X, Save, BookOpen, CheckSquare, Square } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -27,6 +28,33 @@ const SEMESTERS_BY_YEAR = {
   4: [{ value: 7, label: 'Semester 7' }, { value: 8, label: 'Semester 8' }],
 };
 
+const GENDERS = ['Male', 'Female', 'Other', 'Prefer not to say'];
+const ACADEMIC_DESIGNATIONS = [
+  'FACULTY',
+  'ASSISTANT PROFESSOR',
+  'ASSOCIATE PROFESSOR',
+  'PROFESSOR',
+  'LECTURER',
+  'SENIOR LECTURER',
+  'VISITING PROFESSOR',
+];
+const ADMINISTRATIVE_ROLES = ['Head of Department (HOD)', 'None'];
+const EMPLOYMENT_STATUSES = ['Employed', 'On Leave', 'Resigned', 'Retired', 'Terminated'];
+const EMPLOYMENT_TYPES = ['Permanent', 'Contractual', 'Temporary', 'Visiting Faculty', 'Guest Faculty'];
+
+const todayDate = () => {
+  const today = new Date();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${today.getFullYear()}-${month}-${day}`;
+};
+
+const isValidDate = (value) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value || '')) return false;
+  const date = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+};
+
 const profileForm = (user) => ({
   name: user?.name || '',
   email: user?.email || '',
@@ -37,16 +65,28 @@ const profileForm = (user) => ({
   joiningDate: user?.joiningDate || '',
   employmentStatus: user?.employmentStatus || '',
   designation: user?.designation || '',
+  administrativeRole: user?.administrativeRole || '',
   qualification: user?.qualification || '',
   specialization: user?.specialization || '',
   yearsOfExperience: user?.yearsOfExperience == null ? '' : String(user.yearsOfExperience),
   employmentType: user?.employmentType || '',
+  departmentIds: user?.departments?.length
+    ? user.departments.map((department) => String(department.id))
+    : (user?.department?.id ? [String(user.department.id)] : []),
   year: user?.year ? String(user.year) : '',
   semester: user?.semester ? String(user.semester) : '',
   optionalSubjectCodes: user?.selectedSubjects
     ?.filter((subject) => subject.type === 'OPTIONAL')
     .map((subject) => subject.code) || [],
 });
+
+function FieldError({ message }) {
+  return message ? (
+    <div role="alert" style={{ color: 'var(--danger)', fontSize: '0.75rem', marginTop: 4 }}>
+      {message}
+    </div>
+  ) : null;
+}
 
 function InfoRow({ icon, label, value }) {
   return (
@@ -66,11 +106,14 @@ function InfoRow({ icon, label, value }) {
 export default function ProfilePage() {
   const { user: authUser, syncUser } = useAuth();
   const [profile, setProfile] = useState(null);
+  const [departments, setDepartments] = useState([]);
+  const [departmentLoadError, setDepartmentLoadError] = useState('');
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState(profileForm(null));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
 
   useEffect(() => {
     const load = async () => {
@@ -78,6 +121,14 @@ export default function ProfilePage() {
         const res = await getCurrentUser();
         setProfile(res.data);
         setForm(profileForm(res.data));
+        if (res.data.role === 'FACULTY') {
+          try {
+            const departmentResponse = await getAllDepartments();
+            setDepartments(departmentResponse.data || []);
+          } catch {
+            setDepartmentLoadError('Could not load departments. Please try again.');
+          }
+        }
       } catch {
         setError('Could not load your profile. Please try again.');
       } finally {
@@ -117,11 +168,74 @@ export default function ProfilePage() {
     setForm(profileForm(profile));
     setEditing(false);
     setError('');
+    setFieldErrors({});
+  };
+
+  const updateFormField = (field, value) => {
+    setForm((current) => ({ ...current, [field]: value }));
+    setFieldErrors((current) => ({ ...current, [field]: '' }));
+  };
+
+  const validateFacultyForm = () => {
+    const errors = {};
+    if (!/^[6-9]\d{9}$/.test(form.phone.trim())) {
+      errors.phone = 'Enter a valid 10-digit Indian mobile number.';
+    }
+    if (!GENDERS.includes(form.gender)) errors.gender = 'Select a gender.';
+    if (form.dateOfBirth && !isValidDate(form.dateOfBirth)) {
+      errors.dateOfBirth = 'Enter a valid date of birth.';
+    } else if (form.dateOfBirth && form.dateOfBirth > todayDate()) {
+      errors.dateOfBirth = 'Date of birth cannot be in the future.';
+    }
+    if (!form.joiningDate) {
+      errors.joiningDate = 'Joining date is required.';
+    } else if (!isValidDate(form.joiningDate)) {
+      errors.joiningDate = 'Enter a valid joining date.';
+    } else if (form.joiningDate > todayDate()) {
+      errors.joiningDate = 'Joining date cannot be in the future.';
+    } else if (form.dateOfBirth && isValidDate(form.dateOfBirth) && form.joiningDate < form.dateOfBirth) {
+      errors.joiningDate = 'Joining date cannot be before date of birth.';
+    }
+    if (!EMPLOYMENT_STATUSES.includes(form.employmentStatus)) {
+      errors.employmentStatus = 'Select an employment status.';
+    }
+    if (!ACADEMIC_DESIGNATIONS.includes(form.designation)) {
+      errors.designation = 'Select an academic designation.';
+    }
+    if (!ADMINISTRATIVE_ROLES.includes(form.administrativeRole)) {
+      errors.administrativeRole = 'Select an administrative role.';
+    }
+    if (!form.qualification.trim()) errors.qualification = 'Qualification is required.';
+    if (!EMPLOYMENT_TYPES.includes(form.employmentType)) {
+      errors.employmentType = 'Select an employment type.';
+    }
+    if (form.yearsOfExperience !== ''
+      && (!Number.isFinite(Number(form.yearsOfExperience)) || Number(form.yearsOfExperience) < 0)) {
+      errors.yearsOfExperience = 'Experience must be a non-negative number.';
+    }
+    const departmentIds = new Set(departments.map((department) => String(department.id)));
+    if (!form.departmentIds.length || form.departmentIds.some((id) => !departmentIds.has(id))) {
+      errors.departmentIds = departmentLoadError || 'Select at least one valid department.';
+    }
+    if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+      errors.email = 'Enter a valid email address.';
+    }
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const handleSave = async () => {
     setError('');
-    if (!form.name.trim()) { setError('Name is required.'); return; }
+    if (!form.name.trim()) {
+      setFieldErrors((current) => ({ ...current, name: 'Name is required.' }));
+      return;
+    }
+    if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+      setFieldErrors((current) => ({ ...current, email: 'Enter a valid email address.' }));
+      return;
+    }
+    if (profile?.role === 'FACULTY' && !validateFacultyForm()) return;
+    setFieldErrors({});
 
     const request = { name: form.name.trim(), email: form.email.trim() };
     if (profile?.role === 'STUDENT') {
@@ -149,12 +263,14 @@ export default function ProfilePage() {
       request.joiningDate = form.joiningDate || null;
       request.employmentStatus = form.employmentStatus.trim();
       request.designation = form.designation.trim();
+      request.administrativeRole = form.administrativeRole.trim();
       request.qualification = form.qualification.trim();
       request.specialization = form.specialization.trim();
       request.yearsOfExperience = form.yearsOfExperience === ''
         ? null
         : Number(form.yearsOfExperience);
       request.employmentType = form.employmentType.trim();
+      request.departmentIds = form.departmentIds.map(Number);
     }
 
     setSaving(true);
@@ -176,7 +292,15 @@ export default function ProfilePage() {
       toast.success('Profile updated');
       setEditing(false);
     } catch (err) {
-      setError(err?.response?.data?.message || 'Update failed');
+      const responseErrors = err?.response?.data?.errors;
+      if (responseErrors) {
+        setFieldErrors((current) => ({ ...current, ...responseErrors }));
+      }
+      const message = err?.response?.data?.message;
+      if (message?.toLowerCase().includes('email')) {
+        setFieldErrors((current) => ({ ...current, email: message }));
+      }
+      setError(message || 'Update failed');
     } finally {
       setSaving(false);
     }
@@ -241,9 +365,11 @@ export default function ProfilePage() {
               <input
                 className="form-input"
                 value={form.name}
-                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                onChange={(e) => updateFormField('name', e.target.value)}
                 placeholder="Your full name"
+                aria-invalid={Boolean(fieldErrors.name)}
               />
+              <FieldError message={fieldErrors.name} />
             </div>
             <div className="form-group">
               <label className="form-label">Email</label>
@@ -251,60 +377,137 @@ export default function ProfilePage() {
                 className="form-input"
                 type="email"
                 value={form.email}
-                onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                onChange={(e) => updateFormField('email', e.target.value)}
                 placeholder="your@email.com"
+                aria-invalid={Boolean(fieldErrors.email)}
               />
+              <FieldError message={fieldErrors.email} />
             </div>
             {p?.role === 'FACULTY' && (
               <>
                 <h4 style={{ fontWeight: 700, margin: '20px 0 12px' }}>Personal Information</h4>
                 <div className="grid-2">
                   <div className="form-group">
-                    <label className="form-label" htmlFor="profile-phone">Phone</label>
-                    <input id="profile-phone" className="form-input" value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} />
+                    <label className="form-label" htmlFor="profile-phone">Phone *</label>
+                    <input id="profile-phone" className="form-input" type="tel" inputMode="numeric" maxLength={10} value={form.phone} onChange={(e) => updateFormField('phone', e.target.value)} aria-invalid={Boolean(fieldErrors.phone)} />
+                    <FieldError message={fieldErrors.phone} />
                   </div>
                   <div className="form-group">
                     <label className="form-label" htmlFor="profile-date-of-birth">Date of birth</label>
-                    <input id="profile-date-of-birth" className="form-input" type="date" value={form.dateOfBirth} onChange={(e) => setForm((f) => ({ ...f, dateOfBirth: e.target.value }))} />
+                    <input id="profile-date-of-birth" className="form-input" type="date" max={todayDate()} value={form.dateOfBirth} onChange={(e) => updateFormField('dateOfBirth', e.target.value)} aria-invalid={Boolean(fieldErrors.dateOfBirth)} />
+                    <FieldError message={fieldErrors.dateOfBirth} />
                   </div>
                   <div className="form-group">
-                    <label className="form-label" htmlFor="profile-gender">Gender</label>
-                    <input id="profile-gender" className="form-input" value={form.gender} onChange={(e) => setForm((f) => ({ ...f, gender: e.target.value }))} />
+                    <label className="form-label" htmlFor="profile-gender">Gender *</label>
+                    <select id="profile-gender" className="form-select" value={form.gender} onChange={(e) => updateFormField('gender', e.target.value)} aria-invalid={Boolean(fieldErrors.gender)}>
+                      <option value="">Select gender</option>
+                      {GENDERS.map((gender) => <option key={gender} value={gender}>{gender}</option>)}
+                    </select>
+                    <FieldError message={fieldErrors.gender} />
                   </div>
                   <div className="form-group">
-                    <label className="form-label" htmlFor="profile-joining-date">Joining date</label>
-                    <input id="profile-joining-date" className="form-input" type="date" value={form.joiningDate} onChange={(e) => setForm((f) => ({ ...f, joiningDate: e.target.value }))} />
+                    <label className="form-label" htmlFor="profile-joining-date">Joining date *</label>
+                    <input id="profile-joining-date" className="form-input" type="date" max={todayDate()} min={form.dateOfBirth || undefined} value={form.joiningDate} onChange={(e) => updateFormField('joiningDate', e.target.value)} aria-invalid={Boolean(fieldErrors.joiningDate)} />
+                    <FieldError message={fieldErrors.joiningDate} />
                   </div>
                   <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                     <label className="form-label" htmlFor="profile-residential-address">Residential address</label>
-                    <textarea id="profile-residential-address" className="form-input" rows={2} value={form.residentialAddress} onChange={(e) => setForm((f) => ({ ...f, residentialAddress: e.target.value }))} />
+                    <textarea id="profile-residential-address" className="form-input" rows={2} maxLength={1000} value={form.residentialAddress} onChange={(e) => updateFormField('residentialAddress', e.target.value)} />
                   </div>
                   <div className="form-group">
-                    <label className="form-label" htmlFor="profile-employment-status">Employment status</label>
-                    <input id="profile-employment-status" className="form-input" value={form.employmentStatus} onChange={(e) => setForm((f) => ({ ...f, employmentStatus: e.target.value }))} />
+                    <label className="form-label" htmlFor="profile-employment-status">Employment status *</label>
+                    <select id="profile-employment-status" className="form-select" value={form.employmentStatus} onChange={(e) => updateFormField('employmentStatus', e.target.value)} aria-invalid={Boolean(fieldErrors.employmentStatus)}>
+                      <option value="">Select status</option>
+                      {EMPLOYMENT_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}
+                    </select>
+                    <FieldError message={fieldErrors.employmentStatus} />
                   </div>
                 </div>
                 <h4 style={{ fontWeight: 700, margin: '8px 0 12px' }}>Professional Information</h4>
                 <div className="grid-2">
                   <div className="form-group">
-                    <label className="form-label" htmlFor="profile-designation">Designation</label>
-                    <input id="profile-designation" className="form-input" value={form.designation} onChange={(e) => setForm((f) => ({ ...f, designation: e.target.value }))} />
+                    <label className="form-label" htmlFor="profile-designation">Academic Designation *</label>
+                    <select id="profile-designation" className="form-select" value={form.designation} onChange={(e) => updateFormField('designation', e.target.value)} aria-invalid={Boolean(fieldErrors.designation)}>
+                      <option value="">Select designation</option>
+                      {ACADEMIC_DESIGNATIONS.map((designation) => <option key={designation} value={designation}>{designation}</option>)}
+                    </select>
+                    <FieldError message={fieldErrors.designation} />
                   </div>
                   <div className="form-group">
-                    <label className="form-label" htmlFor="profile-qualification">Qualification</label>
-                    <input id="profile-qualification" className="form-input" value={form.qualification} onChange={(e) => setForm((f) => ({ ...f, qualification: e.target.value }))} />
+                    <label className="form-label" htmlFor="profile-administrative-role">Administrative Role *</label>
+                    <select id="profile-administrative-role" className="form-select" value={form.administrativeRole} onChange={(e) => updateFormField('administrativeRole', e.target.value)} aria-invalid={Boolean(fieldErrors.administrativeRole)}>
+                      <option value="">Select role</option>
+                      {ADMINISTRATIVE_ROLES.map((role) => <option key={role} value={role}>{role}</option>)}
+                    </select>
+                    <FieldError message={fieldErrors.administrativeRole} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="profile-qualification">Qualification *</label>
+                    <input id="profile-qualification" className="form-input" value={form.qualification} onChange={(e) => updateFormField('qualification', e.target.value)} aria-invalid={Boolean(fieldErrors.qualification)} />
+                    <FieldError message={fieldErrors.qualification} />
                   </div>
                   <div className="form-group">
                     <label className="form-label" htmlFor="profile-specialization">Specialization</label>
-                    <input id="profile-specialization" className="form-input" value={form.specialization} onChange={(e) => setForm((f) => ({ ...f, specialization: e.target.value }))} />
+                    <input id="profile-specialization" className="form-input" value={form.specialization} onChange={(e) => updateFormField('specialization', e.target.value)} />
                   </div>
                   <div className="form-group">
                     <label className="form-label" htmlFor="profile-years-of-experience">Years of experience</label>
-                    <input id="profile-years-of-experience" className="form-input" type="number" min="0" step="0.1" value={form.yearsOfExperience} onChange={(e) => setForm((f) => ({ ...f, yearsOfExperience: e.target.value }))} />
+                    <input id="profile-years-of-experience" className="form-input" type="number" min="0" step="any" value={form.yearsOfExperience} onChange={(e) => updateFormField('yearsOfExperience', e.target.value)} aria-invalid={Boolean(fieldErrors.yearsOfExperience)} />
+                    <FieldError message={fieldErrors.yearsOfExperience} />
                   </div>
                   <div className="form-group">
-                    <label className="form-label" htmlFor="profile-employment-type">Employment type</label>
-                    <input id="profile-employment-type" className="form-input" value={form.employmentType} onChange={(e) => setForm((f) => ({ ...f, employmentType: e.target.value }))} />
+                    <label className="form-label" htmlFor="profile-employment-type">Employment type *</label>
+                    <select id="profile-employment-type" className="form-select" value={form.employmentType} onChange={(e) => updateFormField('employmentType', e.target.value)} aria-invalid={Boolean(fieldErrors.employmentType)}>
+                      <option value="">Select employment type</option>
+                      {EMPLOYMENT_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
+                    </select>
+                    <FieldError message={fieldErrors.employmentType} />
+                  </div>
+                  <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                    <label className="form-label" id="profile-departments-label">Departments *</label>
+                    <details style={{ position: 'relative' }}>
+                      <summary className="form-select" aria-labelledby="profile-departments-label" style={{ cursor: 'pointer' }}>
+                        {departments
+                          .filter((department) => form.departmentIds.includes(String(department.id)))
+                          .map((department) => department.name)
+                          .join(', ') || 'Select departments'}
+                      </summary>
+                      <div style={{
+                        position: 'absolute',
+                        zIndex: 5,
+                        top: '100%',
+                        left: 0,
+                        right: 0,
+                        maxHeight: 220,
+                        overflowY: 'auto',
+                        padding: 8,
+                        background: 'var(--bg-primary)',
+                        border: '1px solid var(--border)',
+                        borderRadius: 'var(--radius-sm)',
+                        boxShadow: 'var(--shadow-md)',
+                      }}>
+                        {departments.map((department) => {
+                          const departmentId = String(department.id);
+                          const checked = form.departmentIds.includes(departmentId);
+                          return (
+                            <label key={department.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 4px', cursor: 'pointer' }}>
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() => updateFormField(
+                                  'departmentIds',
+                                  checked
+                                    ? form.departmentIds.filter((id) => id !== departmentId)
+                                    : [...form.departmentIds, departmentId],
+                                )}
+                              />
+                              {department.name} ({department.code})
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </details>
+                    <FieldError message={fieldErrors.departmentIds} />
                   </div>
                 </div>
               </>
@@ -424,19 +627,28 @@ export default function ProfilePage() {
           <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: 8 }}>Your profile details</p>
 
           <InfoRow icon={<User size={18} />}     label="Full Name"   value={p?.name} />
-          <InfoRow icon={<Hash size={18} />}      label="Roll Number" value={p?.rollNumber} />
+          <InfoRow icon={<Hash size={18} />}      label={p?.role === 'FACULTY' ? 'Faculty ID' : 'Roll Number'} value={p?.rollNumber} />
           <InfoRow icon={<Mail size={18} />}      label="Email"       value={p?.email} />
           <InfoRow icon={<Shield size={18} />}    label="Role"        value={p?.role} />
-          <InfoRow icon={<Building2 size={18} />} label="Department"  value={p?.department?.name} />
+          <InfoRow
+            icon={<Building2 size={18} />}
+            label="Department"
+            value={p?.role === 'FACULTY'
+              ? (p?.departments?.map((department) => department.name).join(', ') || p?.department?.name)
+              : p?.department?.name}
+          />
           {p?.role === 'FACULTY' && (
             <>
+              <InfoRow icon={<Shield size={18} />} label="Account status" value={p?.status} />
+              <InfoRow icon={<Shield size={18} />} label="Account created" value={p?.createdAt ? new Date(p.createdAt).toLocaleString() : null} />
               <InfoRow icon={<Mail size={18} />} label="Phone" value={p?.phone} />
               <InfoRow icon={<User size={18} />} label="Date of birth" value={p?.dateOfBirth} />
               <InfoRow icon={<User size={18} />} label="Gender" value={p?.gender} />
               <InfoRow icon={<Building2 size={18} />} label="Residential address" value={p?.residentialAddress} />
               <InfoRow icon={<Building2 size={18} />} label="Joining date" value={p?.joiningDate} />
               <InfoRow icon={<Building2 size={18} />} label="Employment status" value={p?.employmentStatus} />
-              <InfoRow icon={<Shield size={18} />} label="Designation" value={p?.designation} />
+              <InfoRow icon={<Shield size={18} />} label="Academic Designation" value={p?.designation} />
+              <InfoRow icon={<Shield size={18} />} label="Administrative Role" value={p?.administrativeRole} />
               <InfoRow icon={<Shield size={18} />} label="Qualification" value={p?.qualification} />
               <InfoRow icon={<Shield size={18} />} label="Specialization" value={p?.specialization} />
               <InfoRow icon={<Shield size={18} />} label="Years of experience" value={p?.yearsOfExperience == null ? null : `${p.yearsOfExperience} years`} />

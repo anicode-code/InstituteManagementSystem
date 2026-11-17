@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 @Service
@@ -63,9 +64,10 @@ public class AuthService {
                     "A user with this roll number already exists.");
         }
 
-        if (request.getEmail() != null && !request.getEmail().isBlank() &&
-                userRepository.existsByEmail(
-                        request.getEmail())) {
+        String email = request.getEmail() == null
+                ? null
+                : request.getEmail().trim().toLowerCase(Locale.ROOT);
+        if (email != null && !email.isBlank() && userRepository.existsByEmailIgnoreCase(email)) {
 
             throw new RuntimeException(
                     "Email already exists");
@@ -82,7 +84,7 @@ public class AuthService {
                 )
         );
 
-        user.setEmail(request.getEmail());
+        user.setEmail(email);
         user.setRole(request.getRole());
         // New self-registered users start as PENDING
         user.setStatus(VerificationStatus.PENDING);

@@ -205,6 +205,7 @@ public class AdminDepartmentFacultyService {
                         department.getName(),
                         department.getCode(),
                         faculty.getDesignation(),
+                        faculty.getAdministrativeRole(),
                         faculty.getQualification(),
                         faculty.getSpecialization(),
                         faculty.getYearsOfExperience(),
