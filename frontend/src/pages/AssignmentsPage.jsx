@@ -6,28 +6,58 @@ import SortableTh from '../components/SortableTh';
 import { useTableSorting } from '../utils/tableSorting';
 import {
   getAllAssignments, getAssignmentsByFaculty,
-  createAssignment, deleteAssignment,
+  createAssignment, updateAssignment, deleteAssignment,
   submitAssignment, getMySubmission,
   getSubmissionsForAssignment, evaluateSubmission,
+  downloadAssignmentAttachment, downloadSubmissionAttachment,
+  getAssignmentAttachmentMetadata, getSubmissionAttachmentMetadata,
 } from '../api/assignments';
 import { getAllSubjects, getSubjectsByFaculty, getSubjectsByStudent } from '../api/subjects';
 import {
   ClipboardList, Plus, Trash2, X, Search, Calendar,
-  BookOpen, Send, Award, CheckCircle, Clock,
+  BookOpen, Send, Award, CheckCircle, Clock, Download, Edit3,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import DepartmentSectionNav from '../components/DepartmentSectionNav';
 
-function AssignmentModal({ open, onClose, onSaved, subjects, facultyId }) {
+function saveDownloadedBlob(response, fileName) {
+  const url = window.URL.createObjectURL(response.data);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+}
+
+async function downloadFile(request, fileName) {
+  try {
+    const response = await request();
+    saveDownloadedBlob(response, fileName);
+  } catch {
+    toast.error('Could not download the file');
+  }
+}
+
+function AssignmentModal({ open, onClose, onSaved, subjects, facultyId, assignment }) {
   const empty = { title: '', description: '', dueDate: '', maxMarks: 100, subjectId: '' };
   const [form, setForm] = useState(empty);
+  const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    setForm(empty);
+    setForm(assignment ? {
+      title: assignment.title || '',
+      description: assignment.description || '',
+      dueDate: assignment.dueDate || '',
+      maxMarks: assignment.maxMarks || 100,
+      subjectId: assignment.subject?.id || '',
+    } : empty);
+    setFiles([]);
     setError('');
-  }, [open]);
+  }, [open, assignment]);
 
   if (!open) return null;
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
@@ -40,19 +70,22 @@ function AssignmentModal({ open, onClose, onSaved, subjects, facultyId }) {
     }
     setLoading(true);
     try {
-      await createAssignment({
+      const data = {
         title: form.title,
         description: form.description,
         dueDate: form.dueDate,
         maxMarks: form.maxMarks ? Number(form.maxMarks) : 100,
         subjectId: Number(form.subjectId),
         facultyId: Number(facultyId),
-      });
-      toast.success('Assignment created');
+        files,
+      };
+      if (assignment) await updateAssignment(assignment.id, data);
+      else await createAssignment(data);
+      toast.success(assignment ? 'Assignment updated' : 'Assignment created');
       onSaved();
       onClose();
     } catch (err) {
-      setError(err?.response?.data || err?.message || 'Error creating assignment');
+      setError(err?.response?.data?.message || err?.response?.data || err?.message || 'Error saving assignment');
     } finally {
       setLoading(false);
     }
@@ -62,7 +95,7 @@ function AssignmentModal({ open, onClose, onSaved, subjects, facultyId }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h3 className="modal-title">Create Assignment</h3>
+          <h3 className="modal-title">{assignment ? 'Edit Assignment' : 'Create Assignment'}</h3>
           <button className="btn btn-ghost btn-icon" onClick={onClose}><X size={18} /></button>
         </div>
         <form onSubmit={handleSubmit}>
@@ -91,13 +124,41 @@ function AssignmentModal({ open, onClose, onSaved, subjects, facultyId }) {
             </div>
             <div className="form-group">
               <label className="form-label">Due Date *</label>
-              <input className="form-input" type="date" value={form.dueDate} onChange={(e) => set('dueDate', e.target.value)} min={new Date().toISOString().split('T')[0]} />
+              <input
+                className="form-input"
+                type="date"
+                value={form.dueDate}
+                onChange={(e) => set('dueDate', e.target.value)}
+                min={assignment ? undefined : new Date().toISOString().split('T')[0]}
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Attachments (any number of files)</label>
+              <input className="form-input" type="file" multiple onChange={(e) => setFiles(Array.from(e.target.files || []))} />
+              {assignment && assignment.attachments?.length > 0 && (
+                <div style={{ marginTop: 8, display: 'grid', gap: 6 }}>
+                  {assignment.attachments.map((attachment) => (
+                    <button
+                      type="button"
+                      key={attachment.id}
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => downloadFile(
+                        () => downloadAssignmentAttachment(assignment.id, attachment.id),
+                        attachment.fileName,
+                      )}
+                    >
+                      <Download size={14} /> {attachment.fileName}
+                    </button>
+                  ))}
+                  {files.length === 0 && <small className="text-muted">Leaving this empty keeps existing attachments.</small>}
+                </div>
+              )}
             </div>
           </div>
           <div className="modal-footer">
             <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
             <button type="submit" className="btn btn-primary" disabled={loading}>
-              {loading ? <span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} /> : 'Create'}
+              {loading ? <span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} /> : (assignment ? 'Save Changes' : 'Create')}
             </button>
           </div>
         </form>
@@ -110,6 +171,7 @@ function AssignmentModal({ open, onClose, onSaved, subjects, facultyId }) {
 function StudentSubmissionModal({ open, onClose, assignment }) {
   const [submission, setSubmission] = useState(null);
   const [text, setText] = useState('');
+  const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -118,19 +180,22 @@ function StudentSubmissionModal({ open, onClose, assignment }) {
     if (!open || !assignment) return;
     setLoading(true);
     setError('');
+    setFiles([]);
     getMySubmission(assignment.id)
-      .then((res) => {
+      .then(async (res) => {
         if (res.data) {
-          setSubmission(res.data);
+          const attachmentResponse = await getSubmissionAttachmentMetadata(res.data.id);
+          setSubmission({ ...res.data, attachments: attachmentResponse.data || [] });
           setText(res.data.submissionText || '');
         } else {
           setSubmission(null);
           setText('');
         }
       })
-      .catch(() => {
+      .catch((error) => {
         setSubmission(null);
         setText('');
+        toast.error(error?.response?.data?.message || error?.message || 'Failed to load your submission');
       })
       .finally(() => setLoading(false));
   }, [open, assignment]);
@@ -139,14 +204,21 @@ function StudentSubmissionModal({ open, onClose, assignment }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!text.trim()) {
-      setError('Please provide your submission text, code link, or solution.');
+    if (!text.trim() && files.length === 0) {
+      setError('Provide an answer, upload at least one file, or do both.');
       return;
     }
     setSaving(true);
     try {
-      const res = await submitAssignment(assignment.id, text.trim());
-      setSubmission(res.data);
+      const res = await submitAssignment(assignment.id, text.trim(), files);
+      let savedSubmission = res.data;
+      try {
+        const attachmentResponse = await getSubmissionAttachmentMetadata(res.data.id);
+        savedSubmission = { ...res.data, attachments: attachmentResponse.data || [] };
+      } catch (error) {
+        toast.error(error?.response?.data?.message || 'Submission saved, but its files could not be loaded.');
+      }
+      setSubmission(savedSubmission);
       toast.success('Assignment submitted successfully!');
       onClose();
     } catch (err) {
@@ -218,6 +290,33 @@ function StudentSubmissionModal({ open, onClose, assignment }) {
                     disabled={saving}
                   />
                 </div>
+                <div className="form-group">
+                  <label className="form-label">Upload files (any number and type)</label>
+                  <input
+                    className="form-input"
+                    type="file"
+                    multiple
+                    onChange={(e) => setFiles(Array.from(e.target.files || []))}
+                    disabled={saving}
+                  />
+                  {submission?.attachments?.length > 0 && (
+                    <div style={{ marginTop: 8, display: 'grid', gap: 6 }}>
+                      {submission.attachments.map((attachment) => (
+                        <button
+                          type="button"
+                          key={attachment.id}
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => downloadFile(
+                            () => downloadSubmissionAttachment(submission.id, attachment.id),
+                            attachment.fileName,
+                          )}
+                        >
+                          <Download size={14} /> {attachment.fileName}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </>
             )}
           </div>
@@ -253,8 +352,15 @@ function FacultySubmissionsModal({ open, onClose, assignment, isAdmin }) {
     if (!open || !assignment) return;
     setLoading(true);
     getSubmissionsForAssignment(assignment.id)
-      .then((res) => setSubmissions(res.data || []))
-      .catch((err) => toast.error('Failed to load submissions'))
+      .then(async (res) => {
+        const rows = res.data || [];
+        const rowsWithAttachments = await Promise.all(rows.map(async (submission) => {
+          const response = await getSubmissionAttachmentMetadata(submission.id);
+          return { ...submission, attachments: response.data || [] };
+        }));
+        setSubmissions(rowsWithAttachments);
+      })
+      .catch((err) => toast.error(err?.response?.data?.message || err?.message || 'Failed to load submissions'))
       .finally(() => setLoading(false));
   }, [open, assignment]);
 
@@ -388,6 +494,20 @@ function FacultySubmissionsModal({ open, onClose, assignment, isAdmin }) {
                   <p style={{ fontSize: '0.85rem', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                     {submissions.find((s) => s.id === editingId)?.submissionText}
                   </p>
+                  {submissions.find((s) => s.id === editingId)?.attachments?.map((attachment) => (
+                    <button
+                      type="button"
+                      key={attachment.id}
+                      className="btn btn-secondary btn-sm"
+                      style={{ marginTop: 8 }}
+                      onClick={() => downloadFile(
+                        () => downloadSubmissionAttachment(editingId, attachment.id),
+                        attachment.fileName,
+                      )}
+                    >
+                      <Download size={14} /> {attachment.fileName}
+                    </button>
+                  ))}
                 </div>
               )}
               <div className="grid-2">
@@ -443,8 +563,10 @@ export default function AssignmentsPage({ departmentId }) {
   const [assignments, setAssignments] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
+  const [activeAssignmentForEdit, setActiveAssignmentForEdit] = useState(null);
 
   // Modals for submissions
   const [activeAssignmentForStudent, setActiveAssignmentForStudent] = useState(null);
@@ -452,6 +574,7 @@ export default function AssignmentsPage({ departmentId }) {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError('');
     try {
       const [aRes, sRes] = await Promise.all([
         isFaculty && user?.id ? getAssignmentsByFaculty(user.id) : getAllAssignments(),
@@ -459,8 +582,24 @@ export default function AssignmentsPage({ departmentId }) {
           ? getSubjectsByFaculty(user.id)
           : (isStudent && user?.id ? getSubjectsByStudent(user.id) : getAllSubjects()),
       ]);
-      setAssignments(aRes.data || []);
-      setSubjects(sRes.data || []);
+      if (!Array.isArray(aRes.data)) {
+        throw new Error(aRes.data?.message || 'The assignments service returned an invalid response.');
+      }
+      if (!Array.isArray(sRes.data)) {
+        throw new Error(sRes.data?.message || 'The subjects service returned an invalid response.');
+      }
+      const assignmentsWithAttachments = await Promise.all(aRes.data.map(async (assignment) => {
+        const response = await getAssignmentAttachmentMetadata(assignment.id);
+        return { ...assignment, attachments: response.data || [] };
+      }));
+      setAssignments(assignmentsWithAttachments);
+      setSubjects(sRes.data);
+    } catch (error) {
+      const message = error?.response?.data?.message || error?.message || 'Failed to load assignments.';
+      setAssignments([]);
+      setSubjects([]);
+      setLoadError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -479,13 +618,10 @@ export default function AssignmentsPage({ departmentId }) {
     navigate(location.pathname, { replace: true, state: null });
   }, [assignments, departmentId, loading, location.pathname, location.state, navigate, user?.role]);
 
-  const studentSubjectIds = useMemo(
-    () => new Set((subjects || []).map((s) => s.id)),
-    [subjects]
-  );
+  const studentSubjectIds = useMemo(() => new Set(subjects.map((s) => s.id)), [subjects]);
   const visibleAssignments = isStudent
-    ? (assignments || []).filter((a) => a.subject?.id && studentSubjectIds.has(a.subject.id))
-    : (assignments || []);
+    ? assignments.filter((a) => a.subject?.id && studentSubjectIds.has(a.subject.id))
+    : assignments;
   const departmentAssignments = departmentId
     ? visibleAssignments.filter((assignment) => String(assignment.subject?.department?.id) === String(departmentId))
     : visibleAssignments;
@@ -517,6 +653,7 @@ export default function AssignmentsPage({ departmentId }) {
   return (
     <Layout pageTitle="Assignments">
       {departmentId && <DepartmentSectionNav departmentId={departmentId} />}
+      {loadError && <div className="alert alert-error">{loadError}</div>}
       <div className="page-header">
         <div>
           <h2 className="page-title">Assignments</h2>
@@ -591,6 +728,23 @@ export default function AssignmentsPage({ departmentId }) {
                         {a.description}
                       </p>
                     )}
+                    {a.attachments?.length > 0 && (
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+                        {a.attachments.map((attachment) => (
+                          <button
+                            type="button"
+                            key={attachment.id}
+                            className="btn btn-secondary btn-sm"
+                            onClick={() => downloadFile(
+                              () => downloadAssignmentAttachment(a.id, attachment.id),
+                              attachment.fileName,
+                            )}
+                          >
+                            <Download size={14} /> {attachment.fileName}
+                          </button>
+                        ))}
+                      </div>
+                    )}
 
                     <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 8 }}>
                       <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -624,14 +778,27 @@ export default function AssignmentsPage({ departmentId }) {
                   </div>
 
                   {(isFaculty || isAdminOrHod) && (
-                    <button
-                      className="btn btn-ghost btn-icon"
-                      style={{ color: 'var(--danger)', flexShrink: 0 }}
-                      onClick={() => handleDelete(a)}
-                      title="Delete"
-                    >
-                      <Trash2 size={16} />
-                    </button>
+                    <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                      {(isFaculty || user?.role === 'HOD') && String(a.faculty?.id) === String(user?.id) && (
+                        <button
+                          className="btn btn-ghost btn-icon"
+                          onClick={() => setActiveAssignmentForEdit(a)}
+                          title="Edit"
+                        >
+                          <Edit3 size={16} />
+                        </button>
+                      )}
+                      {(isFaculty || user?.role === 'HOD') && String(a.faculty?.id) === String(user?.id) && (
+                        <button
+                          className="btn btn-ghost btn-icon"
+                          style={{ color: 'var(--danger)' }}
+                          onClick={() => handleDelete(a)}
+                          title="Delete"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
@@ -648,6 +815,16 @@ export default function AssignmentsPage({ departmentId }) {
           onSaved={load}
           subjects={departmentSubjects}
           facultyId={user?.id}
+        />
+      )}
+      {activeAssignmentForEdit && (
+        <AssignmentModal
+          open={Boolean(activeAssignmentForEdit)}
+          onClose={() => setActiveAssignmentForEdit(null)}
+          onSaved={() => { load(); setActiveAssignmentForEdit(null); }}
+          subjects={departmentSubjects}
+          facultyId={user?.id}
+          assignment={activeAssignmentForEdit}
         />
       )}
 

@@ -1,8 +1,11 @@
 package com.institute.ims.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "assignments")
@@ -30,6 +33,9 @@ public class Assignment {
     @ManyToOne(optional = false)
     @JoinColumn(name = "faculty_id")
     private User faculty;
+
+    @OneToMany(mappedBy = "assignment", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<AssignmentAttachment> attachments = new ArrayList<>();
 
     public Assignment() {
     }
@@ -62,6 +68,11 @@ public class Assignment {
         return faculty;
     }
 
+    @JsonIgnore
+    public List<AssignmentAttachment> getAttachments() {
+        return attachments;
+    }
+
     public void setId(Long id) {
         this.id = id;
     }
@@ -88,5 +99,18 @@ public class Assignment {
 
     public void setFaculty(User faculty) {
         this.faculty = faculty;
+    }
+
+    public void setAttachments(List<AssignmentAttachment> attachments) {
+        this.attachments = attachments;
+    }
+
+    public void addAttachment(AssignmentAttachment attachment) {
+        attachments.add(attachment);
+        attachment.setAssignment(this);
+    }
+
+    public void clearAttachments() {
+        attachments.clear();
     }
 }

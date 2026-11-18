@@ -2,6 +2,7 @@ package com.institute.ims.config;
 
 import com.institute.ims.security.CustomUserDetailsService;
 import com.institute.ims.security.JwtAuthenticationFilter;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -81,6 +82,11 @@ public class SecurityConfig {
                         session.sessionCreationPolicy(
                                 SessionCreationPolicy.STATELESS
                         )
+                )
+
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint((request, response, exception) ->
+                                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED))
                 )
 
                 .authorizeHttpRequests(auth -> auth

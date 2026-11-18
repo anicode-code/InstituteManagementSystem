@@ -1,8 +1,11 @@
 package com.institute.ims.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(
@@ -27,6 +30,9 @@ public class AssignmentSubmission {
 
     @Column(columnDefinition = "TEXT", nullable = false)
     private String submissionText;
+
+    @OneToMany(mappedBy = "submission", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<SubmissionAttachment> attachments = new ArrayList<>();
 
     @Column(name = "submitted_at", nullable = false)
     private LocalDateTime submittedAt = LocalDateTime.now();
@@ -59,6 +65,11 @@ public class AssignmentSubmission {
         return submissionText;
     }
 
+    @JsonIgnore
+    public List<SubmissionAttachment> getAttachments() {
+        return attachments;
+    }
+
     public LocalDateTime getSubmittedAt() {
         return submittedAt;
     }
@@ -89,6 +100,15 @@ public class AssignmentSubmission {
 
     public void setSubmissionText(String submissionText) {
         this.submissionText = submissionText;
+    }
+
+    public void setAttachments(List<SubmissionAttachment> attachments) {
+        this.attachments = attachments;
+    }
+
+    public void addAttachment(SubmissionAttachment attachment) {
+        attachments.add(attachment);
+        attachment.setSubmission(this);
     }
 
     public void setSubmittedAt(LocalDateTime submittedAt) {

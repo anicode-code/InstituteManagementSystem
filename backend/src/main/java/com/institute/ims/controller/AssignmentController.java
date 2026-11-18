@@ -3,12 +3,19 @@ package com.institute.ims.controller;
 import com.institute.ims.model.Assignment;
 import com.institute.ims.model.AssignmentSubmission;
 import com.institute.ims.model.User;
+import com.institute.ims.dto.AttachmentFile;
+import com.institute.ims.dto.AttachmentMetadata;
 import com.institute.ims.service.AssignmentService;
 import com.institute.ims.service.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -46,6 +53,12 @@ public class AssignmentController {
         return ResponseEntity.ok(service.getById(id));
     }
 
+    @GetMapping("/{id}/attachments")
+    public ResponseEntity<List<AttachmentMetadata>> getAssignmentAttachments(
+            @PathVariable Long id) {
+        return ResponseEntity.ok(service.getAssignmentAttachmentMetadata(id));
+    }
+
     @GetMapping("/faculty/{facultyId}")
     public ResponseEntity<List<Assignment>> getByFaculty(
             @PathVariable Long facultyId) {
@@ -60,34 +73,44 @@ public class AssignmentController {
         return ResponseEntity.ok(service.getBySubject(subjectId));
     }
 
-    @PostMapping
-    @PreAuthorize("hasAnyRole('FACULTY', 'ADMIN', 'HOD')")
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyRole('FACULTY', 'HOD')")
     public ResponseEntity<Assignment> create(
-            @RequestBody Map<String, Object> body,
+            @RequestParam String title,
+            @RequestParam(required = false) String description,
+            @RequestParam String dueDate,
+            @RequestParam(required = false, defaultValue = "100") Integer maxMarks,
+            @RequestParam Long subjectId,
+            @RequestParam(required = false) Long facultyId,
+            @RequestParam(value = "files", required = false) MultipartFile[] files,
             Authentication authentication) {
 
         User currentUser = getAuthenticatedUser(authentication);
-
-        String title = (String) body.get("title");
-        String description = (String) body.get("description");
-        LocalDate dueDate = LocalDate.parse((String) body.get("dueDate"));
-
-        Integer maxMarks = body.get("maxMarks") != null
-                ? Integer.parseInt(body.get("maxMarks").toString())
-                : 100;
-
-        Long subjectId = Long.parseLong(body.get("subjectId").toString());
-        Long facultyId = body.get("facultyId") != null
-                ? Long.parseLong(body.get("facultyId").toString())
-                : currentUser.getId();
+        Long creatorId = facultyId != null ? facultyId : currentUser.getId();
 
         return ResponseEntity.ok(
-                service.create(title, description, dueDate, maxMarks, subjectId, facultyId, currentUser)
+                service.createWithAttachments(title, description, LocalDate.parse(dueDate), maxMarks, subjectId, creatorId, currentUser, files)
         );
     }
 
+    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyRole('FACULTY', 'HOD')")
+    public ResponseEntity<Assignment> update(
+            @PathVariable Long id,
+            @RequestParam String title,
+            @RequestParam(required = false) String description,
+            @RequestParam String dueDate,
+            @RequestParam(required = false, defaultValue = "100") Integer maxMarks,
+            @RequestParam Long subjectId,
+            @RequestParam(value = "files", required = false) MultipartFile[] files,
+            Authentication authentication) {
+        User currentUser = getAuthenticatedUser(authentication);
+        return ResponseEntity.ok(service.update(
+                id, title, description, LocalDate.parse(dueDate), maxMarks, subjectId, currentUser, files));
+    }
+
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('FACULTY', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('FACULTY', 'HOD', 'ADMIN')")
     public ResponseEntity<String> delete(
             @PathVariable Long id,
             Authentication authentication) {
@@ -100,19 +123,62 @@ public class AssignmentController {
 
     // ──────── Submissions & Evaluation Endpoints ────────
 
-    @PostMapping("/{id}/submit")
+    @PostMapping(value = "/{id}/submit", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('STUDENT')")
     public ResponseEntity<AssignmentSubmission> submit(
             @PathVariable Long id,
-            @RequestBody Map<String, String> body,
+            @RequestParam(required = false) String submissionText,
+            @RequestParam(value = "files", required = false) MultipartFile[] files,
             Authentication authentication) {
 
         User currentUser = getAuthenticatedUser(authentication);
-        String text = body.get("submissionText");
 
         return ResponseEntity.ok(
-                service.submitAssignment(id, currentUser.getId(), text)
+                service.submitAssignment(id, currentUser.getId(), submissionText, files)
         );
+    }
+
+    @GetMapping("/{id}/attachments/{attachmentId}/download")
+    public ResponseEntity<Resource> downloadAssignmentAttachment(
+            @PathVariable Long id,
+            @PathVariable Long attachmentId) {
+        AttachmentFile attachment = service.getAssignmentAttachment(id, attachmentId);
+        return attachmentResponse(attachment.fileName(), attachment.contentType(), attachment.data());
+    }
+
+    @GetMapping("/submissions/{submissionId}/attachments")
+    public ResponseEntity<List<AttachmentMetadata>> getSubmissionAttachments(
+            @PathVariable Long submissionId,
+            Authentication authentication) {
+        User currentUser = getAuthenticatedUser(authentication);
+        return ResponseEntity.ok(service.getSubmissionAttachmentMetadata(submissionId, currentUser));
+    }
+
+    @GetMapping("/submissions/{submissionId}/attachments/{attachmentId}/download")
+    public ResponseEntity<Resource> downloadSubmissionAttachment(
+            @PathVariable Long submissionId,
+            @PathVariable Long attachmentId,
+            Authentication authentication) {
+        User currentUser = getAuthenticatedUser(authentication);
+        AttachmentFile attachment =
+                service.getSubmissionAttachment(submissionId, attachmentId, currentUser);
+        return attachmentResponse(attachment.fileName(), attachment.contentType(), attachment.data());
+    }
+
+    private ResponseEntity<Resource> attachmentResponse(String fileName, String contentType, byte[] data) {
+        String safeName = (fileName == null || fileName.isBlank())
+                ? "download"
+                : fileName.replace("\"", "").replace("\r", "").replace("\n", "");
+        MediaType type;
+        try {
+            type = contentType == null ? MediaType.APPLICATION_OCTET_STREAM : MediaType.parseMediaType(contentType);
+        } catch (Exception exception) {
+            type = MediaType.APPLICATION_OCTET_STREAM;
+        }
+        return ResponseEntity.ok()
+                .contentType(type)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + safeName + "\"")
+                .body(new ByteArrayResource(data));
     }
 
     @GetMapping("/{id}/my-submission")
@@ -138,7 +204,7 @@ public class AssignmentController {
     }
 
     @PostMapping("/submissions/{submissionId}/evaluate")
-    @PreAuthorize("hasAnyRole('FACULTY', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('FACULTY', 'HOD', 'ADMIN')")
     public ResponseEntity<AssignmentSubmission> evaluateSubmission(
             @PathVariable Long submissionId,
             @RequestBody Map<String, Object> body,

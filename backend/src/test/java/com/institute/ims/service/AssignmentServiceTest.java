@@ -1,13 +1,16 @@
 package com.institute.ims.service;
 
 import com.institute.ims.model.Assignment;
+import com.institute.ims.model.AssignmentSubmission;
 import com.institute.ims.model.Department;
 import com.institute.ims.model.Role;
 import com.institute.ims.model.Subject;
 import com.institute.ims.model.User;
+import com.institute.ims.repository.AssignmentAttachmentRepository;
 import com.institute.ims.repository.AssignmentRepository;
 import com.institute.ims.repository.AssignmentSubmissionRepository;
 import com.institute.ims.repository.DepartmentRepository;
+import com.institute.ims.repository.SubmissionAttachmentRepository;
 import com.institute.ims.repository.SubjectRepository;
 import com.institute.ims.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -15,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.mock.web.MockMultipartFile;
 
 import java.time.LocalDate;
 import java.util.HashSet;
@@ -33,7 +37,11 @@ class AssignmentServiceTest {
     @Mock
     private AssignmentRepository assignmentRepository;
     @Mock
+    private AssignmentAttachmentRepository assignmentAttachmentRepository;
+    @Mock
     private AssignmentSubmissionRepository submissionRepository;
+    @Mock
+    private SubmissionAttachmentRepository submissionAttachmentRepository;
     @Mock
     private SubjectRepository subjectRepository;
     @Mock
@@ -47,7 +55,9 @@ class AssignmentServiceTest {
     void setUp() {
         service = new AssignmentService(
                 assignmentRepository,
+                assignmentAttachmentRepository,
                 submissionRepository,
+                submissionAttachmentRepository,
                 subjectRepository,
                 userRepository,
                 departmentRepository);
@@ -105,6 +115,38 @@ class AssignmentServiceTest {
                 .hasMessageContaining("subjects assigned to you");
 
         verify(assignmentRepository, never()).save(any(Assignment.class));
+    }
+
+    @Test
+    void studentCanSubmitFilesWithoutText() {
+        Assignment assignment = new Assignment();
+        User student = user(40L, Role.STUDENT);
+        when(assignmentRepository.findById(30L)).thenReturn(Optional.of(assignment));
+        when(userRepository.findById(40L)).thenReturn(Optional.of(student));
+        when(submissionRepository.findByAssignmentIdAndStudentId(30L, 40L)).thenReturn(Optional.empty());
+        when(submissionRepository.save(any(AssignmentSubmission.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        MockMultipartFile file = new MockMultipartFile(
+                "files", "answer.txt", "text/plain", "answer".getBytes());
+
+        AssignmentSubmission submission = service.submitAssignment(
+                30L, 40L, "", new MockMultipartFile[]{file});
+
+        assertThat(submission.getSubmissionText()).isEmpty();
+        assertThat(submission.getAttachments()).hasSize(1);
+        assertThat(submission.getAttachments().get(0).getFileName()).isEqualTo("answer.txt");
+    }
+
+    @Test
+    void studentCannotSubmitWithoutTextOrFiles() {
+        when(assignmentRepository.findById(30L)).thenReturn(Optional.of(new Assignment()));
+        when(userRepository.findById(40L)).thenReturn(Optional.of(user(40L, Role.STUDENT)));
+
+        assertThatThrownBy(() -> service.submitAssignment(30L, 40L, " ", new MockMultipartFile[0]))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Provide an answer");
+
+        verify(submissionRepository, never()).save(any(AssignmentSubmission.class));
     }
 
     private User user(Long id, Role role) {

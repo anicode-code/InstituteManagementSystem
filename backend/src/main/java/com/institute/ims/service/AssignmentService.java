@@ -1,14 +1,22 @@
 package com.institute.ims.service;
 
+import com.institute.ims.dto.AttachmentFile;
+import com.institute.ims.dto.AttachmentMetadata;
 import com.institute.ims.model.*;
+import com.institute.ims.repository.AssignmentAttachmentRepository;
 import com.institute.ims.repository.AssignmentRepository;
 import com.institute.ims.repository.AssignmentSubmissionRepository;
 import com.institute.ims.repository.DepartmentRepository;
+import com.institute.ims.repository.SubmissionAttachmentRepository;
 import com.institute.ims.repository.SubjectRepository;
 import com.institute.ims.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -18,20 +26,26 @@ import java.util.Optional;
 public class AssignmentService {
 
     private final AssignmentRepository assignmentRepository;
+    private final AssignmentAttachmentRepository assignmentAttachmentRepository;
     private final AssignmentSubmissionRepository submissionRepository;
+    private final SubmissionAttachmentRepository submissionAttachmentRepository;
     private final SubjectRepository subjectRepository;
     private final UserRepository userRepository;
     private final DepartmentRepository departmentRepository;
 
     public AssignmentService(
             AssignmentRepository assignmentRepository,
+            AssignmentAttachmentRepository assignmentAttachmentRepository,
             AssignmentSubmissionRepository submissionRepository,
+            SubmissionAttachmentRepository submissionAttachmentRepository,
             SubjectRepository subjectRepository,
             UserRepository userRepository,
             DepartmentRepository departmentRepository) {
 
         this.assignmentRepository = assignmentRepository;
+        this.assignmentAttachmentRepository = assignmentAttachmentRepository;
         this.submissionRepository = submissionRepository;
+        this.submissionAttachmentRepository = submissionAttachmentRepository;
         this.subjectRepository = subjectRepository;
         this.userRepository = userRepository;
         this.departmentRepository = departmentRepository;
@@ -110,12 +124,78 @@ public class AssignmentService {
     }
 
     @Transactional
+    public Assignment createWithAttachments(
+            String title,
+            String description,
+            LocalDate dueDate,
+            Integer maxMarks,
+            Long subjectId,
+            Long facultyId,
+            User requestingUser,
+            MultipartFile[] files) {
+
+        Assignment assignment = create(title, description, dueDate, maxMarks, subjectId, facultyId, requestingUser);
+        if (files != null) {
+            for (MultipartFile file : files) {
+                if (file != null && !file.isEmpty()) {
+                    assignment.addAttachment(toAssignmentAttachment(file));
+                }
+            }
+        }
+        return assignmentRepository.save(assignment);
+    }
+
+    @Transactional
+    public Assignment update(
+            Long id,
+            String title,
+            String description,
+            LocalDate dueDate,
+            Integer maxMarks,
+            Long subjectId,
+            User requestingUser,
+            MultipartFile[] files) {
+
+        Assignment assignment = getById(id);
+        if (requestingUser.getRole() == Role.FACULTY || requestingUser.getRole() == Role.HOD) {
+            if (!assignment.getFaculty().getId().equals(requestingUser.getId())) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only edit assignments you created.");
+            }
+        } else if (requestingUser.getRole() == Role.STUDENT) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Students cannot edit assignments.");
+        }
+
+        Subject subject = subjectRepository.findById(subjectId)
+                .orElseThrow(() -> new RuntimeException("Subject not found"));
+        if (!isFacultyAssignedToSubject(subject, requestingUser)
+                && requestingUser.getRole() != Role.ADMIN) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "You can only edit assignments for subjects assigned to you.");
+        }
+        assignment.setTitle(title);
+        assignment.setDescription(description);
+        assignment.setDueDate(dueDate);
+        assignment.setMaxMarks(maxMarks != null ? maxMarks : 100);
+        assignment.setSubject(subject);
+
+        if (files != null) {
+            assignment.clearAttachments();
+            for (MultipartFile file : files) {
+                if (file != null && !file.isEmpty()) {
+                    assignment.addAttachment(toAssignmentAttachment(file));
+                }
+            }
+        }
+        return assignmentRepository.save(assignment);
+    }
+
+    @Transactional
     public void delete(Long id, User requestingUser) {
         Assignment assignment = getById(id);
 
-        if (requestingUser.getRole() == Role.FACULTY) {
-            if (!isFacultyAssignedToSubject(assignment.getSubject(), requestingUser)) {
-                throw new RuntimeException("You can only delete your own assignments.");
+        if (requestingUser.getRole() == Role.FACULTY || requestingUser.getRole() == Role.HOD) {
+            if (!assignment.getFaculty().getId().equals(requestingUser.getId())) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only delete assignments you created.");
             }
         } else if (requestingUser.getRole() == Role.STUDENT) {
             throw new RuntimeException("Students cannot delete assignments.");
@@ -129,7 +209,8 @@ public class AssignmentService {
     public AssignmentSubmission submitAssignment(
             Long assignmentId,
             Long studentId,
-            String submissionText) {
+            String submissionText,
+            MultipartFile[] files) {
 
         Assignment assignment = getById(assignmentId);
         User student = userRepository.findById(studentId)
@@ -139,8 +220,10 @@ public class AssignmentService {
             throw new RuntimeException("Only students can submit assignments.");
         }
 
-        if (submissionText == null || submissionText.trim().isEmpty()) {
-            throw new RuntimeException("Submission content/link cannot be empty.");
+        boolean hasText = submissionText != null && !submissionText.trim().isEmpty();
+        boolean hasFiles = files != null && java.util.Arrays.stream(files).anyMatch(file -> file != null && !file.isEmpty());
+        if (!hasText && !hasFiles) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Provide an answer, upload at least one file, or do both.");
         }
 
         SubmissionStatus status = SubmissionStatus.SUBMITTED;
@@ -154,11 +237,101 @@ public class AssignmentService {
         AssignmentSubmission submission = existing.orElseGet(AssignmentSubmission::new);
         submission.setAssignment(assignment);
         submission.setStudent(student);
-        submission.setSubmissionText(submissionText.trim());
+        submission.setSubmissionText(hasText ? submissionText.trim() : "");
         submission.setSubmittedAt(LocalDateTime.now());
         submission.setStatus(status);
 
+        if (hasFiles) {
+            submission.getAttachments().clear();
+            for (MultipartFile file : files) {
+                if (file != null && !file.isEmpty()) {
+                    submission.addAttachment(toSubmissionAttachment(file));
+                }
+            }
+        }
+
         return submissionRepository.save(submission);
+    }
+
+    public AssignmentSubmission submitAssignment(
+            Long assignmentId,
+            Long studentId,
+            String submissionText) {
+        return submitAssignment(assignmentId, studentId, submissionText, null);
+    }
+
+    public List<AttachmentMetadata> getAssignmentAttachmentMetadata(Long assignmentId) {
+        getById(assignmentId);
+        return assignmentAttachmentRepository.findMetadataByAssignmentId(assignmentId);
+    }
+
+    @Transactional(readOnly = true)
+    public AttachmentFile getAssignmentAttachment(Long assignmentId, Long attachmentId) {
+        AssignmentAttachment attachment = assignmentAttachmentRepository
+                .findByIdAndAssignment_Id(attachmentId, assignmentId)
+                .orElseThrow(() -> new RuntimeException("Attachment not found"));
+        return new AttachmentFile(attachment.getFileName(), attachment.getContentType(), attachment.getData());
+    }
+
+    @Transactional(readOnly = true)
+    public List<AttachmentMetadata> getSubmissionAttachmentMetadata(
+            Long submissionId,
+            User requestingUser) {
+        AssignmentSubmission submission = submissionRepository.findById(submissionId)
+                .orElseThrow(() -> new RuntimeException("Submission not found"));
+        validateSubmissionAccess(submission, requestingUser);
+        return submissionAttachmentRepository.findMetadataBySubmissionId(submissionId);
+    }
+
+    @Transactional(readOnly = true)
+    public AttachmentFile getSubmissionAttachment(
+            Long submissionId,
+            Long attachmentId,
+            User requestingUser) {
+        AssignmentSubmission submission = submissionRepository.findById(submissionId)
+                .orElseThrow(() -> new RuntimeException("Submission not found"));
+        validateSubmissionAccess(submission, requestingUser);
+        SubmissionAttachment attachment = submissionAttachmentRepository
+                .findByIdAndSubmission_Id(attachmentId, submissionId)
+                .orElseThrow(() -> new RuntimeException("Attachment not found"));
+        return new AttachmentFile(attachment.getFileName(), attachment.getContentType(), attachment.getData());
+    }
+
+    private void validateSubmissionAccess(AssignmentSubmission submission, User requestingUser) {
+        if (requestingUser.getRole() == Role.STUDENT
+                && !submission.getStudent().getId().equals(requestingUser.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only access your own submission.");
+        }
+        if (requestingUser.getRole() == Role.FACULTY
+                && !isFacultyAssignedToSubject(submission.getAssignment().getSubject(), requestingUser)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only access submissions for your assignments.");
+        }
+    }
+
+    private AssignmentAttachment toAssignmentAttachment(MultipartFile file) {
+        AssignmentAttachment attachment = new AssignmentAttachment();
+        attachment.setFileName(file.getOriginalFilename());
+        attachment.setContentType(file.getContentType());
+        attachment.setFileSize(file.getSize());
+        try {
+            attachment.setData(file.getBytes());
+        } catch (IOException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Could not read uploaded file.", exception);
+        }
+        return attachment;
+    }
+
+    private SubmissionAttachment toSubmissionAttachment(MultipartFile file) {
+        SubmissionAttachment attachment = new SubmissionAttachment();
+        attachment.setFileName(file.getOriginalFilename());
+        attachment.setContentType(file.getContentType());
+        attachment.setFileSize(file.getSize());
+        try {
+            attachment.setData(file.getBytes());
+        } catch (IOException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Could not read uploaded file.", exception);
+        }
+        return attachment;
     }
 
     public Optional<AssignmentSubmission> getMySubmission(Long assignmentId, Long studentId) {
