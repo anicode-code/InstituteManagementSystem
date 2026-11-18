@@ -9,6 +9,7 @@ import UsersPage from './pages/UsersPage';
 import DepartmentsPage from './pages/DepartmentsPage';
 import SubjectsPage from './pages/SubjectsPage';
 import AssignmentsPage from './pages/AssignmentsPage';
+import StudyMaterialsPage from './pages/StudyMaterialsPage';
 import AttendancePage from './pages/AttendancePage';
 import ProfilePage from './pages/ProfilePage';
 import HodStudentsPage from './pages/HodStudentsPage';
@@ -53,6 +54,11 @@ export default function App() {
           } />
           <Route path="/assignments" element={
             <ProtectedRoute><AssignmentsPage /></ProtectedRoute>
+          } />
+          <Route path="/study-materials" element={
+            <ProtectedRoute allowedRoles={['HOD', 'FACULTY', 'STUDENT']}>
+              <StudyMaterialsPage />
+            </ProtectedRoute>
           } />
           <Route path="/attendance" element={
             <ProtectedRoute><AttendancePage /></ProtectedRoute>

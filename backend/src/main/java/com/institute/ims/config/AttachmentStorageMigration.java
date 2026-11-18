@@ -17,6 +17,7 @@ public class AttachmentStorageMigration implements CommandLineRunner {
     public void run(String... args) {
         migrateLargeObjectColumn("assignment_attachments");
         migrateLargeObjectColumn("submission_attachments");
+        backfillStudyMaterialUploadTimes();
     }
 
     private void migrateLargeObjectColumn(String tableName) {
@@ -36,6 +37,22 @@ public class AttachmentStorageMigration implements CommandLineRunner {
             jdbcTemplate.execute(
                     "ALTER TABLE " + tableName
                             + " ALTER COLUMN data TYPE bytea USING lo_get(data)");
+        }
+    }
+
+    private void backfillStudyMaterialUploadTimes() {
+        Integer uploadTimeColumnCount = jdbcTemplate.queryForObject(
+                """
+                        SELECT COUNT(*)
+                        FROM information_schema.columns
+                        WHERE table_schema = current_schema()
+                          AND table_name = 'study_materials'
+                          AND column_name = 'uploaded_at'
+                        """,
+                Integer.class);
+        if (uploadTimeColumnCount != null && uploadTimeColumnCount > 0) {
+            jdbcTemplate.update(
+                    "UPDATE study_materials SET uploaded_at = CURRENT_TIMESTAMP WHERE uploaded_at IS NULL");
         }
     }
 }

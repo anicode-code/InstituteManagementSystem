@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import ProfileAvatar from './ProfileAvatar';
 import {
   LayoutDashboard, Users, Building2, BookOpen,
-  ClipboardList, CalendarCheck, User, LogOut, GraduationCap, Menu, X, ClipboardCheck
+  ClipboardList, CalendarCheck, User, LogOut, GraduationCap, Menu, X, ClipboardCheck, FileStack
 } from 'lucide-react';
 
 const ROLE_BADGE = {
@@ -30,6 +30,17 @@ export default function Layout({ children, pageTitle }) {
       items: [
         { to: '/dashboard', icon: <LayoutDashboard />, text: 'Dashboard', show: true },
         { to: '/profile',   icon: <User />,            text: 'My Profile', show: true },
+      ],
+    },
+    {
+      label: 'Learning',
+      items: [
+        {
+          to: '/study-materials',
+          icon: <FileStack />,
+          text: 'Study Material',
+          show: ['HOD', 'FACULTY', 'STUDENT'].includes(user?.role),
+        },
       ],
     },
     {
