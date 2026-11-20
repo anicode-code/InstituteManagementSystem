@@ -11,6 +11,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -43,7 +44,6 @@ class SubjectAssignmentServiceTest {
         Subject subject = subject(30L, department);
         subject.setFacultyMembers(new HashSet<>());
         when(subjectRepository.findById(30L)).thenReturn(Optional.of(subject));
-        when(eligibilityService.isHodAuthorizedForDepartment(hod, 20L)).thenReturn(true);
         when(userRepository.findById(10L)).thenReturn(Optional.of(hod));
 
         var result = service.assign(hod, 30L, 10L);
@@ -53,6 +53,85 @@ class SubjectAssignmentServiceTest {
         verify(eligibilityService).requireVerifiedFaculty(hod);
         verify(eligibilityService).associateFacultyWithDepartment(hod, department);
         verify(subjectRepository).save(subject);
+    }
+
+    @Test
+    void hodCanAssignThemselvesToAnyDepartmentSubject() {
+        User hod = user(10L, Role.HOD);
+        Department otherDepartment = department(21L);
+        Subject subject = subject(30L, otherDepartment);
+        subject.setFacultyMembers(new HashSet<>());
+        when(subjectRepository.findById(30L)).thenReturn(Optional.of(subject));
+        when(userRepository.findById(10L)).thenReturn(Optional.of(hod));
+
+        var result = service.assign(hod, 30L, 10L);
+
+        assertThat(result).extracting("id").containsExactly(10L);
+        verify(eligibilityService).associateFacultyWithDepartment(hod, otherDepartment);
+        verify(subjectRepository).save(subject);
+    }
+
+    @Test
+    void hodCanAssignRegularFacultyToTheirDepartment() {
+        User hod = user(10L, Role.HOD);
+        User faculty = user(11L, Role.FACULTY);
+        Department department = department(20L);
+        Subject subject = subject(30L, department);
+        subject.setFacultyMembers(new HashSet<>());
+        when(subjectRepository.findById(30L)).thenReturn(Optional.of(subject));
+        when(eligibilityService.isHodAuthorizedForDepartment(hod, 20L)).thenReturn(true);
+        when(userRepository.findById(11L)).thenReturn(Optional.of(faculty));
+
+        var result = service.assign(hod, 30L, 11L);
+
+        assertThat(result).extracting("id").containsExactly(11L);
+        verify(eligibilityService).associateFacultyWithDepartment(faculty, department);
+        verify(subjectRepository).save(subject);
+    }
+
+    @Test
+    void hodCannotAssignAnotherHod() {
+        User hod = user(10L, Role.HOD);
+        User otherHod = user(11L, Role.HOD);
+        Subject subject = subject(30L, department(20L));
+        subject.setFacultyMembers(new HashSet<>());
+        when(subjectRepository.findById(30L)).thenReturn(Optional.of(subject));
+        when(eligibilityService.isHodAuthorizedForDepartment(hod, 20L)).thenReturn(true);
+        when(userRepository.findById(11L)).thenReturn(Optional.of(otherHod));
+
+        assertThatThrownBy(() -> service.assign(hod, 30L, 11L))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessageContaining("regular faculty members");
+
+        verify(eligibilityService, never()).associateFacultyWithDepartment(any(), any());
+        verify(subjectRepository, never()).save(any());
+    }
+
+    @Test
+    void eligibleFacultyForOtherDepartmentSubjectContainsOnlyTheHod() {
+        User hod = user(10L, Role.HOD);
+        Subject subject = subject(30L, department(21L));
+        when(subjectRepository.findById(30L)).thenReturn(Optional.of(subject));
+        when(eligibilityService.isHodAuthorizedForDepartment(hod, 21L)).thenReturn(false);
+
+        var result = service.getEligibleFaculty(hod, 30L);
+
+        assertThat(result).extracting("id").containsExactly(10L);
+        verify(userRepository, never()).findByRoleAndStatus(any(), any());
+    }
+
+    @Test
+    void eligibleFacultyForOwnDepartmentIncludesRegularFacultyAndSelf() {
+        User hod = user(10L, Role.HOD);
+        User faculty = user(11L, Role.FACULTY);
+        when(subjectRepository.findById(30L)).thenReturn(Optional.of(subject(30L, department(20L))));
+        when(eligibilityService.isHodAuthorizedForDepartment(hod, 20L)).thenReturn(true);
+        when(userRepository.findByRoleAndStatus(Role.FACULTY, VerificationStatus.VERIFIED))
+                .thenReturn(List.of(faculty));
+
+        var result = service.getEligibleFaculty(hod, 30L);
+
+        assertThat(result).extracting("id").containsExactly(11L, 10L);
     }
 
     @Test

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Layout from '../components/Layout';
+import { useAuth } from '../context/AuthContext';
 import {
   assignFacultyToSubject,
   decideSubjectRequest,
@@ -19,6 +20,7 @@ const statusStyles = {
 };
 
 export default function HodSubjectAssignmentsPage() {
+  const { user } = useAuth();
   const [departments, setDepartments] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [requests, setRequests] = useState([]);
@@ -138,7 +140,7 @@ export default function HodSubjectAssignmentsPage() {
       <div className="page-header">
         <div>
           <h2 className="page-title">Faculty Allocation</h2>
-          <p className="page-subtitle">Review requests and manage teaching teams in your appointed departments.</p>
+          <p className="page-subtitle">Assign yourself to subjects in any department, or regular faculty in your appointed departments.</p>
         </div>
         <button className="btn btn-secondary" onClick={refresh} disabled={loading}><RefreshCw size={16} /> Refresh</button>
       </div>
@@ -200,7 +202,7 @@ export default function HodSubjectAssignmentsPage() {
 
       <section className="card">
         <div className="card-header">
-          <div><h3 className="card-title">Manage Teaching Team</h3><p className="card-subtitle">Directly assign or remove eligible faculty members.</p></div>
+          <div><h3 className="card-title">Manage Teaching Team</h3><p className="card-subtitle">Assign yourself across departments and manage regular faculty in your appointed departments.</p></div>
         </div>
         {loading ? <div className="loader"><div className="spinner" /></div> : subjects.length === 0 ? (
           <div className="empty-state"><p>No subjects are available in your appointed departments.</p></div>
@@ -223,7 +225,11 @@ export default function HodSubjectAssignmentsPage() {
                       {selectedSubject.faculty.map((faculty) => (
                         <div key={faculty.id} className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 12 }}>
                           <div><strong>{faculty.name}</strong><div className="text-muted">{faculty.rollNumber} · {faculty.role}</div></div>
-                          <button className="btn btn-danger btn-sm" disabled={workingKey !== ''} onClick={() => remove(faculty)}><UserMinus size={15} /> Remove</button>
+                          {(String(faculty.id) === String(user?.id)
+                            || (faculty.role === 'FACULTY'
+                              && departments.some((department) => String(department.id) === String(selectedSubject.departmentId)))) && (
+                            <button className="btn btn-danger btn-sm" disabled={workingKey !== ''} onClick={() => remove(faculty)}><UserMinus size={15} /> Remove</button>
+                          )}
                         </div>
                       ))}
                     </div>

@@ -99,11 +99,9 @@ public class FacultySubjectRequestService {
     @Transactional(readOnly = true)
     public List<SubjectSummaryResponse> getHodSubjects(User hod) {
         hod = loadUser(hod);
-        Set<Long> departmentIds = getHodDepartmentIds(hod);
-        if (departmentIds.isEmpty()) {
-            return List.of();
-        }
-        return subjectRepository.findByDepartmentIdIn(List.copyOf(departmentIds)).stream()
+        requireHod(hod);
+        return subjectRepository.findAll().stream()
+                .filter(subject -> subject.getDepartment() != null)
                 .map(SubjectSummaryResponse::from)
                 .toList();
     }

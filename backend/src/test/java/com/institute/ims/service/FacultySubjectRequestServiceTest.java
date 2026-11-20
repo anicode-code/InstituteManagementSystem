@@ -2,6 +2,7 @@ package com.institute.ims.service;
 
 import com.institute.ims.common.ConflictException;
 import com.institute.ims.dto.SubjectFacultyRequestResponse;
+import com.institute.ims.dto.SubjectSummaryResponse;
 import com.institute.ims.model.*;
 import com.institute.ims.repository.DepartmentRepository;
 import com.institute.ims.repository.FacultySubjectRequestRepository;
@@ -162,6 +163,21 @@ class FacultySubjectRequestServiceTest {
 
         assertThat(result).extracting(SubjectFacultyRequestResponse::subjectId).containsExactly(30L);
         assertThat(result.get(0).departmentId()).isEqualTo(20L);
+    }
+
+    @Test
+    void hodCanSelectSubjectsFromEveryDepartmentAndSemesterForAllocation() {
+        User hod = user(10L, Role.HOD);
+        Subject subjectInOtherDepartment = subject(31L, department(21L));
+        subjectInOtherDepartment.setSemester(8);
+        when(userRepository.findById(10L)).thenReturn(Optional.of(hod));
+        when(subjectRepository.findAll()).thenReturn(List.of(
+                subject(30L, department(20L)),
+                subjectInOtherDepartment));
+
+        List<SubjectSummaryResponse> result = service.getHodSubjects(hod);
+
+        assertThat(result).extracting(SubjectSummaryResponse::id).containsExactly(30L, 31L);
     }
 
     @Test
