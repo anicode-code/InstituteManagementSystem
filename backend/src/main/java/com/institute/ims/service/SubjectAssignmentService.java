@@ -53,10 +53,10 @@ public class SubjectAssignmentService {
         User faculty = userRepository.findById(facultyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Faculty member not found."));
         eligibilityService.requireVerifiedFaculty(faculty);
-        eligibilityService.requireFacultyDepartmentEligibility(faculty, subject);
         if (subject.getFacultyMembers().stream().anyMatch(member -> member.getId().equals(facultyId))) {
             throw new ConflictException("This faculty member is already assigned to the subject.");
         }
+        eligibilityService.associateFacultyWithDepartment(faculty, subject.getDepartment());
         subject.getFacultyMembers().add(faculty);
         subjectRepository.save(subject);
         return subject.getFacultyMembers().stream().map(FacultySummaryResponse::from).toList();

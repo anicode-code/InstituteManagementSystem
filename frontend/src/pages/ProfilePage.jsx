@@ -3,7 +3,6 @@ import Layout from '../components/Layout';
 import ProfileAvatar from '../components/ProfileAvatar';
 import { useAuth } from '../context/AuthContext';
 import { getCurrentUser, updateMyProfile, uploadProfilePicture } from '../api/users';
-import { getAllDepartments } from '../api/departments';
 import { getCurriculumByDeptAndSemester } from '../data/curriculumSubjects';
 import { User, Mail, Hash, Building2, Shield, Pencil, X, Save, BookOpen, CheckSquare, Square, Camera } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -39,7 +38,6 @@ const ACADEMIC_DESIGNATIONS = [
   'SENIOR LECTURER',
   'VISITING PROFESSOR',
 ];
-const ADMINISTRATIVE_ROLES = ['Head of Department (HOD)', 'None'];
 const EMPLOYMENT_STATUSES = ['Employed', 'On Leave', 'Resigned', 'Retired', 'Terminated'];
 const EMPLOYMENT_TYPES = ['Permanent', 'Contractual', 'Temporary', 'Visiting Faculty', 'Guest Faculty'];
 
@@ -67,14 +65,10 @@ const profileForm = (user) => ({
   joiningDate: user?.joiningDate || '',
   employmentStatus: user?.employmentStatus || '',
   designation: user?.designation || '',
-  administrativeRole: user?.administrativeRole || '',
   qualification: user?.qualification || '',
   specialization: user?.specialization || '',
   yearsOfExperience: user?.yearsOfExperience == null ? '' : String(user.yearsOfExperience),
   employmentType: user?.employmentType || '',
-  departmentIds: user?.departments?.length
-    ? user.departments.map((department) => String(department.id))
-    : (user?.department?.id ? [String(user.department.id)] : []),
   year: user?.year ? String(user.year) : '',
   semester: user?.semester ? String(user.semester) : '',
   semesterSgpas: Object.fromEntries(
@@ -111,8 +105,6 @@ function InfoRow({ icon, label, value }) {
 export default function ProfilePage() {
   const { user: authUser, syncUser } = useAuth();
   const [profile, setProfile] = useState(null);
-  const [departments, setDepartments] = useState([]);
-  const [departmentLoadError, setDepartmentLoadError] = useState('');
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState(profileForm(null));
@@ -130,14 +122,6 @@ export default function ProfilePage() {
         setProfile(res.data);
         setForm(profileForm(res.data));
         syncUser({ ...authUser, profileImageUrl: res.data.profileImageUrl });
-        if (res.data.role === 'FACULTY') {
-          try {
-            const departmentResponse = await getAllDepartments();
-            setDepartments(departmentResponse.data || []);
-          } catch {
-            setDepartmentLoadError('Could not load departments. Please try again.');
-          }
-        }
       } catch {
         setError('Could not load your profile. Please try again.');
       } finally {
@@ -240,9 +224,6 @@ export default function ProfilePage() {
     if (!ACADEMIC_DESIGNATIONS.includes(form.designation)) {
       errors.designation = 'Select an academic designation.';
     }
-    if (!ADMINISTRATIVE_ROLES.includes(form.administrativeRole)) {
-      errors.administrativeRole = 'Select an administrative role.';
-    }
     if (!form.qualification.trim()) errors.qualification = 'Qualification is required.';
     if (!EMPLOYMENT_TYPES.includes(form.employmentType)) {
       errors.employmentType = 'Select an employment type.';
@@ -250,10 +231,6 @@ export default function ProfilePage() {
     if (form.yearsOfExperience !== ''
       && (!Number.isFinite(Number(form.yearsOfExperience)) || Number(form.yearsOfExperience) < 0)) {
       errors.yearsOfExperience = 'Experience must be a non-negative number.';
-    }
-    const departmentIds = new Set(departments.map((department) => String(department.id)));
-    if (!form.departmentIds.length || form.departmentIds.some((id) => !departmentIds.has(id))) {
-      errors.departmentIds = departmentLoadError || 'Select at least one valid department.';
     }
     if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
       errors.email = 'Enter a valid email address.';
@@ -343,14 +320,12 @@ export default function ProfilePage() {
       request.joiningDate = form.joiningDate || null;
       request.employmentStatus = form.employmentStatus.trim();
       request.designation = form.designation.trim();
-      request.administrativeRole = form.administrativeRole.trim();
       request.qualification = form.qualification.trim();
       request.specialization = form.specialization.trim();
       request.yearsOfExperience = form.yearsOfExperience === ''
         ? null
         : Number(form.yearsOfExperience);
       request.employmentType = form.employmentType.trim();
-      request.departmentIds = form.departmentIds.map(Number);
     }
 
     setSaving(true);
@@ -550,14 +525,6 @@ export default function ProfilePage() {
                     <FieldError message={fieldErrors.designation} />
                   </div>
                   <div className="form-group">
-                    <label className="form-label" htmlFor="profile-administrative-role">Administrative Role *</label>
-                    <select id="profile-administrative-role" className="form-select" value={form.administrativeRole} onChange={(e) => updateFormField('administrativeRole', e.target.value)} aria-invalid={Boolean(fieldErrors.administrativeRole)}>
-                      <option value="">Select role</option>
-                      {ADMINISTRATIVE_ROLES.map((role) => <option key={role} value={role}>{role}</option>)}
-                    </select>
-                    <FieldError message={fieldErrors.administrativeRole} />
-                  </div>
-                  <div className="form-group">
                     <label className="form-label" htmlFor="profile-qualification">Qualification *</label>
                     <input id="profile-qualification" className="form-input" value={form.qualification} onChange={(e) => updateFormField('qualification', e.target.value)} aria-invalid={Boolean(fieldErrors.qualification)} />
                     <FieldError message={fieldErrors.qualification} />
@@ -578,52 +545,6 @@ export default function ProfilePage() {
                       {EMPLOYMENT_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
                     </select>
                     <FieldError message={fieldErrors.employmentType} />
-                  </div>
-                  <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                    <label className="form-label" id="profile-departments-label">Departments *</label>
-                    <details style={{ position: 'relative' }}>
-                      <summary className="form-select" aria-labelledby="profile-departments-label" style={{ cursor: 'pointer' }}>
-                        {departments
-                          .filter((department) => form.departmentIds.includes(String(department.id)))
-                          .map((department) => department.name)
-                          .join(', ') || 'Select departments'}
-                      </summary>
-                      <div style={{
-                        position: 'absolute',
-                        zIndex: 5,
-                        top: '100%',
-                        left: 0,
-                        right: 0,
-                        maxHeight: 220,
-                        overflowY: 'auto',
-                        padding: 8,
-                        background: 'var(--bg-primary)',
-                        border: '1px solid var(--border)',
-                        borderRadius: 'var(--radius-sm)',
-                        boxShadow: 'var(--shadow-md)',
-                      }}>
-                        {departments.map((department) => {
-                          const departmentId = String(department.id);
-                          const checked = form.departmentIds.includes(departmentId);
-                          return (
-                            <label key={department.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 4px', cursor: 'pointer' }}>
-                              <input
-                                type="checkbox"
-                                checked={checked}
-                                onChange={() => updateFormField(
-                                  'departmentIds',
-                                  checked
-                                    ? form.departmentIds.filter((id) => id !== departmentId)
-                                    : [...form.departmentIds, departmentId],
-                                )}
-                              />
-                              {department.name} ({department.code})
-                            </label>
-                          );
-                        })}
-                      </div>
-                    </details>
-                    <FieldError message={fieldErrors.departmentIds} />
                   </div>
                 </div>
               </>

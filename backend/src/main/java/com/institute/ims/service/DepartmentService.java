@@ -125,8 +125,12 @@ public class DepartmentService {
             // Check if old HOD is still HOD of any other department
             List<Department> otherHodDepts = repository.findByHodId(oldHod.getId());
             if (otherHodDepts.isEmpty()) {
-                // Revert old HOD's role to FACULTY
                 oldHod.setRole(Role.FACULTY);
+                oldHod.setAdministrativeRole("NONE");
+                userRepository.save(oldHod);
+            } else {
+                oldHod.setRole(Role.HOD);
+                oldHod.setAdministrativeRole("HOD");
                 userRepository.save(oldHod);
             }
         }
@@ -134,6 +138,7 @@ public class DepartmentService {
         // Assign new HOD
         department.setHod(faculty);
         faculty.setRole(Role.HOD);
+        faculty.setAdministrativeRole("HOD");
         userRepository.save(faculty);
 
         return repository.save(department);
@@ -158,6 +163,11 @@ public class DepartmentService {
         List<Department> otherHodDepts = repository.findByHodId(oldHod.getId());
         if (otherHodDepts.isEmpty()) {
             oldHod.setRole(Role.FACULTY);
+            oldHod.setAdministrativeRole("NONE");
+            userRepository.save(oldHod);
+        } else {
+            oldHod.setRole(Role.HOD);
+            oldHod.setAdministrativeRole("HOD");
             userRepository.save(oldHod);
         }
 

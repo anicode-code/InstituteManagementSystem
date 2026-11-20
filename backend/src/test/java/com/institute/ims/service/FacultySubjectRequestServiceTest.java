@@ -48,6 +48,7 @@ class FacultySubjectRequestServiceTest {
     void facultyMayRequestSubjectFromAnyRegisteredDepartment() {
         User faculty = user(1L, Role.FACULTY);
         Department registeredDepartment = department(20L);
+        registeredDepartment.setHod(user(10L, Role.HOD));
         faculty.setDepartments(new HashSet<>(Set.of(registeredDepartment)));
         Subject subject = subject(30L, registeredDepartment);
         when(userRepository.findById(1L)).thenReturn(Optional.of(faculty));
@@ -61,27 +62,49 @@ class FacultySubjectRequestServiceTest {
         assertThat(response.status()).isEqualTo("PENDING");
         assertThat(response.facultyId()).isEqualTo(1L);
         assertThat(response.subjectId()).isEqualTo(30L);
+        assertThat(response.departmentId()).isEqualTo(20L);
         verify(subjectRepository, never()).save(any());
     }
 
     @Test
-    void facultyCannotRequestSubjectOutsideRegisteredDepartments() {
+    void eligibleSubjectListIncludesEveryDepartment() {
         User faculty = user(1L, Role.FACULTY);
-        faculty.setDepartments(new HashSet<>(Set.of(department(20L))));
+        Department firstDepartment = department(20L);
+        Department secondDepartment = department(21L);
         when(userRepository.findById(1L)).thenReturn(Optional.of(faculty));
-        when(subjectRepository.findById(30L)).thenReturn(Optional.of(subject(30L, department(21L))));
+        when(subjectRepository.findAll()).thenReturn(List.of(
+                subject(30L, firstDepartment),
+                subject(31L, secondDepartment)));
 
-        assertThatThrownBy(() -> service.submitRequest(faculty, 30L))
-                .isInstanceOf(AccessDeniedException.class)
-                .hasMessageContaining("registered departments");
+        var result = service.getEligibleSubjects(faculty);
 
-        verify(requestRepository, never()).save(any());
+        assertThat(result).extracting(item -> item.departmentId()).containsExactly(20L, 21L);
+    }
+
+    @Test
+    void facultyCanRequestSubjectOutsideRegisteredDepartmentsAndRouteUsesSubjectDepartment() {
+        User faculty = user(1L, Role.FACULTY);
+        Department registeredDepartment = department(20L);
+        Department subjectDepartment = department(21L);
+        subjectDepartment.setHod(user(11L, Role.HOD));
+        faculty.setDepartments(new HashSet<>(Set.of(registeredDepartment)));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(faculty));
+        when(subjectRepository.findById(30L)).thenReturn(Optional.of(subject(30L, subjectDepartment)));
+        when(requestRepository.findFirstByFacultyIdAndSubjectIdAndStatusOrderByCreatedAtDesc(
+                1L, 30L, FacultySubjectRequestStatus.PENDING)).thenReturn(Optional.empty());
+        when(requestRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        SubjectFacultyRequestResponse response = service.submitRequest(faculty, 30L);
+
+        assertThat(response.departmentId()).isEqualTo(21L);
+        assertThat(response.departmentName()).isEqualTo("Department 21");
     }
 
     @Test
     void duplicatePendingRequestIsRejected() {
         User faculty = user(1L, Role.FACULTY);
         Department department = department(20L);
+        department.setHod(user(10L, Role.HOD));
         faculty.setDepartments(new HashSet<>(Set.of(department)));
         when(userRepository.findById(1L)).thenReturn(Optional.of(faculty));
         when(subjectRepository.findById(30L)).thenReturn(Optional.of(subject(30L, department)));
@@ -110,12 +133,44 @@ class FacultySubjectRequestServiceTest {
     }
 
     @Test
+    void facultyCannotSubmitRequestWhenSubjectDepartmentHasNoHod() {
+        User faculty = user(1L, Role.FACULTY);
+        Department department = department(20L);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(faculty));
+        when(subjectRepository.findById(30L)).thenReturn(Optional.of(subject(30L, department)));
+
+        assertThatThrownBy(() -> service.submitRequest(faculty, 30L))
+                .isInstanceOf(com.institute.ims.common.ConflictException.class)
+                .hasMessageContaining("No HOD");
+
+        verify(requestRepository, never()).save(any());
+    }
+
+    @Test
+    void hodReceivesOnlyRequestsForTheirAppointedDepartments() {
+        User hod = user(10L, Role.HOD);
+        User faculty = user(1L, Role.FACULTY);
+        Department managedDepartment = department(20L);
+        Department otherDepartment = department(21L);
+        when(userRepository.findById(10L)).thenReturn(Optional.of(hod));
+        when(departmentRepository.findByHodId(10L)).thenReturn(List.of(managedDepartment));
+        when(requestRepository.findByOrderByCreatedAtDesc()).thenReturn(List.of(
+                request(faculty, subject(30L, managedDepartment)),
+                request(faculty, subject(31L, otherDepartment))));
+
+        List<SubjectFacultyRequestResponse> result = service.getHodRequests(hod, null, null);
+
+        assertThat(result).extracting(SubjectFacultyRequestResponse::subjectId).containsExactly(30L);
+        assertThat(result.get(0).departmentId()).isEqualTo(20L);
+    }
+
+    @Test
     void approvalCreatesTeachingLinkAndRetainsReviewerAndOutcome() {
         User hod = user(10L, Role.HOD);
         User faculty = user(1L, Role.FACULTY);
         Department department = department(20L);
         hod.setDepartments(new HashSet<>(Set.of(department)));
-        faculty.setDepartments(new HashSet<>(Set.of(department)));
+        faculty.setDepartments(new HashSet<>(Set.of(department(21L))));
         Subject subject = subject(30L, department);
         FacultySubjectRequest request = new FacultySubjectRequest();
         request.setFaculty(faculty);
@@ -133,6 +188,9 @@ class FacultySubjectRequestServiceTest {
         assertThat(response.status()).isEqualTo("APPROVED");
         assertThat(request.getReviewedBy()).isSameAs(hod);
         assertThat(request.getReviewedAt()).isNotNull();
+        assertThat(faculty.getDepartments()).extracting(Department::getId).containsExactlyInAnyOrder(20L, 21L);
+        assertThat(faculty.getDepartment()).isSameAs(department);
+        verify(userRepository).save(faculty);
         verify(subjectRepository).save(subject);
     }
 
@@ -198,5 +256,13 @@ class FacultySubjectRequestServiceTest {
         subject.setDepartment(department);
         subject.setSemester(1);
         return subject;
+    }
+
+    private FacultySubjectRequest request(User faculty, Subject subject) {
+        FacultySubjectRequest request = new FacultySubjectRequest();
+        request.setFaculty(faculty);
+        request.setSubject(subject);
+        request.setStatus(FacultySubjectRequestStatus.PENDING);
+        return request;
     }
 }

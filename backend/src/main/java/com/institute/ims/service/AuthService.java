@@ -16,10 +16,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
 
 @Service
 @Transactional
@@ -111,36 +109,9 @@ public class AuthService {
 
         // ─── FACULTY registration ───
         if (request.getRole() == Role.FACULTY) {
-
-            // Resolve department IDs for multi-department selection
-            List<Long> deptIds = request.getDepartmentIds();
-
-            // Fallback: if departmentIds is empty, try single departmentId
-            if ((deptIds == null || deptIds.isEmpty()) && request.getDepartmentId() != null) {
-                deptIds = List.of(request.getDepartmentId());
-            }
-
-            if (deptIds == null || deptIds.isEmpty()) {
-                throw new RuntimeException(
-                        "At least one department is required for faculty.");
-            }
-
-            Set<Department> departments = new HashSet<>();
-            Department primaryDept = null;
-
-            for (Long deptId : deptIds) {
-                Department dept = departmentRepository.findById(deptId)
-                        .orElseThrow(() -> new RuntimeException(
-                                "Department not found: ID " + deptId));
-                departments.add(dept);
-                if (primaryDept == null) {
-                    primaryDept = dept;
-                }
-            }
-
-            user.setDepartments(departments);
-            // Set the first department as the primary department for backward compatibility
-            user.setDepartment(primaryDept);
+            user.setAdministrativeRole("NONE");
+            user.setDepartment(null);
+            user.getDepartments().clear();
         }
 
         User savedUser =

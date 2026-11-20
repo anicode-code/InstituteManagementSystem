@@ -175,7 +175,7 @@ public class DataInitializer {
                 List.of("FACULTY", "ASSISTANT PROFESSOR", "ASSOCIATE PROFESSOR", "PROFESSOR",
                         "LECTURER", "SENIOR LECTURER", "VISITING PROFESSOR"),
                 FacultyProfileOption.Category.ADMINISTRATIVE_ROLE,
-                List.of("Head of Department (HOD)", "None"),
+                List.of("HOD", "NONE"),
                 FacultyProfileOption.Category.EMPLOYMENT_STATUS,
                 List.of("Employed", "On Leave", "Resigned", "Retired", "Terminated"),
                 FacultyProfileOption.Category.EMPLOYMENT_TYPE,

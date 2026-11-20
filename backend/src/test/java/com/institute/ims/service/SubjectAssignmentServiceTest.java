@@ -37,7 +37,7 @@ class SubjectAssignmentServiceTest {
     }
 
     @Test
-    void hodCanAssignThemselvesThroughNormalEligibilityChecks() {
+    void hodCanAssignThemselvesAndDepartmentIsAssociated() {
         User hod = user(10L, Role.HOD);
         Department department = department(20L);
         Subject subject = subject(30L, department);
@@ -51,7 +51,7 @@ class SubjectAssignmentServiceTest {
         assertThat(result).hasSize(1);
         assertThat(subject.getFacultyMembers()).contains(hod);
         verify(eligibilityService).requireVerifiedFaculty(hod);
-        verify(eligibilityService).requireFacultyDepartmentEligibility(hod, subject);
+        verify(eligibilityService).associateFacultyWithDepartment(hod, department);
         verify(subjectRepository).save(subject);
     }
 

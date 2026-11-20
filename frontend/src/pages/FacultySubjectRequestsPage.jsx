@@ -6,6 +6,7 @@ import {
   getEligibleRequestSubjects,
   getMySubjectRequests,
 } from '../api/subjectRequests';
+import { getAllDepartments } from '../api/departments';
 import { BookOpen, Search, Send } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -19,19 +20,24 @@ export default function FacultySubjectRequestsPage() {
   const { user } = useAuth();
   const [subjects, setSubjects] = useState([]);
   const [requests, setRequests] = useState([]);
+  const [departments, setDepartments] = useState([]);
   const [search, setSearch] = useState('');
+  const [departmentFilter, setDepartmentFilter] = useState('');
+  const [semesterFilter, setSemesterFilter] = useState('');
   const [loading, setLoading] = useState(true);
   const [submittingId, setSubmittingId] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [subjectResponse, requestResponse] = await Promise.all([
+      const [subjectResponse, requestResponse, departmentResponse] = await Promise.all([
         getEligibleRequestSubjects(),
         getMySubjectRequests(),
+        getAllDepartments(),
       ]);
       setSubjects(subjectResponse.data || []);
       setRequests(requestResponse.data || []);
+      setDepartments(departmentResponse.data || []);
     } catch (error) {
       toast.error(error?.response?.data?.message || 'Failed to load subject requests');
     } finally {
@@ -46,30 +52,53 @@ export default function FacultySubjectRequestsPage() {
     [requests],
   );
 
+  const departmentOptions = useMemo(
+    () => [...departments].sort((first, second) => first.name.localeCompare(second.name)),
+    [departments],
+  );
+
+  const semesters = useMemo(() => [...new Set(
+    subjects
+      .filter((subject) => !departmentFilter || String(subject.departmentId) === departmentFilter)
+      .map((subject) => subject.semester)
+      .filter((semester) => semester != null),
+  )].sort((first, second) => first - second), [subjects, departmentFilter]);
+
   const filteredSubjects = useMemo(() => {
     const query = search.trim().toLowerCase();
-    if (!query) return subjects;
-    return subjects.filter((subject) => [
-      subject.name,
-      subject.code,
-      subject.departmentName,
-      subject.semester ? `Semester ${subject.semester}` : '',
-      ...(subject.faculty || []).map((member) => member.name),
-    ].filter(Boolean).some((value) => String(value).toLowerCase().includes(query)));
-  }, [subjects, search]);
+    return subjects.filter((subject) => (
+      (!departmentFilter || String(subject.departmentId) === departmentFilter)
+      && (!semesterFilter || String(subject.semester) === semesterFilter)
+      && (!query || [
+        subject.name,
+        subject.code,
+        subject.departmentName,
+        subject.semester ? `Semester ${subject.semester}` : '',
+        ...(subject.faculty || []).map((member) => member.name),
+      ].filter(Boolean).some((value) => String(value).toLowerCase().includes(query)))
+    ));
+  }, [subjects, search, departmentFilter, semesterFilter]);
 
   const filteredRequests = useMemo(() => {
     const query = search.trim().toLowerCase();
-    if (!query) return requests;
-    return requests.filter((request) => [
-      request.subjectName,
-      request.subjectCode,
-      request.departmentName,
-      request.semester ? `Semester ${request.semester}` : '',
-      request.status,
-      request.reviewedByName,
-    ].filter(Boolean).some((value) => String(value).toLowerCase().includes(query)));
-  }, [requests, search]);
+    return requests.filter((request) => (
+      (!departmentFilter || String(request.departmentId) === departmentFilter)
+      && (!semesterFilter || String(request.semester) === semesterFilter)
+      && (!query || [
+        request.subjectName,
+        request.subjectCode,
+        request.departmentName,
+        request.semester ? `Semester ${request.semester}` : '',
+        request.status,
+        request.reviewedByName,
+      ].filter(Boolean).some((value) => String(value).toLowerCase().includes(query)))
+    ));
+  }, [requests, search, departmentFilter, semesterFilter]);
+
+  const changeDepartment = (value) => {
+    setDepartmentFilter(value);
+    setSemesterFilter('');
+  };
 
   const requestSubject = async (subjectId) => {
     setSubmittingId(subjectId);
@@ -89,13 +118,13 @@ export default function FacultySubjectRequestsPage() {
       <div className="page-header">
         <div>
           <h2 className="page-title">Request to Teach</h2>
-          <p className="page-subtitle">Request subjects in your registered departments. HOD approval is required before assignment.</p>
+          <p className="page-subtitle">Request subjects across departments. Requests are reviewed by the HOD of the subject's department.</p>
         </div>
       </div>
 
       <div className="toolbar" style={{ marginBottom: 14 }}>
         <div className="toolbar-left">
-          <div className="search-bar" style={{ maxWidth: 360 }}>
+          <div className="search-bar" style={{ maxWidth: 320 }}>
             <Search />
             <input
               aria-label="Search subject requests"
@@ -104,6 +133,30 @@ export default function FacultySubjectRequestsPage() {
               onChange={(event) => setSearch(event.target.value)}
             />
           </div>
+          <select
+            className="form-select"
+            style={{ width: 'auto', minWidth: 170 }}
+            aria-label="Filter subject requests by department"
+            value={departmentFilter}
+            onChange={(event) => changeDepartment(event.target.value)}
+          >
+            <option value="">All Departments</option>
+            {departmentOptions.map((department) => (
+              <option key={department.id} value={department.id}>{department.name}</option>
+            ))}
+          </select>
+          <select
+            className="form-select"
+            style={{ width: 'auto', minWidth: 150 }}
+            aria-label="Filter subject requests by semester"
+            value={semesterFilter}
+            onChange={(event) => setSemesterFilter(event.target.value)}
+          >
+            <option value="">All Semesters</option>
+            {semesters.map((semester) => (
+              <option key={semester} value={semester}>Semester {semester}</option>
+            ))}
+          </select>
         </div>
         <div className="toolbar-right">
           <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
@@ -116,20 +169,20 @@ export default function FacultySubjectRequestsPage() {
         <div className="card-header">
           <div>
             <h3 className="card-title">Eligible Subjects</h3>
-            <p className="card-subtitle">Subjects are limited to your registered department associations.</p>
+            <p className="card-subtitle">Browse subjects across all departments and semesters.</p>
           </div>
         </div>
         {loading ? <div className="loader"><div className="spinner" /></div> : subjects.length === 0 ? (
           <div className="empty-state">
             <BookOpen />
-            <h3>No eligible subjects</h3>
-            <p>No subjects were found in your registered departments.</p>
+            <h3>No subjects available</h3>
+            <p>No subjects have been added to any department yet.</p>
           </div>
         ) : filteredSubjects.length === 0 ? (
           <div className="empty-state">
             <Search />
             <h3>No matches found</h3>
-            <p>Try adjusting your subject search.</p>
+            <p>Try adjusting your search, department, or semester filters.</p>
           </div>
         ) : (
           <div className="table-container">

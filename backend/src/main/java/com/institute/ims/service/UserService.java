@@ -42,7 +42,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -292,11 +291,16 @@ public class UserService {
     @Transactional
     public User updateOwnProfile(String rollNumber, UpdateProfileRequest request) {
         User user = getUserByRollNumber(rollNumber);
+        if (request.getAdministrativeRole() != null) {
+            throw new AccessDeniedException("Administrative role can only be managed by an administrator.");
+        }
+        if (user.getRole() == Role.FACULTY && request.getDepartmentIds() != null) {
+            throw new AccessDeniedException("Faculty departments are assigned through subject teaching approvals.");
+        }
         boolean hasFacultyFields = request.getGender() != null
                 || request.isJoiningDateProvided()
                 || request.getEmploymentStatus() != null
                 || request.getDesignation() != null
-                || request.getAdministrativeRole() != null
                 || request.getQualification() != null
                 || request.getSpecialization() != null
                 || request.isYearsOfExperienceProvided()
@@ -317,10 +321,9 @@ public class UserService {
             throw new AccessDeniedException("Only faculty and students can update personal details.");
         }
 
-        Map<Long, Department> facultyDepartments = null;
         Map<String, String> previousFacultyProfile = null;
         if (user.getRole() == Role.FACULTY) {
-            facultyDepartments = validateFacultyProfileRequest(request);
+            validateFacultyProfileRequest(request);
             previousFacultyProfile = facultyProfileValues(user);
         }
 
@@ -347,7 +350,7 @@ public class UserService {
                 throw new AccessDeniedException("Only students can update academic details.");
             }
             if (user.getRole() == Role.FACULTY) {
-                updateFacultyProfileFields(user, request, facultyDepartments);
+                updateFacultyProfileFields(user, request);
             }
             User savedUser = userRepository.save(user);
             if (previousFacultyProfile != null) {
@@ -478,8 +481,7 @@ public class UserService {
 
     private void updateFacultyProfileFields(
             User user,
-            UpdateProfileRequest request,
-            Map<Long, Department> departmentsById) {
+            UpdateProfileRequest request) {
         if (request.getPhone() != null) {
             user.setPhone(normalizeOptionalText(request.getPhone()));
         }
@@ -501,9 +503,6 @@ public class UserService {
         if (request.getDesignation() != null) {
             user.setDesignation(normalizeOptionalText(request.getDesignation()));
         }
-        if (request.getAdministrativeRole() != null) {
-            user.setAdministrativeRole(normalizeOptionalText(request.getAdministrativeRole()));
-        }
         if (request.getQualification() != null) {
             user.setQualification(normalizeOptionalText(request.getQualification()));
         }
@@ -516,19 +515,9 @@ public class UserService {
         if (request.getEmploymentType() != null) {
             user.setEmploymentType(normalizeOptionalText(request.getEmploymentType()));
         }
-        if (request.getDepartmentIds() != null) {
-            Set<Department> selectedDepartments = new LinkedHashSet<>();
-            request.getDepartmentIds().forEach(id -> selectedDepartments.add(departmentsById.get(id)));
-            user.setDepartments(selectedDepartments);
-            Long currentPrimaryId = user.getDepartment() == null ? null : user.getDepartment().getId();
-            Long primaryId = request.getDepartmentIds().contains(currentPrimaryId)
-                    ? currentPrimaryId
-                    : request.getDepartmentIds().get(0);
-            user.setDepartment(departmentsById.get(primaryId));
-        }
     }
 
-    private Map<Long, Department> validateFacultyProfileRequest(UpdateProfileRequest request) {
+    private void validateFacultyProfileRequest(UpdateProfileRequest request) {
         requireText(request.getPhone(), "Phone is required.");
         if (!request.getPhone().trim().matches("^[6-9][0-9]{9}$")) {
             throw new RuntimeException("Phone must be a valid 10-digit Indian mobile number.");
@@ -536,24 +525,11 @@ public class UserService {
         requireText(request.getGender(), "Gender is required.");
         requireText(request.getEmploymentStatus(), "Employment status is required.");
         requireText(request.getDesignation(), "Academic designation is required.");
-        requireText(request.getAdministrativeRole(), "Administrative role is required.");
         requireText(request.getQualification(), "Qualification is required.");
         requireText(request.getEmploymentType(), "Employment type is required.");
-        if (request.getDepartmentIds() == null || request.getDepartmentIds().isEmpty()) {
-            throw new RuntimeException("Select at least one department.");
-        }
-        if (request.getDepartmentIds().stream().anyMatch(Objects::isNull)) {
-            throw new RuntimeException("Department IDs cannot be empty.");
-        }
-        if (new HashSet<>(request.getDepartmentIds()).size() != request.getDepartmentIds().size()) {
-            throw new RuntimeException("Duplicate departments are not allowed.");
-        }
-
         validateOption(FacultyProfileOption.Category.GENDER, request.getGender(), "Gender");
         validateOption(FacultyProfileOption.Category.ACADEMIC_DESIGNATION,
                 request.getDesignation(), "Academic designation");
-        validateOption(FacultyProfileOption.Category.ADMINISTRATIVE_ROLE,
-                request.getAdministrativeRole(), "Administrative role");
         validateOption(FacultyProfileOption.Category.EMPLOYMENT_STATUS,
                 request.getEmploymentStatus(), "Employment status");
         validateOption(FacultyProfileOption.Category.EMPLOYMENT_TYPE,
@@ -583,15 +559,6 @@ public class UserService {
                 && request.getResidentialAddress().length() > 1000) {
             throw new RuntimeException("Residential address cannot exceed 1000 characters.");
         }
-        List<Department> departments = departmentRepository.findAllById(request.getDepartmentIds());
-        if (departments.size() != request.getDepartmentIds().size()) {
-            throw new RuntimeException("One or more selected departments do not exist.");
-        }
-        return departments.stream().collect(Collectors.toMap(
-                Department::getId,
-                department -> department,
-                (existing, duplicate) -> existing,
-                LinkedHashMap::new));
     }
 
     private void validateOption(

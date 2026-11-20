@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Navigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { GraduationCap, Eye, EyeOff, UserPlus, CheckSquare, Square } from 'lucide-react';
+import { GraduationCap, Eye, EyeOff, UserPlus } from 'lucide-react';
 import { getAllDepartments } from '../api/departments';
 import toast from 'react-hot-toast';
 
@@ -23,8 +23,6 @@ export default function RegisterPage() {
     role: 'STUDENT',
     // Student: single department
     departmentId: '',
-    // Faculty: multiple departments
-    departmentIds: [],
   });
 
   const [departments, setDepartments] = useState([]);
@@ -52,22 +50,10 @@ export default function RegisterPage() {
         ...f,
         role: value,
         departmentId: '',
-        departmentIds: [],
       }));
     } else {
       setForm((f) => ({ ...f, [name]: value }));
     }
-    setError('');
-  };
-
-  // Faculty: toggle department in multi-select list
-  const toggleFacultyDept = (deptId) => {
-    setForm((f) => {
-      const ids = f.departmentIds.includes(deptId)
-        ? f.departmentIds.filter((id) => id !== deptId)
-        : [...f.departmentIds, deptId];
-      return { ...f, departmentIds: ids };
-    });
     setError('');
   };
 
@@ -85,10 +71,6 @@ export default function RegisterPage() {
       if (!form.departmentId) { setError('Please select your department.'); return; }
     }
 
-    if (form.role === 'FACULTY') {
-      if (form.departmentIds.length === 0) { setError('Please select at least one department.'); return; }
-    }
-
     setLoading(true);
     try {
       const payload = {
@@ -101,10 +83,6 @@ export default function RegisterPage() {
 
       if (form.role === 'STUDENT') {
         payload.departmentId = Number(form.departmentId);
-      }
-
-      if (form.role === 'FACULTY') {
-        payload.departmentIds = form.departmentIds.map(Number);
       }
 
       await register(payload);
@@ -259,59 +237,6 @@ export default function RegisterPage() {
                   </option>
                 ))}
               </select>
-            </div>
-          )}
-
-          {/* ── FACULTY: Multi-Department ── */}
-          {form.role === 'FACULTY' && (
-            <div className="form-group">
-              <label className="form-label">Departments * (select all that apply)</label>
-              {departmentsLoading ? (
-                <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Loading departments...</div>
-              ) : (
-                <div style={{
-                  border: '1px solid var(--border)',
-                  borderRadius: 'var(--radius-sm)',
-                  overflow: 'hidden',
-                }}>
-                  {departments.map((d, idx) => {
-                    const selected = form.departmentIds.includes(d.id);
-                    return (
-                      <button
-                        key={d.id}
-                        type="button"
-                        onClick={() => toggleFacultyDept(d.id)}
-                        disabled={loading}
-                        style={{
-                          width: '100%',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 10,
-                          padding: '10px 14px',
-                          background: selected ? 'var(--accent-light)' : 'transparent',
-                          border: 'none',
-                          borderTop: idx > 0 ? '1px solid var(--border)' : 'none',
-                          cursor: 'pointer',
-                          textAlign: 'left',
-                          color: selected ? 'var(--accent)' : 'var(--text-primary)',
-                          transition: 'background 0.15s',
-                        }}
-                      >
-                        {selected ? <CheckSquare size={16} /> : <Square size={16} style={{ opacity: 0.4 }} />}
-                        <span>
-                          <span style={{ fontWeight: 600 }}>{d.name}</span>
-                          <span style={{ marginLeft: 6, fontSize: '0.72rem', opacity: 0.6 }}>({d.code})</span>
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-              {form.departmentIds.length > 0 && (
-                <div style={{ marginTop: 6, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                  {form.departmentIds.length} department{form.departmentIds.length > 1 ? 's' : ''} selected
-                </div>
-              )}
             </div>
           )}
 

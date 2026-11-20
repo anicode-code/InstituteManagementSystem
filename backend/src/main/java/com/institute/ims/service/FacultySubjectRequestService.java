@@ -15,7 +15,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -42,11 +44,8 @@ public class FacultySubjectRequestService {
     public List<SubjectSummaryResponse> getEligibleSubjects(User faculty) {
         faculty = loadUser(faculty);
         requireVerifiedFaculty(faculty);
-        Set<Long> departmentIds = getFacultyDepartmentIds(faculty);
-        if (departmentIds.isEmpty()) {
-            return List.of();
-        }
-        return subjectRepository.findByDepartmentIdIn(List.copyOf(departmentIds)).stream()
+        return subjectRepository.findAll().stream()
+                .filter(subject -> subject.getDepartment() != null)
                 .map(SubjectSummaryResponse::from)
                 .toList();
     }
@@ -66,7 +65,12 @@ public class FacultySubjectRequestService {
         requireVerifiedFaculty(requestingFaculty);
         Subject subject = subjectRepository.findById(subjectId)
                 .orElseThrow(() -> new ResourceNotFoundException("Subject not found."));
-        requireFacultyDepartmentEligibility(requestingFaculty, subject);
+        if (subject.getDepartment() == null) {
+            throw new ConflictException("This subject is not associated with a department.");
+        }
+        if (subject.getDepartment().getHod() == null) {
+            throw new ConflictException("No HOD is currently assigned to this subject's department.");
+        }
 
         if (subject.getFacultyMembers().stream().anyMatch(member -> member.getId().equals(requestingFaculty.getId()))) {
             throw new ConflictException("You are already assigned to this subject.");
@@ -148,7 +152,7 @@ public class FacultySubjectRequestService {
         if (decision == FacultySubjectRequestStatus.APPROVED) {
             User faculty = request.getFaculty();
             requireVerifiedFaculty(faculty);
-            requireFacultyDepartmentEligibility(faculty, subject);
+            associateFacultyWithDepartment(faculty, subject.getDepartment());
             boolean alreadyAssigned = subject.getFacultyMembers().stream()
                     .anyMatch(member -> member.getId().equals(faculty.getId()));
             if (!alreadyAssigned) {
@@ -163,27 +167,30 @@ public class FacultySubjectRequestService {
         return SubjectFacultyRequestResponse.from(requestRepository.save(request));
     }
 
-    Set<Long> getFacultyDepartmentIds(User faculty) {
-        Set<Long> departmentIds = faculty.getDepartments().stream()
-                .map(Department::getId)
-                .collect(Collectors.toSet());
-        if (departmentIds.isEmpty() && faculty.getDepartment() != null) {
-            departmentIds.add(faculty.getDepartment().getId());
+    void associateFacultyWithDepartment(User faculty, Department department) {
+        Set<Department> departments = faculty.getDepartments();
+        if (departments == null) {
+            departments = new LinkedHashSet<>();
+            faculty.setDepartments(departments);
         }
-        return departmentIds;
+        boolean departmentAdded = departments.stream()
+                .noneMatch(existing -> Objects.equals(existing.getId(), department.getId()));
+        boolean primaryDepartmentAdded = faculty.getDepartment() == null;
+        if (departmentAdded) {
+            departments.add(department);
+        }
+        if (primaryDepartmentAdded) {
+            faculty.setDepartment(department);
+        }
+        if (departmentAdded || primaryDepartmentAdded) {
+            userRepository.save(faculty);
+        }
     }
 
     void requireVerifiedFaculty(User faculty) {
         if ((faculty.getRole() != Role.FACULTY && faculty.getRole() != Role.HOD)
                 || faculty.getStatus() != VerificationStatus.VERIFIED) {
             throw new AccessDeniedException("Only verified faculty members may request or teach subjects.");
-        }
-    }
-
-    void requireFacultyDepartmentEligibility(User faculty, Subject subject) {
-        if (subject.getDepartment() == null
-                || !getFacultyDepartmentIds(faculty).contains(subject.getDepartment().getId())) {
-            throw new AccessDeniedException("You may only request subjects in your registered departments.");
         }
     }
 

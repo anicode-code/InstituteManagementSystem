@@ -193,12 +193,12 @@ class UserServiceProfileTest {
         faculty.setName("Faculty");
         faculty.setRollNumber("FACULTY");
         faculty.setRole(Role.FACULTY);
+        faculty.setAdministrativeRole("NONE");
         faculty.setDepartment(department());
         faculty.setStatus(com.institute.ims.model.VerificationStatus.VERIFIED);
         when(userRepository.findByRollNumber("FACULTY")).thenReturn(Optional.of(faculty));
         when(userRepository.existsByEmailIgnoreCaseAndIdNot("faculty@example.edu", 2L)).thenReturn(false);
         when(userRepository.save(faculty)).thenReturn(faculty);
-        when(departmentRepository.findAllById(List.of(10L))).thenReturn(List.of(department()));
         when(facultyProfileOptionRepository.existsByCategoryAndValue(
                 org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyString())).thenReturn(true);
 
@@ -212,12 +212,10 @@ class UserServiceProfileTest {
         request.setJoiningDate(LocalDate.of(2010, 8, 1));
         request.setEmploymentStatus("Employed");
         request.setDesignation("PROFESSOR");
-        request.setAdministrativeRole("Head of Department (HOD)");
         request.setQualification("PhD");
         request.setSpecialization("Computer Science");
         request.setYearsOfExperience(15.5);
         request.setEmploymentType("Permanent");
-        request.setDepartmentIds(List.of(10L));
 
         User updated = service.updateOwnProfile("FACULTY", request);
 
@@ -228,14 +226,14 @@ class UserServiceProfileTest {
         assertThat(updated.getJoiningDate()).isEqualTo(LocalDate.of(2010, 8, 1));
         assertThat(updated.getEmploymentStatus()).isEqualTo("Employed");
         assertThat(updated.getDesignation()).isEqualTo("PROFESSOR");
-        assertThat(updated.getAdministrativeRole()).isEqualTo("Head of Department (HOD)");
+        assertThat(updated.getAdministrativeRole()).isEqualTo("NONE");
         assertThat(updated.getQualification()).isEqualTo("PhD");
         assertThat(updated.getSpecialization()).isEqualTo("Computer Science");
         assertThat(updated.getYearsOfExperience()).isEqualTo(15.5);
         assertThat(updated.getEmploymentType()).isEqualTo("Permanent");
-        assertThat(updated.getDepartments()).extracting(Department::getId).containsExactly(10L);
+        assertThat(updated.getDepartments()).isEmpty();
         assertThat(updated.getRollNumber()).isEqualTo("FACULTY");
-        assertThat(updated.getDepartment()).isNotNull();
+        assertThat(updated.getDepartment()).isSameAs(faculty.getDepartment());
         assertThat(updated.getStatus()).isEqualTo(com.institute.ims.model.VerificationStatus.VERIFIED);
 
         UpdateProfileRequest clearOptionalValues = validFacultyRequest();
@@ -260,6 +258,45 @@ class UserServiceProfileTest {
                             }
                             return false;
                         }));
+    }
+
+    @Test
+    void facultyCannotChangeDepartmentsThroughOwnProfile() {
+        User faculty = new User();
+        faculty.setId(2L);
+        faculty.setRollNumber("FACULTY");
+        faculty.setRole(Role.FACULTY);
+        when(userRepository.findByRollNumber("FACULTY")).thenReturn(Optional.of(faculty));
+
+        UpdateProfileRequest request = new UpdateProfileRequest();
+        request.setDepartmentIds(List.of(10L));
+
+        assertThatThrownBy(() -> service.updateOwnProfile("FACULTY", request))
+                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class)
+                .hasMessageContaining("assigned through subject teaching approvals");
+
+        verify(userRepository, never()).save(org.mockito.ArgumentMatchers.any(User.class));
+    }
+
+    @Test
+    void facultyCannotChangeAdministrativeRoleThroughOwnProfile() {
+        User faculty = new User();
+        faculty.setId(2L);
+        faculty.setRollNumber("FACULTY");
+        faculty.setRole(Role.FACULTY);
+        faculty.setAdministrativeRole("NONE");
+        when(userRepository.findByRollNumber("FACULTY")).thenReturn(Optional.of(faculty));
+
+        UpdateProfileRequest request = new UpdateProfileRequest();
+        request.setName("Faculty");
+        request.setAdministrativeRole("HOD");
+
+        assertThatThrownBy(() -> service.updateOwnProfile("FACULTY", request))
+                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class)
+                .hasMessageContaining("only be managed by an administrator");
+
+        assertThat(faculty.getAdministrativeRole()).isEqualTo("NONE");
+        verify(userRepository, never()).save(org.mockito.ArgumentMatchers.any(User.class));
     }
 
     @Test
@@ -391,10 +428,8 @@ class UserServiceProfileTest {
         request.setJoiningDate(LocalDate.of(2010, 8, 1));
         request.setEmploymentStatus("Employed");
         request.setDesignation("PROFESSOR");
-        request.setAdministrativeRole("Head of Department (HOD)");
         request.setQualification("PhD");
         request.setEmploymentType("Permanent");
-        request.setDepartmentIds(List.of(10L));
         return request;
     }
 
