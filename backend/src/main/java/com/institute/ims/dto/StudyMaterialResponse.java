@@ -12,6 +12,7 @@ public record StudyMaterialResponse(
         Long subjectId,
         String subjectName,
         String subjectCode,
+        Long uploadedById,
         String uploadedByName,
         LocalDateTime uploadedAt) {
 }

@@ -95,6 +95,23 @@ public class StudyMaterialService {
         return new AttachmentFile(material.getFileName(), material.getContentType(), material.getData());
     }
 
+    @Transactional
+    public void delete(Long materialId, User requestingUser) {
+        if (requestingUser.getRole() != Role.FACULTY && requestingUser.getRole() != Role.HOD) {
+            throw new AccessDeniedException("Only Faculty and HOD users may delete study materials.");
+        }
+
+        StudyMaterial material = studyMaterialRepository.findById(materialId)
+                .orElseThrow(() -> new RuntimeException("Study material not found"));
+        if (!material.getUploadedBy().getId().equals(requestingUser.getId())) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "You can only delete study materials you uploaded.");
+        }
+
+        studyMaterialRepository.delete(material);
+    }
+
     private List<Long> getAccessibleSubjectIds(User user) {
         return switch (user.getRole()) {
             case STUDENT -> subjectService.getByStudent(user.getId()).stream()
@@ -132,6 +149,7 @@ public class StudyMaterialService {
                 subject.getId(),
                 subject.getName(),
                 subject.getCode(),
+                material.getUploadedBy().getId(),
                 material.getUploadedBy().getName(),
                 material.getUploadedAt());
     }

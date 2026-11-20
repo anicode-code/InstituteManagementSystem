@@ -1635,6 +1635,13 @@ thead .sticky-col-pct {
 
 .study-download-button { flex: 0 0 auto; }
 
+.study-resource-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
 .study-resource-empty {
   min-height: 210px;
   padding: 34px 20px;
@@ -1674,7 +1681,8 @@ thead .sticky-col-pct {
   .study-resource-card { align-items: flex-start; flex-wrap: wrap; gap: 12px; padding: 15px; }
   .study-resource-icon { flex-basis: 38px; width: 38px; height: 38px; }
   .study-resource-content { flex-basis: calc(100% - 54px); }
-  .study-download-button { margin-left: 50px; }
+  .study-resource-actions { margin-left: 50px; }
+  .study-download-button { margin-left: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {

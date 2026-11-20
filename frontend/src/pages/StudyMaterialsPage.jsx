@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, ChevronRight, Download, FileStack, Upload } from 'lucide-react';
+import { ArrowLeft, ChevronRight, Download, FileStack, Trash2, Upload } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import { getSubjectsByFaculty, getSubjectsByStudent } from '../api/subjects';
 import {
   downloadStudyMaterial,
+  deleteStudyMaterial,
   getStudyMaterials,
   uploadStudyMaterials,
 } from '../api/studyMaterials';
@@ -36,6 +37,7 @@ export default function StudyMaterialsPage() {
   const [fileInputKey, setFileInputKey] = useState(0);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
   const [loadError, setLoadError] = useState('');
 
   const load = useCallback(async () => {
@@ -108,6 +110,21 @@ export default function StudyMaterialsPage() {
       window.setTimeout(() => window.URL.revokeObjectURL(url), 0);
     } catch (error) {
       toast.error(error?.response?.data?.message || error?.message || 'Could not download this file.');
+    }
+  };
+
+  const handleDelete = async (material) => {
+    if (!window.confirm(`Delete study material "${material.title || material.fileName}"?`)) return;
+
+    setDeletingId(material.id);
+    try {
+      await deleteStudyMaterial(material.id);
+      toast.success('Study material deleted.');
+      await load();
+    } catch (error) {
+      toast.error(error?.response?.data?.message || error?.message || 'Could not delete this study material.');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -328,14 +345,30 @@ export default function StudyMaterialsPage() {
                       </time>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    className="btn btn-secondary study-download-button"
-                    onClick={() => handleDownload(material)}
-                    aria-label={`Download ${material.fileName}`}
-                  >
-                    <Download size={16} /> <span>Download</span>
-                  </button>
+                  <div className="study-resource-actions">
+                    <button
+                      type="button"
+                      className="btn btn-secondary study-download-button"
+                      onClick={() => handleDownload(material)}
+                      aria-label={`Download ${material.fileName}`}
+                    >
+                      <Download size={16} /> <span>Download</span>
+                    </button>
+                    {canUpload && String(material.uploadedById) === String(user?.id) && (
+                      <button
+                        type="button"
+                        className="btn btn-danger btn-icon"
+                        onClick={() => handleDelete(material)}
+                        disabled={deletingId === material.id}
+                        aria-label={`Delete ${material.fileName}`}
+                        title="Delete study material"
+                      >
+                        {deletingId === material.id
+                          ? <span className="spinner study-button-spinner" />
+                          : <Trash2 size={16} />}
+                      </button>
+                    )}
+                  </div>
                 </article>
               ))}
             </div>

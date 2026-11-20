@@ -14,7 +14,7 @@ public interface StudyMaterialRepository extends JpaRepository<StudyMaterial, Lo
             select new com.institute.ims.dto.StudyMaterialResponse(
                 material.id, material.title, material.description, material.fileName,
                 material.contentType, material.fileSize, subject.id, subject.name, subject.code,
-                uploader.name, material.uploadedAt)
+                uploader.id, uploader.name, material.uploadedAt)
             from StudyMaterial material
             join material.subject subject
             join material.uploadedBy uploader

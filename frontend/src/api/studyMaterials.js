@@ -13,3 +13,6 @@ export const uploadStudyMaterials = ({ subjectId, title, description, files }) =
 
 export const downloadStudyMaterial = (id) =>
   api.get(`/api/study-materials/${id}/download`, { responseType: 'blob' });
+
+export const deleteStudyMaterial = (id) =>
+  api.delete(`/api/study-materials/${id}`);

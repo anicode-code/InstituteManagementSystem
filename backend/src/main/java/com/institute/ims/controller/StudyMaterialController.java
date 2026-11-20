@@ -69,4 +69,12 @@ public class StudyMaterialController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"")
                 .body(new ByteArrayResource(file.data()));
     }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('HOD', 'FACULTY')")
+    public ResponseEntity<String> delete(@PathVariable Long id, Authentication authentication) {
+        User user = userService.getUserByRollNumber(authentication.getName());
+        studyMaterialService.delete(id, user);
+        return ResponseEntity.ok("Study material deleted successfully");
+    }
 }

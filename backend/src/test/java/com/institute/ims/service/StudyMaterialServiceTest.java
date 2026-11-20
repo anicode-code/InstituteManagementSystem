@@ -108,6 +108,43 @@ class StudyMaterialServiceTest {
                 .isInstanceOf(AccessDeniedException.class);
     }
 
+    @Test
+    void facultyCanDeleteMaterialTheyUploaded() {
+        User faculty = user(10L, Role.FACULTY);
+        StudyMaterial material = new StudyMaterial();
+        material.setUploadedBy(faculty);
+        when(studyMaterialRepository.findById(30L)).thenReturn(Optional.of(material));
+
+        service.delete(30L, faculty);
+
+        verify(studyMaterialRepository).delete(material);
+    }
+
+    @Test
+    void facultyCannotDeleteMaterialUploadedByAnotherUser() {
+        User faculty = user(10L, Role.FACULTY);
+        StudyMaterial material = new StudyMaterial();
+        material.setUploadedBy(user(11L, Role.FACULTY));
+        when(studyMaterialRepository.findById(30L)).thenReturn(Optional.of(material));
+
+        assertThatThrownBy(() -> service.delete(30L, faculty))
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
+
+        verify(studyMaterialRepository, never()).delete(any(StudyMaterial.class));
+    }
+
+    @Test
+    void hodCanDeleteMaterialTheyUploaded() {
+        User hod = user(12L, Role.HOD);
+        StudyMaterial material = new StudyMaterial();
+        material.setUploadedBy(hod);
+        when(studyMaterialRepository.findById(31L)).thenReturn(Optional.of(material));
+
+        service.delete(31L, hod);
+
+        verify(studyMaterialRepository).delete(material);
+    }
+
     private User user(Long id, Role role) {
         User user = new User();
         user.setId(id);
