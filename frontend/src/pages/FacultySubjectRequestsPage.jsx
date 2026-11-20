@@ -6,7 +6,7 @@ import {
   getEligibleRequestSubjects,
   getMySubjectRequests,
 } from '../api/subjectRequests';
-import { BookOpen, Send } from 'lucide-react';
+import { BookOpen, Search, Send } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const statusStyles = {
@@ -19,6 +19,7 @@ export default function FacultySubjectRequestsPage() {
   const { user } = useAuth();
   const [subjects, setSubjects] = useState([]);
   const [requests, setRequests] = useState([]);
+  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [submittingId, setSubmittingId] = useState(null);
 
@@ -45,6 +46,31 @@ export default function FacultySubjectRequestsPage() {
     [requests],
   );
 
+  const filteredSubjects = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return subjects;
+    return subjects.filter((subject) => [
+      subject.name,
+      subject.code,
+      subject.departmentName,
+      subject.semester ? `Semester ${subject.semester}` : '',
+      ...(subject.faculty || []).map((member) => member.name),
+    ].filter(Boolean).some((value) => String(value).toLowerCase().includes(query)));
+  }, [subjects, search]);
+
+  const filteredRequests = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return requests;
+    return requests.filter((request) => [
+      request.subjectName,
+      request.subjectCode,
+      request.departmentName,
+      request.semester ? `Semester ${request.semester}` : '',
+      request.status,
+      request.reviewedByName,
+    ].filter(Boolean).some((value) => String(value).toLowerCase().includes(query)));
+  }, [requests, search]);
+
   const requestSubject = async (subjectId) => {
     setSubmittingId(subjectId);
     try {
@@ -67,6 +93,25 @@ export default function FacultySubjectRequestsPage() {
         </div>
       </div>
 
+      <div className="toolbar" style={{ marginBottom: 14 }}>
+        <div className="toolbar-left">
+          <div className="search-bar" style={{ maxWidth: 360 }}>
+            <Search />
+            <input
+              aria-label="Search subject requests"
+              placeholder="Search subjects, departments, or status..."
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </div>
+        </div>
+        <div className="toolbar-right">
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+            {filteredSubjects.length} eligible · {filteredRequests.length} requests
+          </span>
+        </div>
+      </div>
+
       <section className="card" style={{ marginBottom: 24 }}>
         <div className="card-header">
           <div>
@@ -80,6 +125,12 @@ export default function FacultySubjectRequestsPage() {
             <h3>No eligible subjects</h3>
             <p>No subjects were found in your registered departments.</p>
           </div>
+        ) : filteredSubjects.length === 0 ? (
+          <div className="empty-state">
+            <Search />
+            <h3>No matches found</h3>
+            <p>Try adjusting your subject search.</p>
+          </div>
         ) : (
           <div className="table-container">
             <table>
@@ -87,7 +138,7 @@ export default function FacultySubjectRequestsPage() {
                 <tr><th>Subject</th><th>Department</th><th>Semester</th><th>Current Faculty</th><th>Action</th></tr>
               </thead>
               <tbody>
-                {subjects.map((subject) => {
+                {filteredSubjects.map((subject) => {
                   const alreadyAssigned = subject.faculty?.some((member) => member.id === user?.id);
                   const pending = requestedSubjectIds.has(subject.id);
                   return (
@@ -127,12 +178,18 @@ export default function FacultySubjectRequestsPage() {
         </div>
         {loading ? <div className="loader"><div className="spinner" /></div> : requests.length === 0 ? (
           <div className="empty-state"><p>You have not submitted any subject requests.</p></div>
+        ) : filteredRequests.length === 0 ? (
+          <div className="empty-state">
+            <Search />
+            <h3>No matches found</h3>
+            <p>Try adjusting your subject search.</p>
+          </div>
         ) : (
           <div className="table-container">
             <table>
               <thead><tr><th>Subject</th><th>Department</th><th>Semester</th><th>Requested</th><th>Status</th><th>Reviewed By</th></tr></thead>
               <tbody>
-                {requests.map((request) => (
+                {filteredRequests.map((request) => (
                   <tr key={request.id}>
                     <td><strong>{request.subjectName}</strong><div className="text-muted">{request.subjectCode}</div></td>
                     <td>{request.departmentName}</td>
