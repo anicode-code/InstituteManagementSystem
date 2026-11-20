@@ -31,6 +31,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("SELECT DISTINCT u FROM User u LEFT JOIN FETCH u.selectedSubjects WHERE u.id IN :ids")
     List<User> findWithSelectedSubjectsByIdIn(@Param("ids") List<Long> ids);
 
+    @Query("SELECT DISTINCT u FROM User u LEFT JOIN FETCH u.departments WHERE u.id = :id")
+    Optional<User> findByIdWithDepartments(@Param("id") Long id);
+
     List<User> findByRoleAndDepartmentIdInOrderByRollNumberAsc(
             Role role,
             List<Long> departmentIds);

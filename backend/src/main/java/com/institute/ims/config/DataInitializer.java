@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.io.InputStream;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -43,35 +44,27 @@ public class DataInitializer {
             Department ece   = createDeptIfNotExists(departmentRepository, "Electronics & Communication", "ECE");
             Department me    = createDeptIfNotExists(departmentRepository, "Mechanical Engineering", "ME");
             Department civil = createDeptIfNotExists(departmentRepository, "Civil Engineering", "CIVIL");
+            List<Department> departments = List.of(cse, it, ece, me, civil);
 
             seedFacultyProfileOptions(facultyProfileOptionRepository);
 
             // ─── 2. Seed Subjects from curriculum_subjects.json ────────────
             seedSubjectsFromJson(departmentRepository, subjectRepository);
 
-            // ─── 3. Seed Admin user ────────────────────────────────────────
+            // ─── 3. Ensure every department has an HOD who teaches one of its subjects ───
+            for (Department department : departments) {
+                ensureDepartmentHodAndTeachingAssignment(
+                        userRepository, departmentRepository, subjectRepository,
+                        passwordEncoder, department);
+            }
+
+            // ─── 4. Seed Admin user ────────────────────────────────────────
             createUserIfNotExists(
                     userRepository, passwordEncoder,
                     "System Admin", "ADMIN001", "admin123",
                     "admin@ims.com", Role.ADMIN, cse,
                     VerificationStatus.VERIFIED, null
             );
-
-            // ─── 4. Seed HOD ───────────────────────────────────────────────
-            // createUserIfNotExists will add `cse` to the user's departments set
-            User cseFaculty = createUserIfNotExists(
-                    userRepository, passwordEncoder,
-                    "CSE HOD", "HOD001", "cse_hod123",
-                    "cse_hod@ims.com", Role.HOD, cse,
-                    VerificationStatus.VERIFIED, cse
-            );
-
-            // Link this HOD as the HOD of CSE department (only if not already set)
-            Department freshCse = departmentRepository.findByCode("CSE").orElse(cse);
-            if (cseFaculty != null && freshCse.getHod() == null) {
-                freshCse.setHod(cseFaculty);
-                departmentRepository.save(freshCse);
-            }
 
             // ─── 5. Seed Faculty ───────────────────────────────────────────
             // createUserIfNotExists will add `cse` to the user's departments set
@@ -112,6 +105,69 @@ public class DataInitializer {
                     WHERE status = 'PENDING'
                     """);
         };
+    }
+
+    private void ensureDepartmentHodAndTeachingAssignment(
+            UserRepository userRepository,
+            DepartmentRepository departmentRepository,
+            SubjectRepository subjectRepository,
+            PasswordEncoder passwordEncoder,
+            Department department) {
+
+        User hod = department.getHod();
+        if (hod == null) {
+            String code = department.getCode();
+            String normalizedCode = code.toLowerCase(Locale.ROOT);
+            String rollNumber = code.equals("CSE") ? "HOD001" : "HOD_" + code;
+            String password = code.equals("CSE") ? "cse_hod123" : "hod_" + normalizedCode + "123";
+            hod = createUserIfNotExists(
+                    userRepository, passwordEncoder,
+                    code + " HOD", rollNumber, password,
+                    "hod_" + normalizedCode + "@ims.com", Role.HOD, department,
+                    VerificationStatus.VERIFIED, department);
+            department.setHod(hod);
+        }
+
+        hod = userRepository.findByIdWithDepartments(hod.getId())
+                .orElseThrow(() -> new IllegalStateException(
+                        "Could not reload HOD account for department " + department.getCode() + "."));
+        if (hod.getRole() != Role.FACULTY && hod.getRole() != Role.HOD) {
+            throw new IllegalStateException(
+                    "Cannot assign user " + hod.getRollNumber()
+                            + " as HOD because the account is not a faculty member.");
+        }
+        hod.setRole(Role.HOD);
+        hod.setAdministrativeRole("HOD");
+        if (hod.getDepartments() == null) {
+            hod.setDepartments(new HashSet<>());
+        }
+        boolean departmentAssociated = hod.getDepartments().stream()
+                .anyMatch(existing -> existing.getId().equals(department.getId()));
+        if (!departmentAssociated) {
+            hod.getDepartments().add(department);
+        }
+        if (hod.getDepartment() == null) {
+            hod.setDepartment(department);
+        }
+        userRepository.save(hod);
+        departmentRepository.save(department);
+
+        List<Subject> departmentSubjects =
+                subjectRepository.findByDepartmentIdWithFacultyMembers(department.getId());
+        if (departmentSubjects.isEmpty()) {
+            throw new IllegalStateException(
+                    "Cannot initialize HOD for department " + department.getCode()
+                            + " because it has no subjects.");
+        }
+        Long hodId = hod.getId();
+        boolean alreadyTeaching = departmentSubjects.stream()
+                .anyMatch(subject -> subject.getFacultyMembers().stream()
+                        .anyMatch(faculty -> faculty.getId().equals(hodId)));
+        if (!alreadyTeaching) {
+            Subject subject = departmentSubjects.get(0);
+            subject.getFacultyMembers().add(hod);
+            subjectRepository.save(subject);
+        }
     }
 
     private void seedSubjectsFromJson(
@@ -227,7 +283,7 @@ public class DataInitializer {
     /**
      * Creates a user if they don't already exist.
      * @param facultyDept if non-null, this department will be added to the user's departments set (for faculty multi-dept).
-     * @return the newly-created user or null if it already existed.
+     * @return the existing user or the newly-created user.
      */
     private User createUserIfNotExists(
             UserRepository repository,
@@ -241,8 +297,9 @@ public class DataInitializer {
             VerificationStatus status,
             Department facultyDept) {
 
-        if (repository.existsByRollNumber(rollNumber)) {
-            return repository.findByRollNumber(rollNumber).orElse(null);
+        User existing = repository.findByRollNumber(rollNumber).orElse(null);
+        if (existing != null) {
+            return existing;
         }
 
         User user = new User();

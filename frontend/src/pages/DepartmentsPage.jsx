@@ -4,9 +4,9 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import {
   getAllDepartments, createDepartment, updateDepartment, deleteDepartment,
-  getEligibleHods, assignHod, removeHod,
+  getEligibleHods, assignHod,
 } from '../api/departments';
-import { Plus, Pencil, Trash2, Building2, X, Search, UserCheck, UserMinus, Crown } from 'lucide-react';
+import { Plus, Pencil, Trash2, Building2, X, Search, UserCheck, Crown } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 // ─── Department Create/Edit Modal ───────────────────────────────────
@@ -269,18 +269,6 @@ export default function DepartmentsPage() {
     }
   };
 
-  const handleRemoveHod = async (d) => {
-    if (!window.confirm(`Remove ${d.hod?.name} as HOD of ${d.name}?`)) return;
-    try {
-      await removeHod(d.id);
-      toast.success('HOD removed');
-      load();
-    } catch (err) {
-      const msg = err?.response?.data || 'Failed to remove HOD.';
-      toast.error(typeof msg === 'string' ? msg : 'Failed to remove HOD.');
-    }
-  };
-
   const openHodModal = (d) => {
     setHodModalDept(d);
     setHodModalOpen(true);
@@ -428,14 +416,6 @@ export default function DepartmentsPage() {
                           style={{ color: 'var(--info)' }}
                         >
                           <UserCheck size={14} />
-                        </button>
-                        <button
-                          className="btn btn-ghost btn-icon btn-sm"
-                          title="Remove HOD"
-                          onClick={() => handleRemoveHod(d)}
-                          style={{ color: 'var(--danger)' }}
-                        >
-                          <UserMinus size={14} />
                         </button>
                       </div>
                     )}
