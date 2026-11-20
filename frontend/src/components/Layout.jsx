@@ -50,6 +50,7 @@ export default function Layout({ children, pageTitle }) {
         {
           label: 'Faculty Management',
           items: [
+            { to: '/faculty-list', icon: <Users />, text: 'Faculty List', show: true },
             { to: '/subject-assignments', icon: <ClipboardCheck />, text: 'Faculty Allocation', show: true },
           ],
         },

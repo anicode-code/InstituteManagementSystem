@@ -13,6 +13,8 @@ export const getHodStudentRoster = (semester) =>
 export const getHodStudentDetails = (studentId) =>
   api.get(`/api/hod/students/${studentId}`);
 
+export const getHodFacultyRoster = () => api.get('/api/hod/faculty');
+
 export const getUserById = (id) => api.get(`/api/users/${id}`);
 
 export const getCurrentUser = () => api.get('/api/users/me');

@@ -81,6 +81,11 @@ export default function HodSubjectAssignmentsPage() {
     [subjects, selectedSubjectId],
   );
 
+  const hasMultipleDepartments = useMemo(
+    () => new Set(departments.map((department) => String(department.id))).size > 1,
+    [departments],
+  );
+
   const refresh = async () => {
     await Promise.all([loadBase(), loadRequests(), loadEligibleFaculty()]);
   };
@@ -144,10 +149,12 @@ export default function HodSubjectAssignmentsPage() {
         </div>
         <div className="toolbar" style={{ marginBottom: 16 }}>
           <div className="toolbar-left">
-            <select className="form-select" aria-label="Filter requests by department" value={departmentFilter} onChange={(event) => setDepartmentFilter(event.target.value)}>
-              <option value="">All My Departments</option>
-              {departments.map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}
-            </select>
+            {hasMultipleDepartments && (
+              <select className="form-select" aria-label="Filter requests by department" value={departmentFilter} onChange={(event) => setDepartmentFilter(event.target.value)}>
+                <option value="">All My Departments</option>
+                {departments.map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}
+              </select>
+            )}
             <select className="form-select" aria-label="Filter requests by status" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
               <option value="">All Statuses</option>
               <option value="PENDING">Pending</option>
