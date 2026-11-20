@@ -3,7 +3,7 @@ import Layout from '../components/Layout';
 import SortableTh from '../components/SortableTh';
 import { getHodStudentDetails, getHodStudentRoster } from '../api/users';
 import { sortRows } from '../utils/tableSorting';
-import { GraduationCap, X } from 'lucide-react';
+import { GraduationCap, Search, X } from 'lucide-react';
 
 const SORT_COLUMNS = [
   { key: 'rollNumber', label: 'Roll number' },
@@ -183,6 +183,7 @@ const centeredSortColumns = new Set([
 
 export default function HodStudentsPage() {
   const [semester, setSemester] = useState('');
+  const [search, setSearch] = useState('');
   const [sorts, setSorts] = useState([]);
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -224,7 +225,18 @@ export default function HodStudentsPage() {
       return current.filter((sort) => sort.key !== key);
     });
   };
-  const sortedStudents = useMemo(() => sortRows(students, sorts), [students, sorts]);
+  const filteredStudents = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return students;
+    return students.filter((student) => [
+      student.name,
+      student.rollNumber,
+      student.email,
+      student.semester ? `Semester ${student.semester}` : '',
+      student.departmentName,
+    ].filter(Boolean).some((value) => String(value).toLowerCase().includes(query)));
+  }, [students, search]);
+  const sortedStudents = useMemo(() => sortRows(filteredStudents, sorts), [filteredStudents, sorts]);
 
   const openStudent = async (student) => {
     const requestId = ++detailsRequest.current;
@@ -252,7 +264,7 @@ export default function HodStudentsPage() {
   };
 
   return (
-    <Layout pageTitle="Student Roster">
+    <Layout pageTitle="Student List">
       <div style={{ marginBottom: 20 }}>
         <h2 style={{ fontSize: '1.45rem', fontWeight: 800, marginBottom: 4 }}>Department students</h2>
         <p style={{ color: 'var(--text-secondary)' }}>
@@ -271,6 +283,15 @@ export default function HodStudentsPage() {
               ))}
             </select>
           </div>
+          <div className="search-bar" style={{ maxWidth: 360, flex: '1 1 240px' }}>
+            <Search />
+            <input
+              aria-label="Search students"
+              placeholder="Search name or roll number..."
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </div>
         </div>
       </div>
 
@@ -281,7 +302,13 @@ export default function HodStudentsPage() {
           No students found{semester ? ` for Semester ${semester}` : ''} in your assigned department(s).
         </div>
       )}
-      {!loading && !error && students.length > 0 && (
+      {!loading && !error && students.length > 0 && filteredStudents.length === 0 && (
+        <div className="card text-center" style={{ padding: 36, color: 'var(--text-secondary)' }}>
+          <Search style={{ display: 'block', margin: '0 auto 8px', color: 'var(--text-muted)' }} />
+          No students match your search.
+        </div>
+      )}
+      {!loading && !error && filteredStudents.length > 0 && (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <div className="table-container hod-roster-table-container" style={{ border: 0, borderRadius: 0 }}>
             <table className="hod-roster-table" style={{ minWidth: 820 }}>
@@ -327,7 +354,7 @@ export default function HodStudentsPage() {
             </table>
           </div>
           <div style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-            {students.length} student{students.length === 1 ? '' : 's'}
+            {filteredStudents.length} of {students.length} student{students.length === 1 ? '' : 's'}
           </div>
         </div>
       )}

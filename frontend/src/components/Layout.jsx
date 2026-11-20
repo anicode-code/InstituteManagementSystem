@@ -24,39 +24,70 @@ export default function Layout({ children, pageTitle }) {
     navigate('/login');
   };
 
-  const navItems = [
-    {
-      label: 'Main',
-      items: [
-        { to: '/dashboard', icon: <LayoutDashboard />, text: 'Dashboard', show: true },
-        { to: '/profile',   icon: <User />,            text: 'My Profile', show: true },
-      ],
-    },
-    {
-      label: 'Learning',
-      items: [
+  const navItems = user?.role === 'HOD'
+    ? [
         {
-          to: '/study-materials',
-          icon: <FileStack />,
-          text: 'Study Material',
-          show: ['HOD', 'FACULTY', 'STUDENT'].includes(user?.role),
+          label: 'Main',
+          items: [
+            { to: '/dashboard', icon: <LayoutDashboard />, text: 'Dashboard', show: true },
+            { to: '/profile', icon: <User />, text: 'My Profile', show: true },
+          ],
         },
-      ],
-    },
-    {
-      label: 'Management',
-      items: [
-      { to: '/students',    icon: <GraduationCap />, text: 'Student Roster',     show: user?.role === 'HOD' },
-      { to: '/users',       icon: <Users />,        text: 'User Verification', show: isAdminOrHod },
-        { to: '/departments', icon: <Building2 />,    text: 'Departments',       show: isAdminOrHod },
-        { to: '/subjects',    icon: <BookOpen />,     text: 'Subjects',          show: !isAdmin },
-        { to: '/subject-requests', icon: <ClipboardCheck />, text: 'Subject Requests', show: isFaculty },
-        { to: '/subject-assignments', icon: <ClipboardCheck />, text: 'Subject Assignments', show: user?.role === 'HOD' },
-        { to: '/assignments', icon: <ClipboardList />,text: 'Assignments',       show: !isAdmin },
-        { to: '/attendance',  icon: <CalendarCheck />,text: 'Attendance',        show: !isAdmin },
-      ],
-    },
-  ];
+        {
+          label: 'Verification',
+          items: [
+            { to: '/users', icon: <Users />, text: 'User Verification', show: true },
+          ],
+        },
+        {
+          label: 'Student Management',
+          items: [
+            { to: '/students', icon: <GraduationCap />, text: 'Student List', show: true },
+            { to: '/assignments', icon: <ClipboardList />, text: 'Assignments', show: true },
+            { to: '/attendance', icon: <CalendarCheck />, text: 'Attendance', show: true },
+          ],
+        },
+        {
+          label: 'Faculty Management',
+          items: [
+            { to: '/subject-assignments', icon: <ClipboardCheck />, text: 'Faculty Allocation', show: true },
+          ],
+        },
+        {
+          label: 'Academic Management',
+          items: [
+            { to: '/departments', icon: <Building2 />, text: 'Departments', show: true },
+            { to: '/subjects', icon: <BookOpen />, text: 'Subjects', show: true },
+            { to: '/study-materials', icon: <FileStack />, text: 'Study Material', show: true },
+          ],
+        },
+      ]
+    : [
+        {
+          label: 'Main',
+          items: [
+            { to: '/dashboard', icon: <LayoutDashboard />, text: 'Dashboard', show: true },
+            { to: '/profile', icon: <User />, text: 'My Profile', show: true },
+          ],
+        },
+        {
+          label: 'Learning',
+          items: [
+            { to: '/study-materials', icon: <FileStack />, text: 'Study Material', show: ['FACULTY', 'STUDENT'].includes(user?.role) },
+          ],
+        },
+        {
+          label: 'Management',
+          items: [
+            { to: '/users', icon: <Users />, text: 'User Verification', show: isAdminOrHod },
+            { to: '/departments', icon: <Building2 />, text: 'Departments', show: isAdminOrHod },
+            { to: '/subjects', icon: <BookOpen />, text: 'Subjects', show: !isAdmin },
+            { to: '/subject-requests', icon: <ClipboardCheck />, text: 'Subject Requests', show: isFaculty },
+            { to: '/assignments', icon: <ClipboardList />, text: 'Assignments', show: !isAdmin },
+            { to: '/attendance', icon: <CalendarCheck />, text: 'Attendance', show: !isAdmin },
+          ],
+        },
+      ];
 
 
   return (

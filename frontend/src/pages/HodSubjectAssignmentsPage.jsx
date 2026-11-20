@@ -129,10 +129,10 @@ export default function HodSubjectAssignmentsPage() {
   };
 
   return (
-    <Layout pageTitle="Subject Assignments">
+    <Layout pageTitle="Faculty Allocation">
       <div className="page-header">
         <div>
-          <h2 className="page-title">Faculty Requests & Assignments</h2>
+          <h2 className="page-title">Faculty Allocation</h2>
           <p className="page-subtitle">Review requests and manage teaching teams in your appointed departments.</p>
         </div>
         <button className="btn btn-secondary" onClick={refresh} disabled={loading}><RefreshCw size={16} /> Refresh</button>
