@@ -281,7 +281,9 @@ export default function ProfilePage() {
       setFieldErrors((current) => ({ ...current, email: 'Enter a valid email address.' }));
       return;
     }
-    if (profile?.role === 'FACULTY' && !validateFacultyForm()) return;
+    if (profile?.role === 'FACULTY' || profile?.role === 'HOD') {
+      if (!validateFacultyForm()) return;
+    }
     if (profile?.role === 'STUDENT' && !validateStudentForm()) return;
     setFieldErrors({});
 
@@ -312,7 +314,7 @@ export default function ProfilePage() {
       request.dateOfBirth = form.dateOfBirth || null;
       request.residentialAddress = form.residentialAddress.trim();
     }
-    if (profile?.role === 'FACULTY') {
+    if (profile?.role === 'FACULTY' || profile?.role === 'HOD') {
       request.phone = form.phone.trim();
       request.dateOfBirth = form.dateOfBirth || null;
       request.gender = form.gender.trim();
@@ -347,6 +349,14 @@ export default function ProfilePage() {
         phone: res.data.phone,
         dateOfBirth: res.data.dateOfBirth,
         residentialAddress: res.data.residentialAddress,
+        gender: res.data.gender,
+        joiningDate: res.data.joiningDate,
+        employmentStatus: res.data.employmentStatus,
+        designation: res.data.designation,
+        qualification: res.data.qualification,
+        specialization: res.data.specialization,
+        yearsOfExperience: res.data.yearsOfExperience,
+        employmentType: res.data.employmentType,
         profileImageUrl: res.data.profileImageUrl,
         semesterSgpas: res.data.semesterSgpas,
         yearlyGpas: res.data.yearlyGpas,
@@ -474,7 +484,7 @@ export default function ProfilePage() {
               />
               <FieldError message={fieldErrors.email} />
             </div>
-            {p?.role === 'FACULTY' && (
+            {(p?.role === 'FACULTY' || p?.role === 'HOD') && (
               <>
                 <h4 style={{ fontWeight: 700, margin: '20px 0 12px' }}>Personal Information</h4>
                 <div className="grid-2">
@@ -754,7 +764,7 @@ export default function ProfilePage() {
               ? (p?.departments?.map((department) => department.name).join(', ') || p?.department?.name)
               : p?.department?.name}
           />
-          {p?.role === 'FACULTY' && (
+          {(p?.role === 'FACULTY' || p?.role === 'HOD') && (
             <>
               <InfoRow icon={<Shield size={18} />} label="Account status" value={p?.status} />
               <InfoRow icon={<Shield size={18} />} label="Account created" value={p?.createdAt ? new Date(p.createdAt).toLocaleString() : null} />

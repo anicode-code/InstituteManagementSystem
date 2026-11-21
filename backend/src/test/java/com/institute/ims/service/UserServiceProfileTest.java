@@ -261,6 +261,53 @@ class UserServiceProfileTest {
     }
 
     @Test
+    void hodCanUpdateTheSamePersonalAndProfessionalProfileFieldsAsFaculty() {
+        User hod = new User();
+        hod.setId(3L);
+        hod.setName("HOD");
+        hod.setRollNumber("HOD");
+        hod.setRole(Role.HOD);
+        hod.setAdministrativeRole("HOD");
+        hod.setDepartment(department());
+        when(userRepository.findByRollNumber("HOD")).thenReturn(Optional.of(hod));
+        when(userRepository.existsByEmailIgnoreCaseAndIdNot("hod@example.edu", 3L)).thenReturn(false);
+        when(userRepository.save(hod)).thenReturn(hod);
+        when(facultyProfileOptionRepository.existsByCategoryAndValue(
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyString())).thenReturn(true);
+
+        UpdateProfileRequest request = new UpdateProfileRequest();
+        request.setName("Updated HOD");
+        request.setEmail("hod@example.edu");
+        request.setPhone("9876543210");
+        request.setDateOfBirth(LocalDate.of(1978, 5, 10));
+        request.setGender("Female");
+        request.setResidentialAddress("24 Faculty Road");
+        request.setJoiningDate(LocalDate.of(2008, 7, 1));
+        request.setEmploymentStatus("Employed");
+        request.setDesignation("ASSOCIATE PROFESSOR");
+        request.setQualification("PhD");
+        request.setSpecialization("Information Systems");
+        request.setYearsOfExperience(18.0);
+        request.setEmploymentType("Permanent");
+
+        User updated = service.updateOwnProfile("HOD", request);
+
+        assertThat(updated.getName()).isEqualTo("Updated HOD");
+        assertThat(updated.getPhone()).isEqualTo("9876543210");
+        assertThat(updated.getDateOfBirth()).isEqualTo(LocalDate.of(1978, 5, 10));
+        assertThat(updated.getGender()).isEqualTo("Female");
+        assertThat(updated.getResidentialAddress()).isEqualTo("24 Faculty Road");
+        assertThat(updated.getJoiningDate()).isEqualTo(LocalDate.of(2008, 7, 1));
+        assertThat(updated.getEmploymentStatus()).isEqualTo("Employed");
+        assertThat(updated.getDesignation()).isEqualTo("ASSOCIATE PROFESSOR");
+        assertThat(updated.getQualification()).isEqualTo("PhD");
+        assertThat(updated.getSpecialization()).isEqualTo("Information Systems");
+        assertThat(updated.getYearsOfExperience()).isEqualTo(18.0);
+        assertThat(updated.getEmploymentType()).isEqualTo("Permanent");
+        assertThat(updated.getAdministrativeRole()).isEqualTo("HOD");
+    }
+
+    @Test
     void facultyCannotChangeDepartmentsThroughOwnProfile() {
         User faculty = new User();
         faculty.setId(2L);

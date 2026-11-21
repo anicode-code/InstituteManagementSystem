@@ -297,6 +297,9 @@ public class UserService {
         if (user.getRole() == Role.FACULTY && request.getDepartmentIds() != null) {
             throw new AccessDeniedException("Faculty departments are assigned through subject teaching approvals.");
         }
+        if (user.getRole() == Role.HOD && request.getDepartmentIds() != null) {
+            throw new AccessDeniedException("HOD departments are assigned through academic administration.");
+        }
         boolean hasFacultyFields = request.getGender() != null
                 || request.isJoiningDateProvided()
                 || request.getEmploymentStatus() != null
@@ -311,20 +314,24 @@ public class UserService {
         boolean hasSharedPersonalFields = request.getPhone() != null
                 || request.isDateOfBirthProvided()
                 || request.getResidentialAddress() != null;
-        if (user.getRole() != Role.FACULTY && hasFacultyFields) {
-            throw new AccessDeniedException("Only faculty can update faculty profile details.");
+        boolean isFacultyProfileRole = user.getRole() == Role.FACULTY
+                || user.getRole() == Role.HOD;
+        if (!isFacultyProfileRole && hasFacultyFields) {
+            throw new AccessDeniedException("Only faculty and HODs can update faculty profile details.");
         }
         if (user.getRole() != Role.STUDENT && hasStudentFields) {
             throw new AccessDeniedException("Only students can update student academic details.");
         }
-        if (user.getRole() != Role.FACULTY && user.getRole() != Role.STUDENT && hasSharedPersonalFields) {
-            throw new AccessDeniedException("Only faculty and students can update personal details.");
+        if (!isFacultyProfileRole && user.getRole() != Role.STUDENT && hasSharedPersonalFields) {
+            throw new AccessDeniedException("Only faculty, HODs and students can update personal details.");
         }
 
         Map<String, String> previousFacultyProfile = null;
-        if (user.getRole() == Role.FACULTY) {
+        if (isFacultyProfileRole) {
             validateFacultyProfileRequest(request);
-            previousFacultyProfile = facultyProfileValues(user);
+            if (user.getRole() == Role.FACULTY) {
+                previousFacultyProfile = facultyProfileValues(user);
+            }
         }
 
         user.setName(request.getName().trim());
@@ -349,7 +356,7 @@ public class UserService {
             if (hasAcademicFields) {
                 throw new AccessDeniedException("Only students can update academic details.");
             }
-            if (user.getRole() == Role.FACULTY) {
+            if (isFacultyProfileRole) {
                 updateFacultyProfileFields(user, request);
             }
             User savedUser = userRepository.save(user);
