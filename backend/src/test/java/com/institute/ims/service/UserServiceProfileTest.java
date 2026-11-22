@@ -414,6 +414,27 @@ class UserServiceProfileTest {
     }
 
     @Test
+    void everyRoleCanRemoveTheirProfilePicture() {
+        for (Role role : Role.values()) {
+            User user = new User();
+            user.setId((long) role.ordinal() + 1);
+            user.setName(role.name());
+            user.setRollNumber(role.name());
+            user.setRole(role);
+            user.setProfilePicture(new byte[] { 1, 2, 3 });
+            user.setProfilePictureContentType("image/jpeg");
+            when(userRepository.findByRollNumber(role.name())).thenReturn(Optional.of(user));
+            when(userRepository.save(user)).thenReturn(user);
+
+            User updated = service.removeProfilePicture(role.name());
+
+            assertThat(updated.getProfilePicture()).isNull();
+            assertThat(updated.getProfilePictureContentType()).isNull();
+            assertThat(updated.getProfileImageUrl()).isNull();
+        }
+    }
+
+    @Test
     void profilePictureUploadRejectsInvalidImagesAndOversizedFiles() {
         MockMultipartFile invalidImage =
                 new MockMultipartFile("file", "portrait.png", "image/png", "not an image".getBytes());

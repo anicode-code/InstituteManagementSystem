@@ -116,6 +116,14 @@ public class UserService {
         return userRepository.save(user);
     }
 
+    @Transactional
+    public User removeProfilePicture(String rollNumber) {
+        User user = getUserByRollNumber(rollNumber);
+        user.setProfilePicture(null);
+        user.setProfilePictureContentType(null);
+        return userRepository.save(user);
+    }
+
     private byte[] normalizeProfilePicture(byte[] image, String contentType) {
         String normalizedContentType = contentType == null
                 ? ""

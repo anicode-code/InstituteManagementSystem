@@ -78,6 +78,13 @@ public class UserController {
         );
     }
 
+    @DeleteMapping("/me/profile-picture")
+    public ResponseEntity<User> removeProfilePicture(Authentication authentication) {
+        return ResponseEntity.ok(
+                userService.removeProfilePicture(authentication.getName())
+        );
+    }
+
     @GetMapping("/{id}/profile-picture")
     public ResponseEntity<byte[]> getProfilePicture(
             @PathVariable Long id,

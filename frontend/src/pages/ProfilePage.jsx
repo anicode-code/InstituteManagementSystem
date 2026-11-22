@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Layout from '../components/Layout';
 import ProfileAvatar from '../components/ProfileAvatar';
 import { useAuth } from '../context/AuthContext';
-import { getCurrentUser, updateMyProfile, uploadProfilePicture } from '../api/users';
+import { getCurrentUser, removeProfilePicture, updateMyProfile, uploadProfilePicture } from '../api/users';
 import { getCurriculumByDeptAndSemester } from '../data/curriculumSubjects';
-import { User, Mail, Hash, Building2, Shield, Pencil, X, Save, BookOpen, CheckSquare, Square, Camera } from 'lucide-react';
+import { User, Mail, Hash, Building2, Shield, Pencil, X, Save, BookOpen, CheckSquare, Square, Camera, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const ROLE_COLORS = {
@@ -109,8 +110,9 @@ export default function ProfilePage() {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState(profileForm(null));
   const [saving, setSaving] = useState(false);
-  const [uploadingPicture, setUploadingPicture] = useState(false);
+  const [stagedPicture, setStagedPicture] = useState(null);
   const [pictureError, setPictureError] = useState('');
+  const [picturePreviewOpen, setPicturePreviewOpen] = useState(false);
   const profilePictureInput = useRef(null);
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
@@ -130,6 +132,13 @@ export default function ProfilePage() {
     };
     load();
   }, []);
+
+  useEffect(() => {
+    const previewUrl = stagedPicture?.type === 'upload' ? stagedPicture.previewUrl : null;
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [stagedPicture]);
 
   const handleYearChange = (event) => {
     setForm((current) => ({
@@ -162,6 +171,8 @@ export default function ProfilePage() {
     setEditing(false);
     setError('');
     setFieldErrors({});
+    setPictureError('');
+    setStagedPicture(null);
   };
 
   const updateFormField = (field, value) => {
@@ -169,25 +180,51 @@ export default function ProfilePage() {
     setFieldErrors((current) => ({ ...current, [field]: '' }));
   };
 
-  const handleProfilePictureUpload = async (event) => {
+  const handleProfilePictureSelect = (event) => {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
 
     setPictureError('');
-    const formData = new FormData();
-    formData.append('file', file);
-    setUploadingPicture(true);
-    try {
-      const res = await uploadProfilePicture(formData);
-      setProfile(res.data);
-      syncUser({ ...authUser, profileImageUrl: res.data.profileImageUrl });
-      toast.success('Profile picture updated');
-    } catch (err) {
-      setPictureError(err?.response?.data?.message || 'Could not upload your profile picture.');
-    } finally {
-      setUploadingPicture(false);
-    }
+    setStagedPicture({
+      type: 'upload',
+      file,
+      previewUrl: URL.createObjectURL(file),
+    });
+  };
+
+  const handleProfilePictureRemove = () => {
+    setPictureError('');
+    setStagedPicture({ type: 'remove' });
+  };
+
+  const syncSavedProfile = (savedProfile) => {
+    syncUser({
+      ...authUser,
+      name: savedProfile.name,
+      email: savedProfile.email,
+      role: savedProfile.role,
+      status: savedProfile.status,
+      department: savedProfile.department,
+      departments: savedProfile.departments,
+      year: savedProfile.year,
+      semester: savedProfile.semester,
+      registrationNumber: savedProfile.registrationNumber,
+      phone: savedProfile.phone,
+      dateOfBirth: savedProfile.dateOfBirth,
+      residentialAddress: savedProfile.residentialAddress,
+      gender: savedProfile.gender,
+      joiningDate: savedProfile.joiningDate,
+      employmentStatus: savedProfile.employmentStatus,
+      designation: savedProfile.designation,
+      qualification: savedProfile.qualification,
+      specialization: savedProfile.specialization,
+      yearsOfExperience: savedProfile.yearsOfExperience,
+      employmentType: savedProfile.employmentType,
+      profileImageUrl: savedProfile.profileImageUrl,
+      semesterSgpas: savedProfile.semesterSgpas,
+      yearlyGpas: savedProfile.yearlyGpas,
+    });
   };
 
   const updateSemesterSgpa = (semester, value) => {
@@ -335,33 +372,30 @@ export default function ProfilePage() {
       const res = await updateMyProfile(request);
       setProfile(res.data);
       setForm(profileForm(res.data));
-      syncUser({
-        ...authUser,
-        name: res.data.name,
-        email: res.data.email,
-        role: res.data.role,
-        status: res.data.status,
-        department: res.data.department,
-        departments: res.data.departments,
-        year: res.data.year,
-        semester: res.data.semester,
-        registrationNumber: res.data.registrationNumber,
-        phone: res.data.phone,
-        dateOfBirth: res.data.dateOfBirth,
-        residentialAddress: res.data.residentialAddress,
-        gender: res.data.gender,
-        joiningDate: res.data.joiningDate,
-        employmentStatus: res.data.employmentStatus,
-        designation: res.data.designation,
-        qualification: res.data.qualification,
-        specialization: res.data.specialization,
-        yearsOfExperience: res.data.yearsOfExperience,
-        employmentType: res.data.employmentType,
-        profileImageUrl: res.data.profileImageUrl,
-        semesterSgpas: res.data.semesterSgpas,
-        yearlyGpas: res.data.yearlyGpas,
-      });
+      syncSavedProfile(res.data);
+
+      if (stagedPicture?.type === 'upload' || stagedPicture?.type === 'remove') {
+        try {
+          let pictureResponse;
+          if (stagedPicture.type === 'upload') {
+            const formData = new FormData();
+            formData.append('file', stagedPicture.file);
+            pictureResponse = await uploadProfilePicture(formData);
+          } else {
+            pictureResponse = await removeProfilePicture();
+          }
+          setProfile(pictureResponse.data);
+          syncSavedProfile(pictureResponse.data);
+        } catch (pictureSaveError) {
+          const message = pictureSaveError?.response?.data?.message;
+          setPictureError(message || 'Could not save your profile picture.');
+          setError('Your profile details were saved, but your picture was not. Please try Save Changes again.');
+          return;
+        }
+      }
+
       toast.success('Profile updated');
+      setStagedPicture(null);
       setEditing(false);
     } catch (err) {
       const responseErrors = err?.response?.data?.errors;
@@ -395,6 +429,11 @@ export default function ProfilePage() {
 
   const p = profile || authUser;
   const roleStyle = ROLE_COLORS[p?.role] || {};
+  const profilePictureSrc = stagedPicture?.type === 'upload'
+    ? stagedPicture.previewUrl
+    : stagedPicture?.type === 'remove'
+      ? null
+      : p?.profileImageUrl || p?.photoUrl;
   const curriculum = p?.role === 'STUDENT'
     ? getCurriculumByDeptAndSemester(p?.department?.code, form.semester)
     : null;
@@ -404,9 +443,16 @@ export default function ProfilePage() {
       <div style={{ maxWidth: 640, margin: '0 auto' }}>
         {/* Profile Card */}
         <div className="card" style={{ marginBottom: 20 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
-            <ProfileAvatar src={p?.profileImageUrl || p?.photoUrl} name={p?.name} size="lg" />
-            <div style={{ flex: 1 }}>
+          <div className={`profile-card-header${editing ? ' is-editing' : ''}`}>
+            <button
+              className="profile-picture-trigger"
+              type="button"
+              onClick={() => setPicturePreviewOpen(true)}
+              aria-label={`View ${p?.name || 'user'}'s profile picture`}
+            >
+              <ProfileAvatar src={profilePictureSrc} name={p?.name} size="lg" />
+            </button>
+            <div className="profile-card-identity">
               <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: 4 }}>{p?.name}</h2>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                 <span style={{
@@ -422,39 +468,97 @@ export default function ProfilePage() {
               </div>
             </div>
             <button
-              className={`btn ${editing ? 'btn-secondary' : 'btn-primary'}`}
+              className={`btn ${editing ? 'btn-secondary' : 'btn-primary'} profile-card-edit-button`}
               onClick={() => { editing ? handleCancel() : setEditing(true); setError(''); }}
+              disabled={saving}
               type="button"
             >
               {editing ? <><X size={16} /> Cancel</> : <><Pencil size={16} /> Edit</>}
             </button>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 5 }}>
-              <button
-                className="btn btn-secondary btn-sm"
-                type="button"
-                onClick={() => profilePictureInput.current?.click()}
-                disabled={uploadingPicture}
-                aria-label={p?.profileImageUrl ? 'Change profile picture' : 'Upload profile picture'}
-              >
-                {uploadingPicture
-                  ? <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />
-                  : <Camera size={15} />}
-                {uploadingPicture ? 'Uploading...' : p?.profileImageUrl ? 'Change picture' : 'Upload picture'}
-              </button>
-              <input
-                ref={profilePictureInput}
-                type="file"
-                accept="image/jpeg,image/png,image/gif"
-                onChange={handleProfilePictureUpload}
-                disabled={uploadingPicture}
-                style={{ display: 'none' }}
-                tabIndex={-1}
-              />
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.68rem' }}>JPG, PNG, or GIF · max 5 MB</span>
-              {pictureError && <FieldError message={pictureError} />}
-            </div>
+            {editing && (
+              <div className="profile-picture-editor">
+                <button
+                  className="btn btn-secondary btn-sm"
+                  type="button"
+                  onClick={() => profilePictureInput.current?.click()}
+                  disabled={saving}
+                >
+                  <Camera size={15} />
+                  Choose new picture
+                </button>
+                {stagedPicture?.type === 'remove' ? (
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    type="button"
+                    onClick={() => { setStagedPicture(null); setPictureError(''); }}
+                    disabled={saving}
+                  >
+                    <Camera size={15} />
+                    Undo removal
+                  </button>
+                ) : profilePictureSrc ? (
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    type="button"
+                    onClick={handleProfilePictureRemove}
+                    disabled={saving}
+                  >
+                    <Trash2 size={15} />
+                    Remove picture
+                  </button>
+                ) : null}
+                <input
+                  ref={profilePictureInput}
+                  type="file"
+                  accept="image/jpeg,image/png,image/gif"
+                  onChange={handleProfilePictureSelect}
+                  disabled={saving}
+                  style={{ display: 'none' }}
+                  tabIndex={-1}
+                />
+                <span className="profile-picture-help">
+                  JPG, PNG, or GIF · max 5 MB. Changes apply when you save.
+                </span>
+                {pictureError && <FieldError message={pictureError} />}
+              </div>
+            )}
           </div>
         </div>
+
+        {picturePreviewOpen && createPortal(
+          <div
+            className="modal-overlay profile-picture-preview-overlay"
+            onClick={() => setPicturePreviewOpen(false)}
+          >
+            <div
+              className="modal profile-picture-preview-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-label={`${p?.name || 'User'}'s profile picture`}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="modal-header">
+                <h3 className="modal-title">{p?.name || 'User'}'s profile picture</h3>
+                <button
+                  className="btn btn-secondary btn-sm"
+                  type="button"
+                  onClick={() => setPicturePreviewOpen(false)}
+                  aria-label="Close profile picture preview"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+              <div className="profile-picture-preview-body">
+                <ProfileAvatar
+                  src={profilePictureSrc}
+                  name={p?.name}
+                  className="profile-picture-preview-image"
+                />
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
 
         {/* Edit Form */}
         {editing && (

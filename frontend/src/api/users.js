@@ -26,6 +26,8 @@ export const uploadProfilePicture = (formData) =>
     headers: { 'Content-Type': 'multipart/form-data' },
   });
 
+export const removeProfilePicture = () => api.delete('/api/users/me/profile-picture');
+
 export const updateUser = (id, data) => api.put(`/api/users/${id}`, data);
 
 export const deleteUser = (id) => api.delete(`/api/users/${id}`);
