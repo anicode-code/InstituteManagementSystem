@@ -6,7 +6,7 @@ import { sortRows } from '../utils/tableSorting';
 import { GraduationCap, Search, X } from 'lucide-react';
 
 const SORT_COLUMNS = [
-  { key: 'rollNumber', label: 'Roll number' },
+  { key: 'rollNumber', label: 'Institute ID' },
   { key: 'name', label: 'Student' },
   { key: 'semester', label: 'Semester' },
   { key: 'attendancePercentage', label: 'Attendance' },
@@ -287,7 +287,7 @@ export default function HodStudentsPage() {
             <Search />
             <input
               aria-label="Search students"
-              placeholder="Search name or roll number..."
+              placeholder="Search name or Institute ID..."
               value={search}
               onChange={(event) => setSearch(event.target.value)}
             />

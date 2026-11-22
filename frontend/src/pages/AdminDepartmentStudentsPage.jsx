@@ -175,7 +175,7 @@ function StudentProfile({ departmentId, studentId }) {
           <section className="card" style={{ marginBottom: 16 }}>
             <h3 className="card-title" style={{ marginBottom: 12 }}>Academic Information</h3>
             <div className="grid-3">
-              <Metric label="Roll number" value={academic.rollNumber} />
+              <Metric label="Institute ID" value={academic.rollNumber} />
               <Metric label="Registration number" value={academic.registrationNumber} />
               <Metric label="Department" value={academic.departmentName} />
               <Metric label="Department code" value={academic.departmentCode} />
@@ -513,7 +513,7 @@ function StudentsList({ departmentId }) {
             <table style={{ minWidth: 1080 }}>
               <thead>
                 <tr>
-                  <SortableTh tableId="student-roster" columnKey="rollNumber" label="Roll number" sorts={sorts} onSort={handleSort} style={tableHeaderStyle} />
+                  <SortableTh tableId="student-roster" columnKey="rollNumber" label="Institute ID" sorts={sorts} onSort={handleSort} style={tableHeaderStyle} />
                   <SortableTh tableId="student-roster" columnKey="name" label="Student" sorts={sorts} onSort={handleSort} style={tableHeaderStyle} />
                   <SortableTh tableId="student-roster" columnKey="yearSemester" label="Year / Semester" sorts={sorts} onSort={handleSort} style={tableHeaderStyle} />
                   <SortableTh tableId="student-roster" columnKey="attendance" label="Attendance" sorts={sorts} onSort={handleSort} style={tableHeaderStyle} />

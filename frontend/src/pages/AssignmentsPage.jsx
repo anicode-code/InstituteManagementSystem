@@ -426,14 +426,14 @@ function FacultySubmissionsModal({ open, onClose, assignment, isAdmin }) {
                     {isAdmin ? (
                       <>
                         <SortableTh tableId="assignment-submissions" columnKey="student.name" label="Student" sorts={sorts} onSort={toggleSort} />
-                        <SortableTh tableId="assignment-submissions" columnKey="student.rollNumber" label="Roll Number" sorts={sorts} onSort={toggleSort} />
+                        <SortableTh tableId="assignment-submissions" columnKey="student.rollNumber" label="Institute ID" sorts={sorts} onSort={toggleSort} />
                         <SortableTh tableId="assignment-submissions" columnKey="submittedAt" label="Submitted At" sorts={sorts} onSort={toggleSort} />
                         <SortableTh tableId="assignment-submissions" columnKey="status" label="Status" sorts={sorts} onSort={toggleSort} />
                         <SortableTh tableId="assignment-submissions" columnKey="marks" label="Marks" sorts={sorts} onSort={toggleSort} />
                       </>
                     ) : (
                       <>
-                        <th>Student</th><th>Roll Number</th><th>Submitted At</th><th>Status</th><th>Marks</th>
+                        <th>Student</th><th>Institute ID</th><th>Submitted At</th><th>Status</th><th>Marks</th>
                       </>
                     )}
                     <th>Action</th>

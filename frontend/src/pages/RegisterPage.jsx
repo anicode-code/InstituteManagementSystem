@@ -62,7 +62,7 @@ export default function RegisterPage() {
     setError('');
 
     if (!form.name.trim()) { setError('Full name is required.'); return; }
-    if (!form.rollNumber.trim()) { setError('Roll number is required.'); return; }
+    if (!form.rollNumber.trim()) { setError('Institute ID is required.'); return; }
     if (!form.password) { setError('Password is required.'); return; }
     if (form.password.length < 6) { setError('Password must be at least 6 characters.'); return; }
     if (!form.email.trim()) { setError('Email is required.'); return; }
@@ -144,7 +144,7 @@ export default function RegisterPage() {
           </div>
 
           <div className="form-group">
-            <label className="form-label" htmlFor="rollNumber">Roll / Employee Number *</label>
+            <label className="form-label" htmlFor="rollNumber">Institute ID *</label>
             <input
               id="rollNumber"
               className="form-input"

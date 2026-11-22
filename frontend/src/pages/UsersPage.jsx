@@ -231,7 +231,7 @@ function PendingVerificationPanel({ onVerified, isAdmin }) {
                 </th>
                 {isAdmin ? (
                   <>
-                    <SortableTh tableId="pending-users" columnKey="rollNumber" label="Roll Number" sorts={sorts} onSort={toggleSort} />
+                    <SortableTh tableId="pending-users" columnKey="rollNumber" label="Institute ID" sorts={sorts} onSort={toggleSort} />
                     <SortableTh tableId="pending-users" columnKey="name" label="Name" sorts={sorts} onSort={toggleSort} />
                     <SortableTh tableId="pending-users" columnKey="email" label="Email" sorts={sorts} onSort={toggleSort} />
                     <SortableTh tableId="pending-users" columnKey="role" label="Role" sorts={sorts} onSort={toggleSort} />
@@ -239,7 +239,7 @@ function PendingVerificationPanel({ onVerified, isAdmin }) {
                   </>
                 ) : (
                   <>
-                    <th>Roll Number</th><th>Name</th><th>Email</th><th>Role</th><th>Registered</th>
+                    <th>Institute ID</th><th>Name</th><th>Email</th><th>Role</th><th>Registered</th>
                   </>
                 )}
                 <th>Decision</th>
@@ -359,7 +359,7 @@ export default function UsersPage() {
           <div className="search-bar">
             <Search />
             <input
-              placeholder="Search by name, roll number or email..."
+              placeholder="Search by name, Institute ID or email..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -401,14 +401,14 @@ export default function UsersPage() {
                   {isAdmin ? (
                     <>
                       <SortableTh tableId="users" columnKey="name" label="User" sorts={sorts} onSort={toggleSort} />
-                      <SortableTh tableId="users" columnKey="rollNumber" label="Roll Number" sorts={sorts} onSort={toggleSort} />
+                      <SortableTh tableId="users" columnKey="rollNumber" label="Institute ID" sorts={sorts} onSort={toggleSort} />
                       <SortableTh tableId="users" columnKey="email" label="Email" sorts={sorts} onSort={toggleSort} />
                       <SortableTh tableId="users" columnKey="role" label="Role" sorts={sorts} onSort={toggleSort} />
                       <SortableTh tableId="users" columnKey="status" label="Status" sorts={sorts} onSort={toggleSort} />
                     </>
                   ) : (
                     <>
-                      <th>User</th><th>Roll Number</th><th>Email</th><th>Role</th><th>Status</th>
+                      <th>User</th><th>Institute ID</th><th>Email</th><th>Role</th><th>Status</th>
                     </>
                   )}
                 </tr>

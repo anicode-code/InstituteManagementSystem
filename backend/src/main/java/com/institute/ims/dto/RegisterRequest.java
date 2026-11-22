@@ -12,7 +12,7 @@ public class RegisterRequest {
     @NotBlank(message = "Name is required")
     private String name;
 
-    @NotBlank(message = "Roll number is required")
+    @NotBlank(message = "Institute ID is required")
     private String rollNumber;
 
     @NotBlank(message = "Password is required")

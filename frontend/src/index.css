@@ -1045,7 +1045,7 @@ tbody tr:hover { background: var(--bg-hover); }
   font-size: 0.85rem;
 }
 
-/* Sticky Columns for Roll No, Name, and Overall % */
+/* Sticky Columns for Institute ID, Name, and Overall % */
 .sticky-col-roll {
   position: sticky;
   left: 0;

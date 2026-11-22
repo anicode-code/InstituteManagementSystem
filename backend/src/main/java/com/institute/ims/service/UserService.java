@@ -230,7 +230,7 @@ public class UserService {
     public User createUser(CreateUserRequest request) {
 
         if (userRepository.existsByRollNumber(request.getRollNumber())) {
-            throw new RuntimeException("A user with this roll number already exists.");
+            throw new RuntimeException("A user with this Institute ID already exists.");
         }
         String email = request.getEmail() == null
                 ? null

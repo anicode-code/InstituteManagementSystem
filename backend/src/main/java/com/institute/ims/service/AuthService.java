@@ -59,7 +59,7 @@ public class AuthService {
                 request.getRollNumber())) {
 
             throw new RuntimeException(
-                    "A user with this roll number already exists.");
+                    "A user with this Institute ID already exists.");
         }
 
         String email = request.getEmail() == null
@@ -141,7 +141,7 @@ public class AuthService {
                         request.getRollNumber()
                 ).orElseThrow(() ->
                         new RuntimeException(
-                                "Invalid roll number or password"));
+                                "Invalid Institute ID or password"));
 
         if (user.getStatus() != VerificationStatus.VERIFIED) {
             throw new RuntimeException(

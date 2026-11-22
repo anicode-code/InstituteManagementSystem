@@ -23,7 +23,7 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.rollNumber || !form.password) {
-      setError('Roll number and password are required.');
+      setError('Institute ID and password are required.');
       return;
     }
     setLoading(true);
@@ -71,14 +71,14 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label className="form-label" htmlFor="rollNumber">Roll Number</label>
+            <label className="form-label" htmlFor="rollNumber">Institute ID</label>
             <input
               id="rollNumber"
               className="form-input"
               type="text"
               name="rollNumber"
               autoComplete="username"
-              placeholder="Enter your roll number (e.g. 2026CS001)"
+              placeholder="Enter your Institute ID (e.g. 2026CS001)"
               value={form.rollNumber}
               onChange={handleChange}
               disabled={loading}

@@ -26,14 +26,14 @@ public class CustomUserDetailsService
             throws UsernameNotFoundException {
 
         if (rollNumber == null) {
-            throw new UsernameNotFoundException("Roll number cannot be null");
+            throw new UsernameNotFoundException("Institute ID cannot be null");
         }
 
         User user =
                 userRepository.findByRollNumber(rollNumber.trim())
                         .orElseThrow(() ->
                                 new UsernameNotFoundException(
-                                        "User not found with roll number: " + rollNumber));
+                                        "User not found with Institute ID: " + rollNumber));
 
         return new org.springframework.security.core.userdetails.User(
                 user.getRollNumber(),

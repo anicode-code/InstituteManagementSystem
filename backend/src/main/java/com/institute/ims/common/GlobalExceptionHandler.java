@@ -52,7 +52,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleBadCredentials(
             BadCredentialsException exception) {
 
-        return errorResponse(HttpStatus.UNAUTHORIZED, "Invalid roll number or password.");
+        return errorResponse(HttpStatus.UNAUTHORIZED, "Invalid Institute ID or password.");
     }
 
     @ExceptionHandler(ResponseStatusException.class)

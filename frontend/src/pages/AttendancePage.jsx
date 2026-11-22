@@ -638,7 +638,7 @@ export default function AttendancePage({ departmentId }) {
           <div className="search-bar" style={{ maxWidth: 320 }}>
             <Search size={16} />
             <input
-              placeholder="Search student by name or roll number..."
+              placeholder="Search student by name or Institute ID..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -778,13 +778,13 @@ export default function AttendancePage({ departmentId }) {
                 {/* 1. Sticky Student Identifiers */}
                 {isAdmin ? (
                   <>
-                    <SortableTh tableId="attendance-matrix" columnKey="rollNumber" label="Roll No" sorts={attendanceSorts} onSort={toggleSort} className="sticky-col-roll" />
+                    <SortableTh tableId="attendance-matrix" columnKey="rollNumber" label="Institute ID" sorts={attendanceSorts} onSort={toggleSort} className="sticky-col-roll" />
                     <SortableTh tableId="attendance-matrix" columnKey="name" label="Student Name" sorts={attendanceSorts} onSort={toggleSort} className="sticky-col-name" />
                     <SortableTh tableId="attendance-matrix" columnKey="overallAttendance" label="Overall %" sorts={attendanceSorts} onSort={toggleSort} className="sticky-col-pct" style={{ textAlign: 'center' }} />
                   </>
                 ) : (
                   <>
-                    <th className="sticky-col-roll">Roll No</th>
+                    <th className="sticky-col-roll">Institute ID</th>
                     <th className="sticky-col-name">Student Name</th>
                     <th className="sticky-col-pct" style={{ textAlign: 'center' }}>Overall %</th>
                   </>
@@ -910,7 +910,7 @@ export default function AttendancePage({ departmentId }) {
                   const sStats = studentStatsMap.get(stu.id) || { attended: 0, totalDays: 0, pct: 0, isLow: false };
                   return (
                     <tr key={stu.id}>
-                      {/* Sticky Roll No */}
+                      {/* Sticky Institute ID */}
                       <td className="sticky-col-roll" style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--accent)' }}>
                         {stu.rollNumber}
                       </td>

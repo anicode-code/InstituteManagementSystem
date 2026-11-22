@@ -4,7 +4,7 @@ import jakarta.validation.constraints.NotBlank;
 
 public class LoginRequest {
 
-    @NotBlank(message = "Roll number is required")
+    @NotBlank(message = "Institute ID is required")
     private String rollNumber;
 
     @NotBlank(message = "Password is required")
